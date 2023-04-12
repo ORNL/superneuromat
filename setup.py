@@ -13,6 +13,6 @@ setup(
     long_description="""A matrix-based simulation framework for neuromorphic computing.""",
     long_description_content_type="text/markdown",
     project_urls={"Source": "https://github.com/ORNL/superneuromat"},
-    install_requires=["numpy==1.21.6", "pandas"],
+    install_requires=["numpy", "pandas"],
 )
 
