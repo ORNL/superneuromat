@@ -49,7 +49,7 @@ CAUTION:
 1. Delay is implemented by adding a chain of proxy neurons. A delay of 10 between neuron A and neuron B would add 9 proxy neurons between A and B.
 2. The notion of leak: Leak tries to bring the internal state of the neuron back to the reset state. The leak value is the amount by which the internal state of the neuron is pushed towards its reset state.
 3. Deletion of neurons is not permitted
-4. Careful with STDP parameters.
+4. Careful with STDP parameters
 5. Input spikes can have a value
 6. Monitoring all neurons by default
 
@@ -59,11 +59,46 @@ CAUTION:
 
 
 class NeuromorphicModel:
-	"""
+	""" Defines a neuromorphic model with neurons and synapses
+
+	Attributes:
+		num_neurons (int): Number of neurons in the neuromorphic model
+		neuron_thresholds (list): List of neuron thresholds
+		neuron_leaks (list): List of neuron leaks, defined as the amount by which the internal states of the neurons are pushed towards the neurons' reset states
+		neuron_reset_states (list): List of neuron reset states
+		neuron_refractory_periods (list): List of neuron refractory periods
+
+		num_synapses (int): Number of synapses in the neuromorphic model
+		pre_synaptic_neuron_ids (list): List of pre-synaptic neuron IDs
+		post_synaptic_neuron_ids (list): List of post-synaptic neuron IDs
+		synaptic_weights (list): List of synaptic weights
+		synaptic_delays (list): List of synaptic delays
+		enable_stdp (list): List of Boolean values denoting whether STDP learning is enabled on each synapse
+		
+		input_spikes (dict): Dictionary of input spikes indexed by time
+		spike_train (list): List of spike trains for each time step
+		
+		stdp (bool): Boolean parameter that denotes whether STDP learning has been enabled in the neuromorphic model
+		stdp_time_steps (int): Number of time steps over which STDP updates are made
+		stdp_Apos (list): List of STDP parameters per time step for excitatory update of weights
+		stdp_Aneg (list): List of STDP parameters per time step for inhibitory update of weights
+
+
+	Methods:
+		create_neuron: Creates a neuron in the neuromorphic model
+		create_synapse: Creates a synapse in the neuromorphic model
+		add_spike: Add an external spike at a particular time step for a given neuron with a given value
+		stdp_setup: Setup the STDP parameters
+		setup: Setup the neuromorphic model and prepare for simulation
+		simulate: Simulate the neuromorphic model for a given number of time steps
+		print_spike_train: Print the spike train
+		
 	"""
 
+
 	def __init__(self):
-		"""
+		""" Initialize the neuromorphic model
+
 		"""
 
 		# Neuron parameters
@@ -172,7 +207,28 @@ class NeuromorphicModel:
 		refractory_period: int=0
 	) -> int:
 
-		"""
+		""" Create a neuron
+
+		Args:
+			threshold (float): Neuron threshold; the neuron spikes if its internal state is strictly greater than the neuron threshold (default: 0.0)
+			leak (float): Neuron leak; the amount by which by which the internal state of the neuron is pushed towards its reset state (default: np.inf)
+			reset_state (float): Reset state of the neuron; the value assigned to the internal state of the neuron after spiking (default: 0.0)
+			refractory_period (int): Refractory period of the neuron; the number of time steps for which the neuron remains in a dormant state after spiking
+
+		Returns:
+			Returns the neuron ID
+
+		Raises: 
+			TypeError if:
+				1. threshold is not an int or a float
+				2. leak is not an int or a float
+				3. reset_state is not an int or a float
+				4. refractory_period is not an int
+
+			ValueError if: 
+				1. leak is less than 0.0
+				2. refractory_period is less than 0
+
 		"""
 
 		# Type errors
@@ -220,7 +276,23 @@ class NeuromorphicModel:
 		enable_stdp: bool=False
 	) -> None:
 
-		""" 
+		""" Creates a synapse in the neuromorphic model from a pre-synaptic neuron to a post-synaptic neuron with a given set of synaptic parameters (weight, delay and enable_stdp)
+
+		Args:
+			pre_id (int): ID of the pre-synaptic neuron
+			post_id (int): ID of the post-synaptic neuron
+			weight (float): Synaptic weight; weight is multiplied to the incoming spike
+			delay (int): Synaptic delay; number of time steps by which the outgoing signal of the syanpse is delayed by
+			enable_stdp (bool): Boolean value that denotes whether or not STDP learning is enabled on the synapse
+
+		Raises:
+			TypeError if: 
+				1. pre_id is not an int
+				2. post_id is not an int
+				3. weight is not a float
+				4. delay is not an int
+				5. enable_stdp is not a bool
+
 		""" 
 
 		# Type errors
@@ -278,7 +350,19 @@ class NeuromorphicModel:
 		value: float=1.0
 	) -> None:
 		
-		"""
+		""" Adds an external spike in the neuromorphic model 
+
+		Args:
+			time (int): The time step at which the external spike is added
+			neuron_id (int): The neuron for which the external spike is added
+			value (float): The value of the external spike
+
+		Raises:
+			TypeError if:
+				1. time is not an int
+				2. neuron_id is not an int
+				3. value is not an int or float
+
 		"""
 
 		# Type errors
@@ -322,7 +406,11 @@ class NeuromorphicModel:
 		negative_update: bool=True
 	) -> None:
 
-		"""
+		""" Setup the Spike-Time-Dependent Plasticity (STDP) parameters
+
+		Args:
+			time_steps (int): Number of time steps 
+
 		"""
 
 		# Type errors

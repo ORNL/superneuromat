@@ -42,9 +42,9 @@ class LogicGatesTest(unittest.TestCase):
 		and_gate.setup()
 		and_gate.simulate(8)
 
-		# Print spike trains
-		for spike_train in and_gate.spike_train:
-			print(spike_train)
+		# Print spike train and neuromorphic model
+		and_gate.print_spike_train()
+		print(and_gate)
 
 
 	def test_or(self):
@@ -81,9 +81,9 @@ class LogicGatesTest(unittest.TestCase):
 		or_gate.setup()
 		or_gate.simulate(8)
 
-		# Print spike trains
-		for spike_train in or_gate.spike_train:
-			print(spike_train) 
+		# Print spike train and neuromorphic model
+		or_gate.print_spike_train()
+		print(or_gate)
 
 
 
