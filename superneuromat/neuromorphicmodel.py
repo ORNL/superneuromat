@@ -167,7 +167,7 @@ class NeuromorphicModel:
 	def create_neuron(	
 		self, 
 		threshold: float=0.0, 
-		leak: float=0.0, 
+		leak: float=np.inf, 
 		reset_state: float=0.0, 
 		refractory_period: int=0
 	) -> int:
@@ -424,6 +424,16 @@ class NeuromorphicModel:
 
 		# Simulate
 		for tick in range(time_steps):
+			# Leak: internal state > reset state
+			indices = (self._internal_states > self._neuron_reset_states)
+			self._internal_states[indices] = np.maximum(self._internal_states[indices] - self._neuron_leaks[indices], self._neuron_reset_states[indices])
+
+			
+			# Leak: internal state < reset state
+			indices = (self._internal_states < self._neuron_reset_states)
+			self._internal_states[indices] = np.minimum(self._internal_states[indices] + self._neuron_leaks[indices], self._neuron_reset_states[indices])
+
+
 			# Zero out _input_spikes
 			self._input_spikes -= self._input_spikes 	
 
@@ -435,16 +445,6 @@ class NeuromorphicModel:
 
 			# Internal state
 			self._internal_states = self._internal_states + self._input_spikes + (self._weights.T @ self._spikes)
-
-
-			# Leak: internal state > reset state
-			indices = (self._internal_states > self._neuron_reset_states)
-			self._internal_states[indices] = np.maximum(self._internal_states[indices] - self._neuron_leaks[indices], self._neuron_reset_states[indices])
-
-			
-			# Leak: internal state < reset state
-			indices = (self._internal_states < self._neuron_reset_states)
-			self._internal_states[indices] = np.minimum(self._internal_states[indices] + self._neuron_leaks[indices], self._neuron_reset_states[indices])
 
 
 			# Compute spikes
