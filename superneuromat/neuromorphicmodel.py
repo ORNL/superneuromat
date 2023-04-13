@@ -281,9 +281,9 @@ class NeuromorphicModel:
 		Args:
 			pre_id (int): ID of the pre-synaptic neuron
 			post_id (int): ID of the post-synaptic neuron
-			weight (float): Synaptic weight; weight is multiplied to the incoming spike
-			delay (int): Synaptic delay; number of time steps by which the outgoing signal of the syanpse is delayed by
-			enable_stdp (bool): Boolean value that denotes whether or not STDP learning is enabled on the synapse
+			weight (float): Synaptic weight; weight is multiplied to the incoming spike (default: 1.0)
+			delay (int): Synaptic delay; number of time steps by which the outgoing signal of the syanpse is delayed by (default: 1)
+			enable_stdp (bool): Boolean value that denotes whether or not STDP learning is enabled on the synapse (default: False)
 
 		Raises:
 			TypeError if: 
@@ -355,7 +355,7 @@ class NeuromorphicModel:
 		Args:
 			time (int): The time step at which the external spike is added
 			neuron_id (int): The neuron for which the external spike is added
-			value (float): The value of the external spike
+			value (float): The value of the external spike (default: 1.0)
 
 		Raises:
 			TypeError if:
@@ -409,7 +409,31 @@ class NeuromorphicModel:
 		""" Setup the Spike-Time-Dependent Plasticity (STDP) parameters
 
 		Args:
-			time_steps (int): Number of time steps 
+			time_steps (int): Number of time steps over which STDP learning occurs (default: 3)
+			Apos (list): List of parameters for excitatory STDP updates (default: [1.0, 0.5, 0.25]); number of elements in the list must be equal to time_steps
+			Aneg (list): List of parameters for inhibitory STDP updates (default: [1.0, 0.5, 0.25]); number of elements in the list must be equal to time_steps
+			positive_update (bool): Boolean parameter indicating whether excitatory STDP update should be enabled
+			negative_update (bool): Boolean parameter indicating whether inhibitory STDP update should be enabled
+
+		Raises: 
+			TypeError if:
+				1. time_steps is not an int
+				2. Apos is not a list
+				3. Aneg is not a list
+				4. positive_update is not a bool
+				5. negative_update is not a bool
+
+			ValueError if:
+				1. time_steps is less than or equal to zero
+				2. Number of elements in Apos is not equal to the time_steps
+				3. Number of elements in Aneg is not equal to the time_steps
+				4. The elements of Apos are not int or float
+				5. The elements of Aneg are not int or float
+				6. The elements of Apos are not greater than or equal to 0.0
+				7. The elements of Apos are not greater than or equal to 0.0
+
+			RuntimeError if: 
+				1. enable_stdp is not set to True on any of the synapses
 
 		"""
 
@@ -469,7 +493,8 @@ class NeuromorphicModel:
 
 
 	def setup(self):
-		"""
+		""" Setup the neuromorphic circuit for simulation
+
 		"""
 
 		# Create numpy arrays for neuron state variables
@@ -497,7 +522,18 @@ class NeuromorphicModel:
 
 
 	def simulate(self, time_steps: int=1000) -> None:
-		""" 
+		""" Simulate the neuromorphic circuit 
+
+		Args:
+			time_steps (int): Number of time steps for which the neuromorphic circuit is to be simulated
+
+		Raises: 
+			TypeError if:
+				1. time_steps is not an int
+
+			ValueError if: 
+				1. time_steps is less than or equal to zero
+
 		""" 
 
 		# Type errors
@@ -574,7 +610,8 @@ class NeuromorphicModel:
 
 
 	def print_spike_train(self):
-		"""
+		""" Prints the spike train
+		
 		"""
 
 		for time, spike_train in enumerate(self.spike_train):
