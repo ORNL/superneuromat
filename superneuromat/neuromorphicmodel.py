@@ -18,10 +18,10 @@ TODO:
 10. Function arguments in a way that includes the data type [DONE]
 11. Type, value and runtime errors: Test thoroughly using unittest [DONE]
 12. Print/display function to list all variables, all neuron parameters and all synapse parameters [DONE]
-13. Docstrings everywhere
-14. create_neurons()
-15. create_synapses()
-16. Tutorials: one neuron, two neurons
+13. Docstrings everywhere [DONE]
+14. create_neurons() 
+15. create_synapses() 
+16. Tutorials: one neuron, two neurons 
 17. Leak equations should not check for spikes [DONE]
 
 """
@@ -31,27 +31,11 @@ TODO:
 
 """
 
-FEATURE REQS: 
+FEATURE REQUESTS: 
 
 1. Visualize spike raster
 2. Monitor STDP synapses
 3. Reset neuromorphic model
-
-"""
-
-
-
-
-"""
-
-CAUTION:
-
-1. Delay is implemented by adding a chain of proxy neurons. A delay of 10 between neuron A and neuron B would add 9 proxy neurons between A and B.
-2. The notion of leak: Leak tries to bring the internal state of the neuron back to the reset state. The leak value is the amount by which the internal state of the neuron is pushed towards its reset state.
-3. Deletion of neurons is not permitted
-4. Careful with STDP parameters
-5. Input spikes can have a value
-6. Monitoring all neurons by default
 
 """
 
@@ -93,6 +77,15 @@ class NeuromorphicModel:
 		simulate: Simulate the neuromorphic model for a given number of time steps
 		print_spike_train: Print the spike train
 		
+
+	CAUTION:
+
+		1. Delay is implemented by adding a chain of proxy neurons. A delay of 10 between neuron A and neuron B would add 9 proxy neurons between A and B.
+		2. Leak brings the internal state of the neuron back to the reset state. The leak value is the amount by which the internal state of the neuron is pushed towards its reset state.
+		3. Deletion of neurons is not permitted
+		4. Input spikes can have a value
+		5. All neurons are monitored by default
+
 	"""
 
 
@@ -611,7 +604,7 @@ class NeuromorphicModel:
 
 	def print_spike_train(self):
 		""" Prints the spike train
-		
+
 		"""
 
 		for time, spike_train in enumerate(self.spike_train):
