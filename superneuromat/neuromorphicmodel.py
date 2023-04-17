@@ -79,7 +79,6 @@ class NeuromorphicModel:
 		
 
 	CAUTION:
-
 		1. Delay is implemented by adding a chain of proxy neurons. A delay of 10 between neuron A and neuron B would add 9 proxy neurons between A and B.
 		2. Leak brings the internal state of the neuron back to the reset state. The leak value is the amount by which the internal state of the neuron is pushed towards its reset state.
 		3. Deletion of neurons is not permitted
