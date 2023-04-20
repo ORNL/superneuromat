@@ -479,6 +479,7 @@ class NeuromorphicModel:
 		self.stdp_time_steps = time_steps
 		self.stdp_Apos = Apos 
 		self.stdp_Aneg = Aneg 
+		self.stdp_positive_update = positive_update
 		self.stdp_negative_update = negative_update
 
 
@@ -593,7 +594,9 @@ class NeuromorphicModel:
 				for i in range(self.stdp_time_steps):
 					if len(self.spike_train) >= i + 2:
 						update_synapses = np.outer(np.array(self.spike_train[-i-2]), np.array(self.spike_train[-1]))
-						self._weights += self.stdp_Apos[i] * update_synapses * self._stdp_enabled_synapses
+
+						if self.stdp_positive_update:
+							self._weights += self.stdp_Apos[i] * update_synapses * self._stdp_enabled_synapses
 
 						if self.stdp_negative_update:
 							self._weights -= self.stdp_Aneg[i] * (1 - update_synapses) * self._stdp_enabled_synapses
