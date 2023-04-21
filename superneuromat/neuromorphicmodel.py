@@ -602,6 +602,12 @@ class NeuromorphicModel:
 							self._weights -= self.stdp_Aneg[i] * (1 - update_synapses) * self._stdp_enabled_synapses
 
 
+		# Update weights if STDP was enabled
+		if self.stdp:
+			self.synaptic_weights = list(self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
+
+
+
 
 
 	def print_spike_train(self):
