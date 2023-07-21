@@ -6,7 +6,6 @@ setup(
     version="0.1",
     author="Prasanna Date, Chathika Gunaratne, Shruti Kulkarni, Robert Patton, Mark Coletti",
     author_email="datepa@ornl.gov",
-    packages=["superneuromat"],
     include_package_data=True,
     url="https://github.com/ORNL/superneuromat",
     download_url="https://github.com/ORNL/superneuromat/archive/refs/tags/v_01.tar.gz",
