@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from numba import jit, cuda, float32
 
 
 """
@@ -36,6 +37,76 @@ FEATURE REQUESTS:
 3. Reset neuromorphic model
 
 """
+
+
+@jit(nopython=True)
+def lif_jit(
+    tick: int,
+    input_spikes,
+    output_spikes,
+    prev_spikes,
+    states,
+    thresholds,
+    leaks,
+    reset_states,
+    refractory_periods,
+    refractory_periods_original,
+    weights,
+):
+    # CAUTION: This function has side-effects (not a pure function)
+    # output_spikes, prev_spikes, and states are modified in-place
+    # DO NOT ASSIGN THESE VARIABLES WITHIN THIS FUNCTION or things will break
+    # DO NOT states = something
+
+    # Leak: internal state > reset state
+    indices = states > reset_states
+    states[indices] = np.maximum(
+        states[indices] - leaks[indices], reset_states[indices]
+    )
+
+    # Leak: internal state < reset state
+    indices = states < reset_states
+    states[indices] = np.minimum(
+        states[indices] + leaks[indices], reset_states[indices]
+    )
+
+    # Internal state (in-place)
+    states += input_spikes[tick] + (weights.T @ prev_spikes)
+
+    # Compute spikes (in-place) into prev_spikes (numba doesn't support keyword 'out')
+    spikes = np.greater(states, thresholds, prev_spikes)
+
+    # Refractory period: Compute indices of neuron which are in their refractory period
+    indices = refractory_periods > 0
+
+    # For neurons in their refractory period, zero out their spikes and decrement refractory period by one
+    spikes[indices] = 0
+    refractory_periods[indices] -= 1
+
+    # For spiking neurons, turn on refractory period
+    mask = spikes.astype(np.bool)
+    refractory_periods[mask] = refractory_periods_original[mask]
+
+    # Reset internal states (in-place)
+    states[spikes == 1.0] = reset_states[spikes == 1.0]
+
+    # Append spike train
+    output_spikes[tick] = spikes
+    # states, prev_spikes, and output_spikes were modified in-place
+    # everything else is local
+
+
+@jit(nopython=True)
+def stdp_update_jit(t_now, n_steps, spike_train, weights_pointer, apos, aneg, stdp_enabled):
+    # STDP Operations
+    for i in range(min(t_now, n_steps)):
+        update_synapses = np.outer(spike_train[t_now - i - 1], spike_train[t_now])
+
+        if np.any(apos):
+            weights_pointer += apos[i] * update_synapses * stdp_enabled
+
+        if np.any(aneg):
+            weights_pointer -= aneg[i] * (1 - update_synapses) * stdp_enabled
 
 
 class NeuromorphicModel:
@@ -112,6 +183,10 @@ class NeuromorphicModel:
         self.stdp_time_steps = 0
         self.stdp_Apos = []
         self.stdp_Aneg = []
+        self.stdp_positive_update = False
+        self.stdp_negative_update = False
+
+        self.gpu = cuda.is_available()
 
     def __repr__(self):
         """Display the neuromorphic class in a legible format"""
@@ -415,11 +490,11 @@ class NeuromorphicModel:
         if negative_update and not all([isinstance(x, (int, float)) for x in Aneg]):
             raise ValueError("All elements in Aneg should be int or float")
 
-        if positive_update and not all([x >= 0.0 for x in Apos]):
-            raise ValueError("All elements in Apos should be positive")
+        # if positive_update and not all([x >= 0.0 for x in Apos]):
+        #     raise ValueError("All elements in Apos should be positive")
 
-        if negative_update and not all([x >= 0.0 for x in Aneg]):
-            raise ValueError("All elements in Aneg should be positive")
+        # if negative_update and not all([x >= 0.0 for x in Aneg]):
+        #     raise ValueError("All elements in Aneg should be positive")
 
         # Runtime error
         if not any(self.enable_stdp):
@@ -437,31 +512,32 @@ class NeuromorphicModel:
         """Setup the neuromorphic circuit for simulation"""
 
         # Create numpy arrays for neuron state variables
-        self._neuron_thresholds = np.array(self.neuron_thresholds)
-        self._neuron_leaks = np.array(self.neuron_leaks)
-        self._neuron_reset_states = np.array(self.neuron_reset_states)
-        self._neuron_refractory_periods_original = np.array(self.neuron_refractory_periods)
-        self._neuron_refractory_periods = np.zeros(self.num_neurons)
-        self._internal_states = np.array(self.neuron_reset_states)
-        self._spikes = np.zeros(self.num_neurons)
+        self._neuron_thresholds = np.array(self.neuron_thresholds, np.float64)
+        self._neuron_leaks = np.array(self.neuron_leaks, np.float64)
+        self._neuron_reset_states = np.array(self.neuron_reset_states, np.float64)
+        self._neuron_refractory_periods_original = np.array(self.neuron_refractory_periods, np.float64)
+        self._neuron_refractory_periods = np.zeros(self.num_neurons, np.float64)
+        self._internal_states = np.array(self.neuron_reset_states, np.float64)
+        self._spikes = np.zeros(self.num_neurons, np.float64)
 
         # Create numpy arrays for synapses
-        self._weights = np.zeros((self.num_neurons, self.num_neurons))
+        self._weights = np.zeros((self.num_neurons, self.num_neurons), np.float64)
         self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.synaptic_weights
 
         # Create numpy arrays for STDP operations
         if self.stdp:
-            self._stdp_enabled_synapses = np.zeros((self.num_neurons, self.num_neurons))
+            self._stdp_enabled_synapses = np.zeros((self.num_neurons, self.num_neurons), np.int64)
             self._stdp_enabled_synapses[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.enable_stdp
 
         # Create numpy array for input spikes
-        self._input_spikes = np.zeros(self.num_neurons)
+        self._input_spikes = np.zeros((1, self.num_neurons), np.float64)
 
-    def simulate(self, time_steps: int = 1000) -> None:
+    def simulate(self, time_steps: int = 1000, callback=None, use='auto') -> None:
         """Simulate the neuromorphic circuit
 
         Args:
                 time_steps (int): Number of time steps for which the neuromorphic circuit is to be simulated
+                callback (function): Function to be called after each time step
 
         Raises:
                 TypeError if:
@@ -480,8 +556,83 @@ class NeuromorphicModel:
         if time_steps <= 0:
             raise ValueError("time_steps must be greater than zero")
 
+        if use == 'auto' and time_steps > 1 and max(self._neuron_thresholds.shape) > 1000:
+            if self.gpu:
+                self.simulate_gpu(time_steps, callback)
+            else:
+                self.simulate_cpu_jit(time_steps, callback)
+        elif use == 'jit':
+            self.simulate_cpu_jit(time_steps, callback)
+        elif use == 'gpu':
+            self.simulate_gpu(time_steps, callback)
+        else:
+            self.simulate_cpu(time_steps, callback)
+
+
+
+    def simulate_cpu_jit(self, time_steps: int = 1000, callback=None) -> None:
+        # print("Using CPU with Numba JIT optimizations")
+        max_timestep = max(list(self.input_spikes.keys()) + [time_steps]) + 1
+        self._input_spikes = np.zeros((max_timestep, self.num_neurons), np.float64)
+        for t, spikes_dict in self.input_spikes.items():
+            for neuron_id, amplitude in zip(spikes_dict["nids"], spikes_dict["values"]):
+                self._input_spikes[t][neuron_id] = amplitude
+
+        self._output_spikes = np.zeros((time_steps, len(self._internal_states)), np.float64)
+
+        self.stdp_Apos = np.asarray(self.stdp_Apos, np.float64) if self.stdp_positive_update else np.zeros(1)
+        self.stdp_Aneg = np.asarray(self.stdp_Aneg, np.float64) if self.stdp_negative_update else np.zeros(1)
+
+        for tick in range(time_steps):
+            if callback is not None:
+                if callable(callback):
+                    callback(self, tick, time_steps)
+
+            lif_jit(
+                tick,
+                self._input_spikes,
+                self._output_spikes,  # modified in-place
+                self._spikes,
+                self._internal_states,  # modified in-place
+                self._neuron_thresholds,
+                self._neuron_leaks,
+                self._neuron_reset_states,
+                self._neuron_refractory_periods,
+                self._neuron_refractory_periods_original,
+                self._weights,
+            )
+
+            if self.stdp:
+                stdp_update_jit(
+                    tick,
+                    self.stdp_time_steps,
+                    self._output_spikes,
+                    self._weights,
+                    self.stdp_Apos,
+                    self.stdp_Aneg,
+                    self._stdp_enabled_synapses,
+                )
+
+        self.spike_train.extend(self._output_spikes)
+
+        # Update weights if STDP was enabled
+        if self.stdp:
+            self.synaptic_weights = list(self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
+
+    def simulate_cpu(self, time_steps: int = 1000, callback=None) -> None:
+        print("Using CPU without optimizations")
+        max_timestep = max(list(self.input_spikes.keys()) + [time_steps]) + 1
+        self._input_spikes = np.zeros((max_timestep, len(self._spikes)))
+        for t, spikes_dict in self.input_spikes.items():
+            for neuron_id, amplitude in zip(spikes_dict["nids"], spikes_dict["values"]):
+                self._input_spikes[t][neuron_id] = amplitude
+
         # Simulate
         for tick in range(time_steps):
+            if callback is not None:
+                if callable(callback):
+                    callback(self, tick, time_steps)
+
             # Leak: internal state > reset state
             indices = self._internal_states > self._neuron_reset_states
             self._internal_states[indices] = np.maximum(
@@ -494,15 +645,15 @@ class NeuromorphicModel:
                 self._internal_states[indices] + self._neuron_leaks[indices], self._neuron_reset_states[indices]
             )
 
-            # Zero out _input_spikes
-            self._input_spikes -= self._input_spikes
+            # # Zero out _input_spikes
+            # self._input_spikes -= self._input_spikes
 
-            # Include input spikes for current tick
-            if tick in self.input_spikes:
-                self._input_spikes[self.input_spikes[tick]["nids"]] = self.input_spikes[tick]["values"]
+            # # Include input spikes for current tick
+            # if tick in self.input_spikes:
+            #     self._input_spikes[self.input_spikes[tick]["nids"]] = self.input_spikes[tick]["values"]
 
             # Internal state
-            self._internal_states = self._internal_states + self._input_spikes + (self._weights.T @ self._spikes)
+            self._internal_states = self._internal_states + self._input_spikes[tick] + (self._weights.T @ self._spikes)
 
             # Compute spikes
             self._spikes = np.greater(self._internal_states, self._neuron_thresholds).astype(int)
@@ -535,11 +686,15 @@ class NeuromorphicModel:
                             self._weights += self.stdp_Apos[i] * update_synapses * self._stdp_enabled_synapses
 
                         if self.stdp_negative_update:
-                            self._weights -= self.stdp_Aneg[i] * (1 - update_synapses) * self._stdp_enabled_synapses
+                            self._weights += self.stdp_Aneg[i] * (1 - update_synapses) * self._stdp_enabled_synapses
 
         # Update weights if STDP was enabled
         if self.stdp:
             self.synaptic_weights = list(self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
+
+    def simulate_gpu(self, time_steps: int = 1000, callback=None) -> None:
+        print("Using CUDA GPU via Numba")
+        raise NotImplementedError("Simulation with GPU is not implemented yet. Please manually specifu to use='cpu'|'jit' instead of use='auto'")
 
     def print_spike_train(self):
         """Prints the spike train"""
