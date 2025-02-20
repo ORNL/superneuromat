@@ -1,6 +1,7 @@
+import math
 import numpy as np
 import pandas as pd
-from numba import jit, cuda, float32
+from numba import jit, cuda
 
 
 """
@@ -55,6 +56,7 @@ def lif_jit(
 ):
     # CAUTION: This function has side-effects (not a pure function)
     # output_spikes, prev_spikes, and states are modified in-place
+    # _____________  ___________      ______
     # DO NOT ASSIGN THESE VARIABLES WITHIN THIS FUNCTION or things will break
     # DO NOT states = something
 
@@ -686,15 +688,87 @@ class NeuromorphicModel:
                             self._weights += self.stdp_Apos[i] * update_synapses * self._stdp_enabled_synapses
 
                         if self.stdp_negative_update:
-                            self._weights += self.stdp_Aneg[i] * (1 - update_synapses) * self._stdp_enabled_synapses
+                            self._weights -= self.stdp_Aneg[i] * (1 - update_synapses) * self._stdp_enabled_synapses
 
         # Update weights if STDP was enabled
         if self.stdp:
             self.synaptic_weights = list(self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
 
     def simulate_gpu(self, time_steps: int = 1000, callback=None) -> None:
-        print("Using CUDA GPU via Numba")
-        raise NotImplementedError("Simulation with GPU is not implemented yet. Please manually specifu to use='cpu'|'jit' instead of use='auto'")
+        # print("Using CUDA GPU via Numba")
+        # raise NotImplementedError("Simulation with GPU is not implemented yet. Please manually specifu to use='cpu'|'jit' instead of use='auto'")
+        from .gpu import cuda as gpu
+        # print("Using CPU with Numba JIT optimizations")
+        max_timestep = max(list(self.input_spikes.keys()) + [time_steps]) + 1
+        self._input_spikes = np.zeros((max_timestep, self.num_neurons), np.float64)
+        for t, spikes_dict in self.input_spikes.items():
+            for neuron_id, amplitude in zip(spikes_dict["nids"], spikes_dict["values"]):
+                self._input_spikes[t][neuron_id] = amplitude
+
+        self._output_spikes = np.zeros((time_steps, len(self._internal_states)), np.float64)
+
+        self.stdp_Apos = np.asarray(self.stdp_Apos, np.float64) if self.stdp_positive_update else np.zeros(1)
+        self.stdp_Aneg = np.asarray(self.stdp_Aneg, np.float64) if self.stdp_negative_update else np.zeros(1)
+
+        post_synapse = cuda.to_device(np.zeros(self.num_neurons, np.float64))
+        output_spikes = cuda.to_device(self._output_spikes[-1].astype(np.int8))
+        states = cuda.to_device(self._internal_states)
+        thresholds = cuda.to_device(self._neuron_thresholds)
+        leaks = cuda.to_device(self._neuron_leaks)
+        reset_states = cuda.to_device(self._neuron_reset_states)
+        refractory_periods = cuda.to_device(self._neuron_refractory_periods)
+        refractory_periods_original = cuda.to_device(self._neuron_refractory_periods_original)
+        weights = cuda.to_device(self._weights)
+        if self.stdp:
+            stdp_enabled = cuda.to_device(self._stdp_enabled_synapses)
+
+        v_tpb = min(self.num_neurons, 32)
+        v_blocks = math.ceil(self.num_neurons / v_tpb)
+
+        m_tpb = (v_tpb, v_tpb)
+        m_blocks = (v_blocks, v_blocks)
+
+        for tick in range(time_steps):
+            if callback is not None:
+                if callable(callback):
+                    callback(self, tick, time_steps)
+
+            input_spikes = cuda.to_device(self._input_spikes[tick])
+
+            gpu.post_synaptic[v_blocks, v_tpb](
+                weights,
+                output_spikes,
+                post_synapse,
+            )
+
+            gpu.lif[v_blocks, v_tpb](
+                input_spikes,
+                output_spikes,
+                post_synapse,
+                states,
+                thresholds,
+                leaks,
+                reset_states,
+                refractory_periods,
+                refractory_periods_original,
+            )
+
+            self._output_spikes[tick] = output_spikes.copy_to_host()
+
+            if self.stdp:
+                for i in range(min(tick, self.stdp_time_steps)):
+                    old_spikes = cuda.to_device(self._output_spikes[tick - i - 1].astype(np.int8))
+                    gpu.stdp_update[m_blocks, m_tpb](weights, old_spikes, output_spikes,
+                                    stdp_enabled, self.stdp_Apos[i], self.stdp_Aneg[i])
+
+        self.spike_train.extend(self._output_spikes)
+        self._weights = weights.copy_to_host()
+        self._neuron_refractory_periods = refractory_periods.copy_to_host()
+        self._internal_states = states.copy_to_host()
+
+        # Update weights if STDP was enabled
+        if self.stdp:
+            self.synaptic_weights = list(self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
 
     def print_spike_train(self):
         """Prints the spike train"""

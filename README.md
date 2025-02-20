@@ -10,7 +10,7 @@
 1. Clone the `superneuromat` repo: `git clone https://github.com/ORNL/superneuromat.git`
 2. Install the package as editable inside your virtual environment: `pip install -e superneuromat/`
 
-Warning: importing as a relative module (i.e. not installed in your environment) has been deprecated.
+**Warning:** importing as a relative module (i.e. not installed in your environment) has been deprecated.
 
 
 ## Directory Info
