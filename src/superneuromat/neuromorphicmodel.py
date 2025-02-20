@@ -156,6 +156,10 @@ class NeuromorphicModel:
 
     """
 
+    gpu_threshold = 10000
+    jit_threshold = 1000
+    disable_performance_warnings = True
+
     def __init__(self):
         """Initialize the neuromorphic model"""
 
@@ -534,20 +538,37 @@ class NeuromorphicModel:
         # Create numpy array for input spikes
         self._input_spikes = np.zeros((1, self.num_neurons), np.float64)
 
+    def recommend(self, time_steps: int):
+        """Recommend a backend to use based on network size and continuous sim time steps."""
+        score = 0
+        score += self.num_neurons * 1
+        score += time_steps * 100
+
+        if score > self.gpu_threshold and self.gpu:
+            return 'gpu'
+        elif score > self.jit_threshold:
+            return 'jit'
+        return 'cpu'
+
     def simulate(self, time_steps: int = 1000, callback=None, use='auto') -> None:
         """Simulate the neuromorphic circuit
 
-        Args:
-                time_steps (int): Number of time steps for which the neuromorphic circuit is to be simulated
-                callback (function): Function to be called after each time step
+        Parameters
+        ----------
+        time_steps : int
+            Number of time steps for which the neuromorphic circuit is to be simulated
+        callback : function, optional
+            Function to be called after each time step, by default None
+        use : str, default='auto'
+            Which backend to use. Can be 'cpu', 'jit', or 'gpu'.
+            'auto' will choose a backend based on the network size and time steps.
 
-        Raises:
-                TypeError if:
-                        1. time_steps is not an int
-
-                ValueError if:
-                        1. time_steps is less than or equal to zero
-
+        Raises
+        ------
+        TypeError
+            If ``time_steps`` is not an int.
+        ValueError
+            If ``time_steps`` is less than or equal to zero.
         """
 
         # Type errors
@@ -558,12 +579,9 @@ class NeuromorphicModel:
         if time_steps <= 0:
             raise ValueError("time_steps must be greater than zero")
 
-        if use == 'auto' and time_steps > 1 and max(self._neuron_thresholds.shape) > 1000:
-            if self.gpu:
-                self.simulate_gpu(time_steps, callback)
-            else:
-                self.simulate_cpu_jit(time_steps, callback)
-        elif use == 'jit':
+        if use == 'auto':
+            use = self.recommend(time_steps)
+        if use == 'jit':
             self.simulate_cpu_jit(time_steps, callback)
         elif use == 'gpu':
             self.simulate_gpu(time_steps, callback)
@@ -622,7 +640,6 @@ class NeuromorphicModel:
             self.synaptic_weights = list(self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
 
     def simulate_cpu(self, time_steps: int = 1000, callback=None) -> None:
-        print("Using CPU without optimizations")
         max_timestep = max(list(self.input_spikes.keys()) + [time_steps]) + 1
         self._input_spikes = np.zeros((max_timestep, len(self._spikes)))
         for t, spikes_dict in self.input_spikes.items():
@@ -695,9 +712,19 @@ class NeuromorphicModel:
             self.synaptic_weights = list(self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
 
     def simulate_gpu(self, time_steps: int = 1000, callback=None) -> None:
+        """Simulate the neuromorphic circuit using the GPU backend.
+
+        Parameters
+        ----------
+        time_steps : int, optional
+        callback : _type_, optional
+            WARNING: If using the GPU backend, this callback will
+            not be able to modify the neuromorphic model via ``self`` .
+        """
         # print("Using CUDA GPU via Numba")
-        # raise NotImplementedError("Simulation with GPU is not implemented yet. Please manually specifu to use='cpu'|'jit' instead of use='auto'")
         from .gpu import cuda as gpu
+        if self.disable_performance_warnings:
+            gpu.disable_numba_performance_warnings()
         # print("Using CPU with Numba JIT optimizations")
         max_timestep = max(list(self.input_spikes.keys()) + [time_steps]) + 1
         self._input_spikes = np.zeros((max_timestep, self.num_neurons), np.float64)
@@ -771,7 +798,7 @@ class NeuromorphicModel:
             self.synaptic_weights = list(self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
 
     def print_spike_train(self):
-        """Prints the spike train"""
+        """Prints the spike train."""
 
         for time, spike_train in enumerate(self.spike_train):
             print(f"Time: {time}, Spikes: {spike_train}")
