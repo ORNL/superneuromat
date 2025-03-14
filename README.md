@@ -2,7 +2,7 @@
 
 
 ## Installation
-1. Install using `pip install git+https://github.com/ORNL/superneuromat.git`
+1. Install using `pip install superneuromat`
 2. Open up a Python interpretter and do `from superneuromat.neuromorphicmodel import NeuromorphicModel`
 
 
