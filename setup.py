@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name="superneuromat",
     packages=["superneuromat"],
-    version="0.1",
+    version="0.2",
     author="Prasanna Date, Chathika Gunaratne, Shruti Kulkarni, Robert Patton, Mark Coletti",
     author_email="datepa@ornl.gov",
     include_package_data=True,
