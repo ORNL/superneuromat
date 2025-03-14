@@ -1,5 +1,9 @@
 import unittest
 import numpy as np
+
+import sys 
+sys.path.insert(0,"../")
+
 from superneuromat.neuromorphicmodel import NeuromorphicModel
 
 
@@ -9,7 +13,7 @@ class RefractoryTest(unittest.TestCase):
 
 	"""
 
-	def refractory_one(self):
+	def test_refractory_one(self):
 		print("One neuron refractory period test")
 
 		model = NeuromorphicModel()
@@ -19,12 +23,14 @@ class RefractoryTest(unittest.TestCase):
 		model.add_spike(1, n_id, 1)
 		model.add_spike(2, n_id, 3)
 		model.add_spike(3, n_id, 4)
+		model.add_spike(4, n_id, 1)
 
 
 		model.setup()
 		model.simulate(10)
 
 		model.print_spike_train()
+		print()
 
 
 		""" Expected Output:
@@ -43,13 +49,13 @@ class RefractoryTest(unittest.TestCase):
 
 
 
-	def refractory_two(self):
+	def test_refractory_two(self):
 		print("Two neuron refractory period test")
 
 		model = NeuromorphicModel()
 
 		n1 = model.create_neuron(threshold=-1.0, reset_state=-1.0, refractory_period=2)
-		n2 = model.create_neuron(refractory_period=np.inf)
+		n2 = model.create_neuron(refractory_period=1000000)
 
 		model.create_synapse(n1, n2, weight=2.0, delay=2)
 

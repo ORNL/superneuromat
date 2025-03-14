@@ -1,5 +1,9 @@
 import numpy as np
 import unittest
+
+import sys 
+sys.path.insert(0,"../")
+
 from superneuromat.neuromorphicmodel import NeuromorphicModel
 
 
@@ -60,7 +64,7 @@ class TestTypeErrors(unittest.TestCase):
 		model=NeuromorphicModel()
 		n0 = model.create_neuron()
 		n1 = model.create_neuron()
-		model.create_synapse(n0, n1, enable_stdp=1)
+		model.create_synapse(n0, n1, stdp_enabled=1)
 
 
 	def test_spike_time(self):
@@ -85,7 +89,7 @@ class TestTypeErrors(unittest.TestCase):
 		model=NeuromorphicModel()
 		n0 = model.create_neuron()
 		n1 = model.create_neuron()
-		model.create_synapse(n0, n1, enable_stdp=True)
+		model.create_synapse(n0, n1, stdp_enabled=True)
 		model.stdp_setup(time_steps="forty three")
 
 
@@ -93,7 +97,7 @@ class TestTypeErrors(unittest.TestCase):
 		model=NeuromorphicModel()
 		n0 = model.create_neuron()
 		n1 = model.create_neuron()
-		model.create_synapse(n0, n1, enable_stdp=True)
+		model.create_synapse(n0, n1, stdp_enabled=True)
 		model.stdp_setup(time_steps=3, Apos=1.0)
 
 
@@ -101,7 +105,7 @@ class TestTypeErrors(unittest.TestCase):
 		model=NeuromorphicModel()
 		n0 = model.create_neuron()
 		n1 = model.create_neuron()
-		model.create_synapse(n0, n1, enable_stdp=True)
+		model.create_synapse(n0, n1, stdp_enabled=True)
 		model.stdp_setup(time_steps=3, Aneg=1.0)
 
 
@@ -109,7 +113,7 @@ class TestTypeErrors(unittest.TestCase):
 		model=NeuromorphicModel()
 		n0 = model.create_neuron()
 		n1 = model.create_neuron()
-		model.create_synapse(n0, n1, enable_stdp=True)
+		model.create_synapse(n0, n1, stdp_enabled=True)
 		model.stdp_setup(time_steps=3, positive_update="False")
 
 
@@ -117,7 +121,7 @@ class TestTypeErrors(unittest.TestCase):
 		model=NeuromorphicModel()
 		n0 = model.create_neuron()
 		n1 = model.create_neuron()
-		model.create_synapse(n0, n1, enable_stdp=True)
+		model.create_synapse(n0, n1, stdp_enabled=True)
 		model.stdp_setup(time_steps=3, negative_update="False")
 
 
@@ -190,7 +194,7 @@ class TestValueErrors(unittest.TestCase):
 		model = NeuromorphicModel()
 		n0 = model.create_neuron()
 		n1 = model.create_neuron()
-		model.create_synapse(n0, n1, delay=2, enable_stdp=True)
+		model.create_synapse(n0, n1, delay=2, stdp_enabled=True)
 		model.add_spike(1, n0)
 		model.stdp_setup(-1)
 
@@ -199,7 +203,7 @@ class TestValueErrors(unittest.TestCase):
 		model = NeuromorphicModel()
 		n0 = model.create_neuron()
 		n1 = model.create_neuron()
-		model.create_synapse(n0, n1, delay=2, enable_stdp=True)
+		model.create_synapse(n0, n1, delay=2, stdp_enabled=True)
 		model.add_spike(1, n0)
 		model.stdp_setup(3, [])
 
@@ -208,7 +212,7 @@ class TestValueErrors(unittest.TestCase):
 		model = NeuromorphicModel()
 		n0 = model.create_neuron()
 		n1 = model.create_neuron()
-		model.create_synapse(n0, n1, delay=2, enable_stdp=True)
+		model.create_synapse(n0, n1, delay=2, stdp_enabled=True)
 		model.add_spike(1, n0)
 		model.stdp_setup(2, [1.0, 0.5], [1.0, 0.5, 0.25])
 
@@ -217,7 +221,7 @@ class TestValueErrors(unittest.TestCase):
 		model = NeuromorphicModel()
 		n0 = model.create_neuron()
 		n1 = model.create_neuron()
-		model.create_synapse(n0, n1, delay=2, enable_stdp=True)
+		model.create_synapse(n0, n1, delay=2, stdp_enabled=True)
 		model.add_spike(1, n0)
 		model.stdp_setup(3, Apos=["a", "b", "c"])
 
@@ -226,7 +230,7 @@ class TestValueErrors(unittest.TestCase):
 		model = NeuromorphicModel()
 		n0 = model.create_neuron()
 		n1 = model.create_neuron()
-		model.create_synapse(n0, n1, delay=2, enable_stdp=True)
+		model.create_synapse(n0, n1, delay=2, stdp_enabled=True)
 		model.add_spike(1, n0)
 		model.stdp_setup(3, Aneg=["a", "b", "c"])
 
@@ -235,7 +239,7 @@ class TestValueErrors(unittest.TestCase):
 		model = NeuromorphicModel()
 		n0 = model.create_neuron()
 		n1 = model.create_neuron()
-		model.create_synapse(n0, n1, delay=2, enable_stdp=True)
+		model.create_synapse(n0, n1, delay=2, stdp_enabled=True)
 		model.add_spike(1, n0)
 		model.stdp_setup(2, Apos=[-1, -1], negative_update=False)
 
@@ -244,7 +248,7 @@ class TestValueErrors(unittest.TestCase):
 		model = NeuromorphicModel()
 		n0 = model.create_neuron()
 		n1 = model.create_neuron()
-		model.create_synapse(n0, n1, delay=2, enable_stdp=True)
+		model.create_synapse(n0, n1, delay=2, stdp_enabled=True)
 		model.add_spike(1, n0)
 		model.stdp_setup(1, Apos=[1.0], Aneg=[-5.0])
 

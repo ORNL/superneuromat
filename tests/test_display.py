@@ -1,5 +1,9 @@
 import numpy as np
 import unittest
+
+import sys 
+sys.path.insert(0,"../")
+
 from superneuromat.neuromorphicmodel import NeuromorphicModel
 
 
@@ -19,9 +23,9 @@ class DisplayTest(unittest.TestCase):
 
 		model.create_synapse(n0, n1)
 		model.create_synapse(n0, n2)
-		model.create_synapse(n0, n3, weight=4.0, delay=3, enable_stdp=True)
-		model.create_synapse(n4, n2, weight=2.0, delay=2, enable_stdp=False)
-		model.create_synapse(n2, n1, weight=30.0, delay=4, enable_stdp=True)
+		model.create_synapse(n0, n3, weight=4.0, delay=3, stdp_enabled=True)
+		model.create_synapse(n4, n2, weight=2.0, delay=2, stdp_enabled=False)
+		model.create_synapse(n2, n1, weight=30.0, delay=4, stdp_enabled=True)
 
 		model.add_spike(0, n2, 4.0)
 		model.add_spike(1, n1, 3.0)

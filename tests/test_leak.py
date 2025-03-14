@@ -1,5 +1,9 @@
 import unittest
 import numpy as np
+
+import sys 
+sys.path.insert(0,"../")
+
 from superneuromat.neuromorphicmodel import NeuromorphicModel
 
 
@@ -9,7 +13,9 @@ class LeakTest(unittest.TestCase):
 
 	"""
 
-	def int_state_greater_than_reset_state(self):
+	def test_int_state_greater_than_reset_state(self):
+		print("Internal state greater than reset state")
+
 		model = NeuromorphicModel()
 
 		n1 = model.create_neuron(threshold=10.0, leak=1.0, reset_state=-2.0)
@@ -23,11 +29,14 @@ class LeakTest(unittest.TestCase):
 		model.simulate(5)
 
 		model.print_spike_train()
+		print()
 
 
 
 
-	def int_state_less_than_reset_state(self):
+	def test_int_state_less_than_reset_state(self):
+		print("Internal state lesss than reset state")
+
 		model = NeuromorphicModel()
 
 		n1 = model.create_neuron(threshold=10.0, leak=5.0, reset_state=-2.0)
@@ -41,10 +50,13 @@ class LeakTest(unittest.TestCase):
 		model.simulate(5)
 
 		model.print_spike_train()
+		print()
 
 
 
-	def infinite_leak(self):
+	def test_infinite_leak(self):
+		print("Infinite leak")
+
 		model = NeuromorphicModel()
 
 		n1 = model.create_neuron(threshold=0.0, leak=np.inf, reset_state=0.0)
@@ -64,10 +76,12 @@ class LeakTest(unittest.TestCase):
 		model.simulate(5)
 
 		model.print_spike_train()
+		print()
 
 
 
-	def zero_leak(self):
+	def test_zero_leak(self):
+		print("Zero leak")
 		model = NeuromorphicModel()
 
 		n1 = model.create_neuron(threshold=0.0, leak=0.0, reset_state=0.0)
@@ -87,10 +101,13 @@ class LeakTest(unittest.TestCase):
 		model.simulate(5)
 
 		model.print_spike_train()
+		print()
 
 
 
-	def leak_before_spike(self):
+	def test_leak_before_spike(self):
+		print("Leak before spike")
+
 		model = NeuromorphicModel()
 
 		n0 = model.create_neuron(threshold=0.0, leak=2.0, refractory_period=5)
@@ -105,6 +122,7 @@ class LeakTest(unittest.TestCase):
 		model.simulate(10)
 
 		model.print_spike_train()
+		print()
 	
 
 

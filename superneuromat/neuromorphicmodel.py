@@ -6,26 +6,12 @@ import pandas as pd
 
 TODO:
 
-1. Input spikes [DONE]
-2. Remove threshold and leak from the weight matrix? [DONE]
-3. Implement synaptic delays by adding proxy neurons [DONE, BUT IMPEDES PERFORMANCE]
-4. Have Neuron and Synapse classes? [NOPE - NOT EFFICIENT]
-5. Reset state [DONE]
-6. Spike monitoring [DONE]
-7. Leak should push towards zero regardless of positive or negative internal state [DONE]
-8. Refractory period [DONE]
-9. STDP (outer product) [DONE]
-10. Function arguments in a way that includes the data type [DONE]
-11. Type, value and runtime errors: Test thoroughly using unittest [DONE]
-12. Print/display function to list all variables, all neuron parameters and all synapse parameters [DONE]
-13. Docstrings everywhere [DONE]
-14. create_neurons() 
-15. create_synapses() 
-16. Tutorials: one neuron, two neurons 
-17. Leak equations should not check for spikes [DONE]
+1. create_neurons() 
+2. create_synapses() 
+3. Tutorials: one neuron, two neurons 
+4. Efficient STDP algorithm without loop
 
 """
-
 
 
 
@@ -36,6 +22,7 @@ FEATURE REQUESTS:
 1. Visualize spike raster
 2. Monitor STDP synapses
 3. Reset neuromorphic model
+4. Count number of spikes
 
 """
 
@@ -140,7 +127,8 @@ class NeuromorphicModel:
 								})
 
 		# Synapses
-		synapse_df = pd.DataFrame({	"Pre Neuron ID": self.pre_synaptic_neuron_ids,
+		synapse_df = pd.DataFrame({	"Synapse ID": list(range(self.num_synapses)),
+									"Pre Neuron ID": self.pre_synaptic_neuron_ids,
 									"Post Neuron ID": self.post_synaptic_neuron_ids,
 									"Weight": self.synaptic_weights,
 									"Delay": self.synaptic_delays,
@@ -265,7 +253,7 @@ class NeuromorphicModel:
 		post_id: int, 
 		weight: float = 1.0, 
 		delay: int=1, 
-		enable_stdp: bool=False
+		stdp_enabled: bool=False
 	) -> None:
 
 		""" Creates a synapse in the neuromorphic model from a pre-synaptic neuron to a post-synaptic neuron with a given set of synaptic parameters (weight, delay and enable_stdp)
@@ -285,6 +273,11 @@ class NeuromorphicModel:
 				4. delay is not an int
 				5. enable_stdp is not a bool
 
+			ValueError if:
+				1. pre_id is less than 0
+				2. post_id is less than 0
+				3. delay is less than or equal to 0
+
 		""" 
 
 		# Type errors
@@ -300,7 +293,7 @@ class NeuromorphicModel:
 		if not isinstance(delay, int):
 			raise TypeError("delay must be an integer")
 
-		if not isinstance(enable_stdp, bool):
+		if not isinstance(stdp_enabled, bool):
 			raise TypeError("enable_stdp must be a bool")
 		
 
@@ -321,7 +314,7 @@ class NeuromorphicModel:
 			self.post_synaptic_neuron_ids.append(post_id)
 			self.synaptic_weights.append(weight)
 			self.synaptic_delays.append(delay)
-			self.enable_stdp.append(enable_stdp)
+			self.enable_stdp.append(stdp_enabled)
 			self.num_synapses += 1
 
 		else:
@@ -330,7 +323,11 @@ class NeuromorphicModel:
 				self.create_synapse(pre_id, temp_id)
 				pre_id = temp_id
 
-			self.create_synapse(pre_id, post_id, weight=weight, enable_stdp=enable_stdp)
+			self.create_synapse(pre_id, post_id, weight=weight, stdp_enabled=stdp_enabled)
+
+
+		# Return synapse ID
+		return self.num_synapses - 1
 
 
 
