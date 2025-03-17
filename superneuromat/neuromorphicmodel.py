@@ -106,6 +106,8 @@ class NeuromorphicModel:
 		self.stdp_time_steps = 0
 		self.stdp_Apos = []
 		self.stdp_Aneg = []
+		self.stdp_positive_update = False
+		self.stdp_negative_update = False
 
 
 
@@ -468,7 +470,7 @@ class NeuromorphicModel:
 		
 		# Runtime error
 		if not any(self.enable_stdp):
-			raise RuntimeError("STDP is not enabled on any synapse")
+			raise RuntimeError("STDP is not enabled on any synapse, might want to skip stdp_setup()")
 
 
 		# Collect STDP parameters
@@ -483,7 +485,7 @@ class NeuromorphicModel:
 
 
 	def setup(self):
-		""" Setup the neuromorphic circuit for simulation
+		""" Setup the neuromorphic model for simulation
 
 		"""
 
@@ -496,16 +498,16 @@ class NeuromorphicModel:
 		self._internal_states = np.array(self.neuron_reset_states)
 		self._spikes = np.zeros(self.num_neurons)
 		
-		# Create numpy arrays for synapses
+		# Create numpy arrays for synapse state variables
 		self._weights = np.zeros((self.num_neurons, self.num_neurons))
 		self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.synaptic_weights
 
-		# Create numpy arrays for STDP operations
+		# Create numpy arrays for STDP state variables
 		if self.stdp:
 			self._stdp_enabled_synapses = np.zeros((self.num_neurons, self.num_neurons))
 			self._stdp_enabled_synapses[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.enable_stdp
 
-		# Create numpy array for input spikes
+		# Create numpy array for input spikes state variable
 		self._input_spikes = np.zeros(self.num_neurons)
 
 
@@ -537,7 +539,7 @@ class NeuromorphicModel:
 
 
 		# Simulate
-		for tick in range(time_steps):
+		for time_step in range(time_steps):
 			# Leak: internal state > reset state
 			indices = (self._internal_states > self._neuron_reset_states)
 			self._internal_states[indices] = np.maximum(self._internal_states[indices] - self._neuron_leaks[indices], self._neuron_reset_states[indices])
@@ -548,13 +550,13 @@ class NeuromorphicModel:
 			self._internal_states[indices] = np.minimum(self._internal_states[indices] + self._neuron_leaks[indices], self._neuron_reset_states[indices])
 
 
-			# Zero out _input_spikes
+			# Zero out _input_spikes to prepare them for input spikes in current time step
 			self._input_spikes -= self._input_spikes 	
 
 
-			# Include input spikes for current tick
-			if tick in self.input_spikes:
-				self._input_spikes[self.input_spikes[tick]["nids"]] = self.input_spikes[tick]["values"] 
+			# Include input spikes for current time step
+			if time_step in self.input_spikes:
+				self._input_spikes[self.input_spikes[time_step]["nids"]] = self.input_spikes[time_step]["values"] 
 
 
 			# Internal state
@@ -587,16 +589,18 @@ class NeuromorphicModel:
 
 
 			# STDP Operations
-			if self.stdp:
-				for i in range(self.stdp_time_steps):
-					if len(self.spike_train) >= i + 2:
-						update_synapses = np.outer(np.array(self.spike_train[-i-2]), np.array(self.spike_train[-1]))
+			t = min(self.stdp_time_steps, len(self.spike_train)-1)
 
-						if self.stdp_positive_update:
-							self._weights += self.stdp_Apos[i] * update_synapses * self._stdp_enabled_synapses
+			if t > 0:
+				_update_synapses = np.outer(np.array(self.spike_train[-t-1:-1]), np.array(self.spike_train[-1])).reshape([-1, self.num_neurons, self.num_neurons])
 
-						if self.stdp_negative_update:
-							self._weights -= self.stdp_Aneg[i] * (1 - update_synapses) * self._stdp_enabled_synapses
+				# print("Shape of _update_synapses is", _update_synapses.shape)
+
+				if self.stdp_positive_update:
+					self._weights += ((_update_synapses.T * self.stdp_Apos[0:t][::-1]).T).sum(axis=0) * self._stdp_enabled_synapses
+
+				if self.stdp_negative_update:
+					self._weights += (((1 - _update_synapses).T * self.stdp_Aneg[0:t][::-1]).T).sum(axis=0) * self._stdp_enabled_synapses
 
 
 		# Update weights if STDP was enabled
