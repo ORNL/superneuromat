@@ -594,8 +594,6 @@ class NeuromorphicModel:
 			if t > 0:
 				_update_synapses = np.outer(np.array(self.spike_train[-t-1:-1]), np.array(self.spike_train[-1])).reshape([-1, self.num_neurons, self.num_neurons])
 
-				# print("Shape of _update_synapses is", _update_synapses.shape)
-
 				if self.stdp_positive_update:
 					self._weights += ((_update_synapses.T * self.stdp_Apos[0:t][::-1]).T).sum(axis=0) * self._stdp_enabled_synapses
 
