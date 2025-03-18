@@ -15,9 +15,6 @@ Some salient features of SuperNeuroMAT are:
 10. All underlying computational operations are matrix-based and currently supported on CPUs
 
 
-Documentation available at: https://superneuromat.readthedocs.io/en/latest/
-
-
 ## Installation
 1. Install using `pip install superneuromat`
 2. Update/upgrade using `pip install superneuromat --upgrade`
@@ -27,6 +24,10 @@ Documentation available at: https://superneuromat.readthedocs.io/en/latest/
 1. In a Python script or on a Python interpreter, do `import superneuromat as snm`
 2. The main class can be accessed by `model = snm.NeuromorphicModel()`
 3. Refer to docstrings in the source code or on the [readthedocs](https://superneuromat.readthedocs.io/en/latest/) page for the API
+
+
+## Documentation
+Documentation available at: https://superneuromat.readthedocs.io/en/latest/
 
 
 ## Citation
