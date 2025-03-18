@@ -1,0 +1,542 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>superneuromat package &mdash; SuperNeuroMAT 1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=56dcb7b8"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="src" href="modules.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            SuperNeuroMAT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">src</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">superneuromat package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#module-superneuromat">Module contents</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#superneuromat.NeuromorphicModel"><code class="docutils literal notranslate"><span class="pre">NeuromorphicModel</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">SuperNeuroMAT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">src</a></li>
+      <li class="breadcrumb-item active">superneuromat package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/superneuromat.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="superneuromat-package">
+<h1>superneuromat package<a class="headerlink" href="#superneuromat-package" title="Link to this heading"></a></h1>
+<section id="module-superneuromat">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-superneuromat" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">superneuromat.</span></span><span class="sig-name descname"><span class="pre">NeuromorphicModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">backend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#superneuromat.NeuromorphicModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Defines a neuromorphic model with neurons and synapses</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.num_neurons">
+<span class="sig-name descname"><span class="pre">num_neurons</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.num_neurons" title="Link to this definition"></a></dt>
+<dd><p>Number of neurons in the neuromorphic model</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.neuron_thresholds">
+<span class="sig-name descname"><span class="pre">neuron_thresholds</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.neuron_thresholds" title="Link to this definition"></a></dt>
+<dd><p>List of neuron thresholds</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.neuron_leaks">
+<span class="sig-name descname"><span class="pre">neuron_leaks</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.neuron_leaks" title="Link to this definition"></a></dt>
+<dd><p>List of neuron leaks, defined as the amount by which the internal states of the neurons are pushed towards the neurons’ reset states</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.neuron_reset_states">
+<span class="sig-name descname"><span class="pre">neuron_reset_states</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.neuron_reset_states" title="Link to this definition"></a></dt>
+<dd><p>List of neuron reset states</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.neuron_refractory_periods">
+<span class="sig-name descname"><span class="pre">neuron_refractory_periods</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.neuron_refractory_periods" title="Link to this definition"></a></dt>
+<dd><p>List of neuron refractory periods</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.num_synapses">
+<span class="sig-name descname"><span class="pre">num_synapses</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.num_synapses" title="Link to this definition"></a></dt>
+<dd><p>Number of synapses in the neuromorphic model</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.pre_synaptic_neuron_ids">
+<span class="sig-name descname"><span class="pre">pre_synaptic_neuron_ids</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.pre_synaptic_neuron_ids" title="Link to this definition"></a></dt>
+<dd><p>List of pre-synaptic neuron IDs</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.post_synaptic_neuron_ids">
+<span class="sig-name descname"><span class="pre">post_synaptic_neuron_ids</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.post_synaptic_neuron_ids" title="Link to this definition"></a></dt>
+<dd><p>List of post-synaptic neuron IDs</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.synaptic_weights">
+<span class="sig-name descname"><span class="pre">synaptic_weights</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.synaptic_weights" title="Link to this definition"></a></dt>
+<dd><p>List of synaptic weights</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.synaptic_delays">
+<span class="sig-name descname"><span class="pre">synaptic_delays</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.synaptic_delays" title="Link to this definition"></a></dt>
+<dd><p>List of synaptic delays</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.enable_stdp">
+<span class="sig-name descname"><span class="pre">enable_stdp</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.enable_stdp" title="Link to this definition"></a></dt>
+<dd><p>List of Boolean values denoting whether STDP learning is enabled on each synapse</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.input_spikes">
+<span class="sig-name descname"><span class="pre">input_spikes</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.input_spikes" title="Link to this definition"></a></dt>
+<dd><p>Dictionary of input spikes indexed by time</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.spike_train">
+<span class="sig-name descname"><span class="pre">spike_train</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.spike_train" title="Link to this definition"></a></dt>
+<dd><p>List of spike trains for each time step</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.stdp">
+<span class="sig-name descname"><span class="pre">stdp</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.stdp" title="Link to this definition"></a></dt>
+<dd><p>Boolean parameter that denotes whether STDP learning has been enabled in the neuromorphic model</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.stdp_time_steps">
+<span class="sig-name descname"><span class="pre">stdp_time_steps</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.stdp_time_steps" title="Link to this definition"></a></dt>
+<dd><p>Number of time steps over which STDP updates are made</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.stdp_Apos">
+<span class="sig-name descname"><span class="pre">stdp_Apos</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.stdp_Apos" title="Link to this definition"></a></dt>
+<dd><p>List of STDP parameters per time step for excitatory update of weights</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.stdp_Aneg">
+<span class="sig-name descname"><span class="pre">stdp_Aneg</span></span><a class="headerlink" href="#superneuromat.NeuromorphicModel.stdp_Aneg" title="Link to this definition"></a></dt>
+<dd><p>List of STDP parameters per time step for inhibitory update of weights</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.create_neuron">
+<span class="sig-name descname"><span class="pre">create_neuron</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel.create_neuron"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#superneuromat.NeuromorphicModel.create_neuron" title="Link to this definition"></a></dt>
+<dd><p>Creates a neuron in the neuromorphic model</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.create_synapse">
+<span class="sig-name descname"><span class="pre">create_synapse</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel.create_synapse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#superneuromat.NeuromorphicModel.create_synapse" title="Link to this definition"></a></dt>
+<dd><p>Creates a synapse in the neuromorphic model</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.add_spike">
+<span class="sig-name descname"><span class="pre">add_spike</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel.add_spike"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#superneuromat.NeuromorphicModel.add_spike" title="Link to this definition"></a></dt>
+<dd><p>Add an external spike at a particular time step for a given neuron with a given value</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.stdp_setup">
+<span class="sig-name descname"><span class="pre">stdp_setup</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel.stdp_setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#superneuromat.NeuromorphicModel.stdp_setup" title="Link to this definition"></a></dt>
+<dd><p>Setup the STDP parameters</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.setup">
+<span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel.setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#superneuromat.NeuromorphicModel.setup" title="Link to this definition"></a></dt>
+<dd><p>Setup the neuromorphic model and prepare for simulation</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.simulate">
+<span class="sig-name descname"><span class="pre">simulate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel.simulate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#superneuromat.NeuromorphicModel.simulate" title="Link to this definition"></a></dt>
+<dd><p>Simulate the neuromorphic model for a given number of time steps</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="superneuromat.NeuromorphicModel.print_spike_train">
+<span class="sig-name descname"><span class="pre">print_spike_train</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel.print_spike_train"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#superneuromat.NeuromorphicModel.print_spike_train" title="Link to this definition"></a></dt>
+<dd><p>Print the spike train</p>
+</dd></dl>
+
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<ol class="arabic simple">
+<li><p>Delay is implemented by adding a chain of proxy neurons. A delay of 10 between neuron A and neuron B would add 9 proxy neurons between A and B.</p></li>
+<li><p>Leak brings the internal state of the neuron back to the reset state. The leak value is the amount by which the internal state of the neuron is pushed towards its reset state.</p></li>
+<li><p>Deletion of neurons is not permitted</p></li>
+<li><p>Input spikes can have a value</p></li>
+<li><p>All neurons are monitored by default</p></li>
+</ol>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">add_spike</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neuron_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel.add_spike"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd><p>Adds an external spike in the neuromorphic model</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>time</strong> (<em>int</em>) – The time step at which the external spike is added</p></li>
+<li><p><strong>neuron_id</strong> (<em>int</em>) – The neuron for which the external spike is added</p></li>
+<li><p><strong>value</strong> (<em>float</em>) – The value of the external spike (default: 1.0)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>TypeError if</strong> – <ol class="arabic simple">
+<li><p>time is not an int
+    2. neuron_id is not an int
+    3. value is not an int or float</p></li>
+</ol>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">create_neuron</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leak</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">inf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">refractory_period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel.create_neuron"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd><p>Create a neuron</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>threshold</strong> (<em>float</em>) – Neuron threshold; the neuron spikes if its internal state is strictly greater than the neuron threshold (default: 0.0)</p></li>
+<li><p><strong>leak</strong> (<em>float</em>) – Neuron leak; the amount by which by which the internal state of the neuron is pushed towards its reset state (default: np.inf)</p></li>
+<li><p><strong>reset_state</strong> (<em>float</em>) – Reset state of the neuron; the value assigned to the internal state of the neuron after spiking (default: 0.0)</p></li>
+<li><p><strong>refractory_period</strong> (<em>int</em>) – Refractory period of the neuron; the number of time steps for which the neuron remains in a dormant state after spiking</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the neuron ID</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>TypeError if</strong> – <ol class="arabic simple">
+<li><p>threshold is not an int or a float
+    2. leak is not an int or a float
+    3. reset_state is not an int or a float
+    4. refractory_period is not an int</p></li>
+</ol>
+</p></li>
+<li><p><strong>ValueError if</strong> – <ol class="arabic simple">
+<li><p>leak is less than 0.0
+    2. refractory_period is less than 0</p></li>
+</ol>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">create_synapse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pre_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">post_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delay</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stdp_enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel.create_synapse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd><p>Creates a synapse in the neuromorphic model from a pre-synaptic neuron to a post-synaptic neuron with a given set of synaptic parameters (weight, delay and enable_stdp)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pre_id</strong> (<em>int</em>) – ID of the pre-synaptic neuron</p></li>
+<li><p><strong>post_id</strong> (<em>int</em>) – ID of the post-synaptic neuron</p></li>
+<li><p><strong>weight</strong> (<em>float</em>) – Synaptic weight; weight is multiplied to the incoming spike (default: 1.0)</p></li>
+<li><p><strong>delay</strong> (<em>int</em>) – Synaptic delay; number of time steps by which the outgoing signal of the syanpse is delayed by (default: 1)</p></li>
+<li><p><strong>enable_stdp</strong> (<em>bool</em>) – Boolean value that denotes whether or not STDP learning is enabled on the synapse (default: False)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>TypeError if</strong> – <ol class="arabic simple">
+<li><p>pre_id is not an int
+    2. post_id is not an int
+    3. weight is not a float
+    4. delay is not an int
+    5. enable_stdp is not a bool</p></li>
+</ol>
+</p></li>
+<li><p><strong>ValueError if</strong> – <ol class="arabic simple">
+<li><p>pre_id is less than 0
+    2. post_id is less than 0
+    3. delay is less than or equal to 0</p></li>
+</ol>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">print_spike_train</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel.print_spike_train"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd><p>Prints the spike train</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel.setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd><p>Setup the neuromorphic model for simulation</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">simulate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_steps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel.simulate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
+<dd><p>Simulate the neuromorphic spiking neural network</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>time_steps</strong> (<em>int</em>) – Number of time steps for which the neuromorphic circuit is to be simulated</p></li>
+<li><p><strong>backend</strong> (<em>string</em>) – Backend is either cpu or frontier</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>TypeError if</strong> – <ol class="arabic simple">
+<li><p>time_steps is not an int
+    2. backend is not a string</p></li>
+</ol>
+</p></li>
+<li><p><strong>ValueError if</strong> – <ol class="arabic simple">
+<li><p>time_steps is less than or equal to zero
+    2. backend is not one of the following values: cpu, frontier</p></li>
+</ol>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">stdp_setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_steps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Apos</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[1.0,</span> <span class="pre">0.5,</span> <span class="pre">0.25]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Aneg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[1.0,</span> <span class="pre">0.5,</span> <span class="pre">0.25]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positive_update</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">negative_update</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/superneuromat.html#NeuromorphicModel.stdp_setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
+<dd><p>Setup the Spike-Time-Dependent Plasticity (STDP) parameters</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>time_steps</strong> (<em>int</em>) – Number of time steps over which STDP learning occurs (default: 3)</p></li>
+<li><p><strong>Apos</strong> (<em>list</em>) – List of parameters for excitatory STDP updates (default: [1.0, 0.5, 0.25]); number of elements in the list must be equal to time_steps</p></li>
+<li><p><strong>Aneg</strong> (<em>list</em>) – List of parameters for inhibitory STDP updates (default: [1.0, 0.5, 0.25]); number of elements in the list must be equal to time_steps</p></li>
+<li><p><strong>positive_update</strong> (<em>bool</em>) – Boolean parameter indicating whether excitatory STDP update should be enabled</p></li>
+<li><p><strong>negative_update</strong> (<em>bool</em>) – Boolean parameter indicating whether inhibitory STDP update should be enabled</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>TypeError if</strong> – <ol class="arabic simple">
+<li><p>time_steps is not an int
+    2. Apos is not a list
+    3. Aneg is not a list
+    4. positive_update is not a bool
+    5. negative_update is not a bool</p></li>
+</ol>
+</p></li>
+<li><p><strong>ValueError if</strong> – <ol class="arabic simple">
+<li><p>time_steps is less than or equal to zero
+    2. Number of elements in Apos is not equal to the time_steps
+    3. Number of elements in Aneg is not equal to the time_steps
+    4. The elements of Apos are not int or float
+    5. The elements of Aneg are not int or float
+    6. The elements of Apos are not greater than or equal to 0.0
+    7. The elements of Apos are not greater than or equal to 0.0</p></li>
+</ol>
+</p></li>
+<li><p><strong>RuntimeError if</strong> – <ol class="arabic simple">
+<li><p>enable_stdp is not set to True on any of the synapses</p></li>
+</ol>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modules.html" class="btn btn-neutral float-left" title="src" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Prasanna Date, Chathika Gunaratne, Shruti Kulkarni, Robert Patton, Mark Coletti.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

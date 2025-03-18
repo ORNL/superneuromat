@@ -1,0 +1,835 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>superneuromat &mdash; SuperNeuroMAT 1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=56dcb7b8"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            SuperNeuroMAT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">src</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">SuperNeuroMAT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">superneuromat</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for superneuromat</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">ctypes</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">TODO:</span>
+
+<span class="sd">1. create_neurons() </span>
+<span class="sd">2. create_synapses() </span>
+<span class="sd">3. Tutorials: one neuron, two neurons </span>
+<span class="sd">4. Efficient STDP algorithm without loop</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">FEATURE REQUESTS: </span>
+
+<span class="sd">1. Visualize spike raster</span>
+<span class="sd">2. Monitor STDP synapses</span>
+<span class="sd">3. Reset neuromorphic model</span>
+<span class="sd">4. Count number of spikes</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+
+
+<div class="viewcode-block" id="NeuromorphicModel">
+<a class="viewcode-back" href="../superneuromat.html#superneuromat.NeuromorphicModel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">NeuromorphicModel</span><span class="p">:</span>
+<span class="w">	</span><span class="sd">&quot;&quot;&quot; Defines a neuromorphic model with neurons and synapses</span>
+
+<span class="sd">	Attributes:</span>
+<span class="sd">		num_neurons (int): Number of neurons in the neuromorphic model</span>
+<span class="sd">		neuron_thresholds (list): List of neuron thresholds</span>
+<span class="sd">		neuron_leaks (list): List of neuron leaks, defined as the amount by which the internal states of the neurons are pushed towards the neurons&#39; reset states</span>
+<span class="sd">		neuron_reset_states (list): List of neuron reset states</span>
+<span class="sd">		neuron_refractory_periods (list): List of neuron refractory periods</span>
+
+<span class="sd">		num_synapses (int): Number of synapses in the neuromorphic model</span>
+<span class="sd">		pre_synaptic_neuron_ids (list): List of pre-synaptic neuron IDs</span>
+<span class="sd">		post_synaptic_neuron_ids (list): List of post-synaptic neuron IDs</span>
+<span class="sd">		synaptic_weights (list): List of synaptic weights</span>
+<span class="sd">		synaptic_delays (list): List of synaptic delays</span>
+<span class="sd">		enable_stdp (list): List of Boolean values denoting whether STDP learning is enabled on each synapse</span>
+<span class="sd">		</span>
+<span class="sd">		input_spikes (dict): Dictionary of input spikes indexed by time</span>
+<span class="sd">		spike_train (list): List of spike trains for each time step</span>
+<span class="sd">		</span>
+<span class="sd">		stdp (bool): Boolean parameter that denotes whether STDP learning has been enabled in the neuromorphic model</span>
+<span class="sd">		stdp_time_steps (int): Number of time steps over which STDP updates are made</span>
+<span class="sd">		stdp_Apos (list): List of STDP parameters per time step for excitatory update of weights</span>
+<span class="sd">		stdp_Aneg (list): List of STDP parameters per time step for inhibitory update of weights</span>
+
+
+<span class="sd">	Methods:</span>
+<span class="sd">		create_neuron: Creates a neuron in the neuromorphic model</span>
+<span class="sd">		create_synapse: Creates a synapse in the neuromorphic model</span>
+<span class="sd">		add_spike: Add an external spike at a particular time step for a given neuron with a given value</span>
+<span class="sd">		stdp_setup: Setup the STDP parameters</span>
+<span class="sd">		setup: Setup the neuromorphic model and prepare for simulation</span>
+<span class="sd">		simulate: Simulate the neuromorphic model for a given number of time steps</span>
+<span class="sd">		print_spike_train: Print the spike train</span>
+<span class="sd">		</span>
+
+<span class="sd">	CAUTION:</span>
+<span class="sd">		1. Delay is implemented by adding a chain of proxy neurons. A delay of 10 between neuron A and neuron B would add 9 proxy neurons between A and B.</span>
+<span class="sd">		2. Leak brings the internal state of the neuron back to the reset state. The leak value is the amount by which the internal state of the neuron is pushed towards its reset state.</span>
+<span class="sd">		3. Deletion of neurons is not permitted</span>
+<span class="sd">		4. Input spikes can have a value</span>
+<span class="sd">		5. All neurons are monitored by default</span>
+
+<span class="sd">	&quot;&quot;&quot;</span>
+
+
+	<span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">):</span>
+<span class="w">		</span><span class="sd">&quot;&quot;&quot; Initialize the neuromorphic model</span>
+
+<span class="sd">		Args:</span>
+<span class="sd">			backend (string): Backend is either &#39;cpu&#39; or &#39;frontier&#39;</span>
+
+<span class="sd">		Raises: </span>
+<span class="sd">			TypeError if:</span>
+<span class="sd">				1. backend is not a string</span>
+
+<span class="sd">			ValueError if: </span>
+<span class="sd">				2. backend is not one of the following values: cpu, frontier</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c1"># Type errors</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;backend must be either &#39;cpu&#39;, or &#39;frontier&#39;&quot;</span><span class="p">)</span>
+
+		<span class="c1"># Value errors</span>
+		<span class="k">if</span> <span class="n">backend</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="s2">&quot;frontier&quot;</span><span class="p">}:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;backend must be either &#39;cpu&#39;, or &#39;frontier&#39;&quot;</span><span class="p">)</span>
+
+
+		<span class="c1"># Neuron parameters</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">num_neurons</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">neuron_thresholds</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">neuron_leaks</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">neuron_reset_states</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">neuron_refractory_periods</span> <span class="o">=</span> <span class="p">[]</span>
+
+		<span class="c1"># Synapse parameters</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">num_synapses</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">pre_synaptic_neuron_ids</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">post_synaptic_neuron_ids</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">synaptic_weights</span> <span class="o">=</span> <span class="p">[]</span> 				
+		<span class="bp">self</span><span class="o">.</span><span class="n">synaptic_delays</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">enable_stdp</span> <span class="o">=</span> <span class="p">[]</span>
+
+		<span class="c1"># Input spikes (can have a value)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">input_spikes</span> <span class="o">=</span> <span class="p">{}</span>
+		
+		<span class="c1"># Spike trains (monitoring all neurons)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">spike_train</span> <span class="o">=</span> <span class="p">[]</span>
+
+		<span class="c1"># STDP Parameters</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">stdp</span> <span class="o">=</span> <span class="kc">False</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">stdp_time_steps</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">stdp_Apos</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">stdp_Aneg</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">stdp_positive_update</span> <span class="o">=</span> <span class="kc">False</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">stdp_negative_update</span> <span class="o">=</span> <span class="kc">False</span>
+
+		<span class="c1"># Hardware backend parameters</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">backend</span> <span class="o">=</span> <span class="n">backend</span>
+
+		<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Python Source] Backend is </span><span class="si">{</span><span class="n">backend</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">backend</span> <span class="o">==</span> <span class="s2">&quot;frontier&quot;</span><span class="p">:</span>
+
+			<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;This functionality is a work in progress...&quot;</span><span class="p">)</span>
+			
+			<span class="c1"># print(os.system(&quot;pwd&quot;))</span>
+
+			<span class="c1"># # Compile frontier.c program as a shared library</span>
+			<span class="c1"># self.c_file_path = &quot;../superneuromat/frontier.c&quot;</span>
+			<span class="c1"># self.executable_name = &quot;shared_library_frontier.so&quot;</span>
+			<span class="c1"># self.compile_command = f&quot;gcc -shared -o {self.executable_name} {self.c_file_path}&quot;</span>
+
+			<span class="c1"># print(&quot;[Python Source] Compiling C program&quot;)</span>
+
+			<span class="c1"># status = os.system(self.compile_command)</span>
+
+			<span class="c1"># if status == 0:</span>
+			<span class="c1"># 	print(&quot;[Python Source] Successfully compiled C program&quot;)</span>
+			<span class="c1"># else:</span>
+			<span class="c1"># 	print(&quot;[Python Source] C program compilation unsuccessful&quot;)</span>
+
+
+			<span class="c1"># # Load the shared library</span>
+			<span class="c1"># self.c_frontier_library = ctypes.CDLL(&quot;./shared_library_frontier.so&quot;)</span>
+
+
+
+
+	<span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">		</span><span class="sd">&quot;&quot;&quot; Display the neuromorphic class in a legible format</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="n">num_neurons_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Number of neurons: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_neurons</span><span class="si">}</span><span class="s2">&quot;</span>
+		<span class="n">num_synapses_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Number of synapses: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_synapses</span><span class="si">}</span><span class="s2">&quot;</span>
+		
+		<span class="c1"># Neurons </span>
+		<span class="n">neuron_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>	<span class="s2">&quot;Neuron ID&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_neurons</span><span class="p">)),</span>
+									<span class="s2">&quot;Threshold&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">neuron_thresholds</span><span class="p">,</span> 
+									<span class="s2">&quot;Leak&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">neuron_leaks</span><span class="p">,</span> 
+									<span class="s2">&quot;Reset State&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">neuron_reset_states</span><span class="p">,</span>
+									<span class="s2">&quot;Refractory Period&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">neuron_refractory_periods</span>
+								<span class="p">})</span>
+
+		<span class="c1"># Synapses</span>
+		<span class="n">synapse_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>	<span class="s2">&quot;Synapse ID&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_synapses</span><span class="p">)),</span>
+									<span class="s2">&quot;Pre Neuron ID&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre_synaptic_neuron_ids</span><span class="p">,</span>
+									<span class="s2">&quot;Post Neuron ID&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">post_synaptic_neuron_ids</span><span class="p">,</span>
+									<span class="s2">&quot;Weight&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">synaptic_weights</span><span class="p">,</span>
+									<span class="s2">&quot;Delay&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">synaptic_delays</span><span class="p">,</span>
+									<span class="s2">&quot;STDP Enabled&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_stdp</span>
+								 <span class="p">})</span>
+
+		<span class="c1"># STDP</span>
+		<span class="n">stdp_info</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;STDP Enabled: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">stdp</span><span class="si">}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> \
+					<span class="sa">f</span><span class="s2">&quot;STDP Time Steps: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">stdp_time_steps</span><span class="si">}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> \
+					<span class="sa">f</span><span class="s2">&quot;STDP A positive: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">stdp_Apos</span><span class="si">}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> \
+					<span class="sa">f</span><span class="s2">&quot;STDP A negative: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">stdp_Aneg</span><span class="si">}</span><span class="s2">&quot;</span>
+
+		<span class="c1"># Input Spikes</span>
+		<span class="n">times</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="n">nids</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+
+		<span class="k">for</span> <span class="n">time</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_spikes</span><span class="p">:</span>
+			<span class="k">for</span> <span class="n">nid</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_spikes</span><span class="p">[</span><span class="n">time</span><span class="p">][</span><span class="s2">&quot;nids&quot;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_spikes</span><span class="p">[</span><span class="n">time</span><span class="p">][</span><span class="s2">&quot;values&quot;</span><span class="p">]):</span>
+				<span class="n">times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+				<span class="n">nids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nid</span><span class="p">)</span>
+				<span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+		<span class="n">input_spikes_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>	<span class="p">{</span> <span class="s2">&quot;Time&quot;</span><span class="p">:</span> <span class="n">times</span><span class="p">,</span>
+										  <span class="s2">&quot;Neuron ID&quot;</span><span class="p">:</span> <span class="n">nids</span><span class="p">,</span>
+										  <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">values</span>
+										<span class="p">})</span>
+
+		<span class="c1"># Spike train</span>
+		<span class="n">spike_train</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+		<span class="k">for</span> <span class="n">time</span><span class="p">,</span> <span class="n">spikes</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spike_train</span><span class="p">):</span>
+			<span class="n">spike_train</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;Time: </span><span class="si">{</span><span class="n">time</span><span class="si">}</span><span class="s2">, Spikes: </span><span class="si">{</span><span class="n">spikes</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+				
+
+		<span class="k">return</span> 	<span class="n">num_neurons_str</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> \
+				<span class="n">num_synapses_str</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> \
+				<span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Neuron Info: </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> \
+				<span class="n">neuron_df</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> \
+				<span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Synapse Info: </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> \
+				<span class="n">synapse_df</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> \
+				<span class="s2">&quot;</span><span class="se">\n</span><span class="s2">STDP Info: </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> \
+				<span class="n">stdp_info</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> \
+				<span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Input Spikes: </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> \
+				<span class="n">input_spikes_df</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> \
+				<span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Spike Train: </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> \
+				<span class="n">spike_train</span>
+
+
+
+
+<div class="viewcode-block" id="NeuromorphicModel.create_neuron">
+<a class="viewcode-back" href="../superneuromat.html#superneuromat.NeuromorphicModel.create_neuron">[docs]</a>
+	<span class="k">def</span><span class="w"> </span><span class="nf">create_neuron</span><span class="p">(</span>	
+		<span class="bp">self</span><span class="p">,</span> 
+		<span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> 
+		<span class="n">leak</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> 
+		<span class="n">reset_state</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> 
+		<span class="n">refractory_period</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">0</span>
+	<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+
+<span class="w">		</span><span class="sd">&quot;&quot;&quot; Create a neuron</span>
+
+<span class="sd">		Args:</span>
+<span class="sd">			threshold (float): Neuron threshold; the neuron spikes if its internal state is strictly greater than the neuron threshold (default: 0.0)</span>
+<span class="sd">			leak (float): Neuron leak; the amount by which by which the internal state of the neuron is pushed towards its reset state (default: np.inf)</span>
+<span class="sd">			reset_state (float): Reset state of the neuron; the value assigned to the internal state of the neuron after spiking (default: 0.0)</span>
+<span class="sd">			refractory_period (int): Refractory period of the neuron; the number of time steps for which the neuron remains in a dormant state after spiking</span>
+
+<span class="sd">		Returns:</span>
+<span class="sd">			Returns the neuron ID</span>
+
+<span class="sd">		Raises: </span>
+<span class="sd">			TypeError if:</span>
+<span class="sd">				1. threshold is not an int or a float</span>
+<span class="sd">				2. leak is not an int or a float</span>
+<span class="sd">				3. reset_state is not an int or a float</span>
+<span class="sd">				4. refractory_period is not an int</span>
+
+<span class="sd">			ValueError if: </span>
+<span class="sd">				1. leak is less than 0.0</span>
+<span class="sd">				2. refractory_period is less than 0</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c1"># Type errors</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">threshold</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;threshold must be int or float&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">leak</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;leak must be int or float&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reset_state</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;reset_state must be int or float&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">refractory_period</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;refractory_period must be int&quot;</span><span class="p">)</span>
+
+
+		<span class="c1"># Value errors</span>
+		<span class="k">if</span> <span class="n">leak</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;leak must be grater than or equal to zero&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">refractory_period</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;refractory_period must be greater than or equal to zero&quot;</span><span class="p">)</span>
+
+
+		<span class="c1"># Collect neuron parameters</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">neuron_thresholds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">threshold</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">neuron_leaks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">leak</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">neuron_reset_states</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">reset_state</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">neuron_refractory_periods</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">refractory_period</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">num_neurons</span> <span class="o">+=</span> <span class="mi">1</span>
+
+
+		<span class="c1"># Return neuron ID </span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_neurons</span> <span class="o">-</span> <span class="mi">1</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="NeuromorphicModel.create_synapse">
+<a class="viewcode-back" href="../superneuromat.html#superneuromat.NeuromorphicModel.create_synapse">[docs]</a>
+	<span class="k">def</span><span class="w"> </span><span class="nf">create_synapse</span><span class="p">(</span>	
+		<span class="bp">self</span><span class="p">,</span> 
+		<span class="n">pre_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> 
+		<span class="n">post_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> 
+		<span class="n">weight</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> 
+		<span class="n">delay</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> 
+		<span class="n">stdp_enabled</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span>
+	<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+
+<span class="w">		</span><span class="sd">&quot;&quot;&quot; Creates a synapse in the neuromorphic model from a pre-synaptic neuron to a post-synaptic neuron with a given set of synaptic parameters (weight, delay and enable_stdp)</span>
+
+<span class="sd">		Args:</span>
+<span class="sd">			pre_id (int): ID of the pre-synaptic neuron</span>
+<span class="sd">			post_id (int): ID of the post-synaptic neuron</span>
+<span class="sd">			weight (float): Synaptic weight; weight is multiplied to the incoming spike (default: 1.0)</span>
+<span class="sd">			delay (int): Synaptic delay; number of time steps by which the outgoing signal of the syanpse is delayed by (default: 1)</span>
+<span class="sd">			enable_stdp (bool): Boolean value that denotes whether or not STDP learning is enabled on the synapse (default: False)</span>
+
+<span class="sd">		Raises:</span>
+<span class="sd">			TypeError if: </span>
+<span class="sd">				1. pre_id is not an int</span>
+<span class="sd">				2. post_id is not an int</span>
+<span class="sd">				3. weight is not a float</span>
+<span class="sd">				4. delay is not an int</span>
+<span class="sd">				5. enable_stdp is not a bool</span>
+
+<span class="sd">			ValueError if:</span>
+<span class="sd">				1. pre_id is less than 0</span>
+<span class="sd">				2. post_id is less than 0</span>
+<span class="sd">				3. delay is less than or equal to 0</span>
+
+<span class="sd">		&quot;&quot;&quot;</span> 
+
+		<span class="c1"># Type errors</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pre_id</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;pre_id must be int&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">post_id</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;post_id must be int&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">weight</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;weight must be a float&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">delay</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;delay must be an integer&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">stdp_enabled</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;enable_stdp must be a bool&quot;</span><span class="p">)</span>
+		
+
+		<span class="c1"># Value errors</span>
+		<span class="k">if</span> <span class="n">pre_id</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;pre_id must be greater than or equal to zero&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">post_id</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;post_id must be greater than or equal to zero&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">delay</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;delay must be greater than or equal to 1&quot;</span><span class="p">)</span>
+		
+
+		<span class="c1"># Collect synapse parameters</span>
+		<span class="k">if</span> <span class="n">delay</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">pre_synaptic_neuron_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pre_id</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">post_synaptic_neuron_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">post_id</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">synaptic_weights</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">weight</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">synaptic_delays</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">enable_stdp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stdp_enabled</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">num_synapses</span> <span class="o">+=</span> <span class="mi">1</span>
+
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+				<span class="n">temp_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_neuron</span><span class="p">()</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">create_synapse</span><span class="p">(</span><span class="n">pre_id</span><span class="p">,</span> <span class="n">temp_id</span><span class="p">)</span>
+				<span class="n">pre_id</span> <span class="o">=</span> <span class="n">temp_id</span>
+
+			<span class="bp">self</span><span class="o">.</span><span class="n">create_synapse</span><span class="p">(</span><span class="n">pre_id</span><span class="p">,</span> <span class="n">post_id</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">weight</span><span class="p">,</span> <span class="n">stdp_enabled</span><span class="o">=</span><span class="n">stdp_enabled</span><span class="p">)</span>
+
+
+		<span class="c1"># Return synapse ID</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_synapses</span> <span class="o">-</span> <span class="mi">1</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="NeuromorphicModel.add_spike">
+<a class="viewcode-back" href="../superneuromat.html#superneuromat.NeuromorphicModel.add_spike">[docs]</a>
+	<span class="k">def</span><span class="w"> </span><span class="nf">add_spike</span><span class="p">(</span>	
+		<span class="bp">self</span><span class="p">,</span> 
+		<span class="n">time</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> 
+		<span class="n">neuron_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> 
+		<span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">1.0</span>
+	<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">		</span>
+<span class="w">		</span><span class="sd">&quot;&quot;&quot; Adds an external spike in the neuromorphic model </span>
+
+<span class="sd">		Args:</span>
+<span class="sd">			time (int): The time step at which the external spike is added</span>
+<span class="sd">			neuron_id (int): The neuron for which the external spike is added</span>
+<span class="sd">			value (float): The value of the external spike (default: 1.0)</span>
+
+<span class="sd">		Raises:</span>
+<span class="sd">			TypeError if:</span>
+<span class="sd">				1. time is not an int</span>
+<span class="sd">				2. neuron_id is not an int</span>
+<span class="sd">				3. value is not an int or float</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c1"># Type errors</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;time must be int&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">neuron_id</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;neuron_id must be int&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;value must be int or float&quot;</span><span class="p">)</span>
+
+
+		<span class="c1"># Value errors</span>
+		<span class="k">if</span> <span class="n">time</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;time must be greater than or equal to zero&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">neuron_id</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;neuron_id must be greater than or equal to zero&quot;</span><span class="p">)</span>
+
+
+		<span class="c1"># Add spikes</span>
+		<span class="k">if</span> <span class="n">time</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_spikes</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">input_spikes</span><span class="p">[</span><span class="n">time</span><span class="p">][</span><span class="s2">&quot;nids&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">neuron_id</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">input_spikes</span><span class="p">[</span><span class="n">time</span><span class="p">][</span><span class="s2">&quot;values&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+		
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">input_spikes</span><span class="p">[</span><span class="n">time</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">input_spikes</span><span class="p">[</span><span class="n">time</span><span class="p">][</span><span class="s2">&quot;nids&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">neuron_id</span><span class="p">]</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">input_spikes</span><span class="p">[</span><span class="n">time</span><span class="p">][</span><span class="s2">&quot;values&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">value</span><span class="p">]</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="NeuromorphicModel.stdp_setup">
+<a class="viewcode-back" href="../superneuromat.html#superneuromat.NeuromorphicModel.stdp_setup">[docs]</a>
+	<span class="k">def</span><span class="w"> </span><span class="nf">stdp_setup</span><span class="p">(</span>	
+		<span class="bp">self</span><span class="p">,</span> 
+		<span class="n">time_steps</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> 
+		<span class="n">Apos</span><span class="p">:</span> <span class="nb">list</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">],</span> 
+		<span class="n">Aneg</span><span class="p">:</span> <span class="nb">list</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">],</span> 
+		<span class="n">positive_update</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+		<span class="n">negative_update</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span>
+	<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+
+<span class="w">		</span><span class="sd">&quot;&quot;&quot; Setup the Spike-Time-Dependent Plasticity (STDP) parameters</span>
+
+<span class="sd">		Args:</span>
+<span class="sd">			time_steps (int): Number of time steps over which STDP learning occurs (default: 3)</span>
+<span class="sd">			Apos (list): List of parameters for excitatory STDP updates (default: [1.0, 0.5, 0.25]); number of elements in the list must be equal to time_steps</span>
+<span class="sd">			Aneg (list): List of parameters for inhibitory STDP updates (default: [1.0, 0.5, 0.25]); number of elements in the list must be equal to time_steps</span>
+<span class="sd">			positive_update (bool): Boolean parameter indicating whether excitatory STDP update should be enabled</span>
+<span class="sd">			negative_update (bool): Boolean parameter indicating whether inhibitory STDP update should be enabled</span>
+
+<span class="sd">		Raises: </span>
+<span class="sd">			TypeError if:</span>
+<span class="sd">				1. time_steps is not an int</span>
+<span class="sd">				2. Apos is not a list</span>
+<span class="sd">				3. Aneg is not a list</span>
+<span class="sd">				4. positive_update is not a bool</span>
+<span class="sd">				5. negative_update is not a bool</span>
+
+<span class="sd">			ValueError if:</span>
+<span class="sd">				1. time_steps is less than or equal to zero</span>
+<span class="sd">				2. Number of elements in Apos is not equal to the time_steps</span>
+<span class="sd">				3. Number of elements in Aneg is not equal to the time_steps</span>
+<span class="sd">				4. The elements of Apos are not int or float</span>
+<span class="sd">				5. The elements of Aneg are not int or float</span>
+<span class="sd">				6. The elements of Apos are not greater than or equal to 0.0</span>
+<span class="sd">				7. The elements of Apos are not greater than or equal to 0.0</span>
+
+<span class="sd">			RuntimeError if: </span>
+<span class="sd">				1. enable_stdp is not set to True on any of the synapses</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c1"># Type errors</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">time_steps</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;time_steps should be int&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">Apos</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Apos should be a list&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">Aneg</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Aneg should be a list&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">positive_update</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;positive_update must be a bool&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">negative_update</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;negative_update must be a bool&quot;</span><span class="p">)</span>
+
+
+		<span class="c1"># Value error</span>
+		<span class="k">if</span> <span class="n">time_steps</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;time_steps should be greater than zero&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">positive_update</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">Apos</span><span class="p">)</span> <span class="o">!=</span> <span class="n">time_steps</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Length of Apos should be </span><span class="si">{</span><span class="n">time_steps</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">negative_update</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">Aneg</span><span class="p">)</span> <span class="o">!=</span> <span class="n">time_steps</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Length of Aneg should be </span><span class="si">{</span><span class="n">time_steps</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">positive_update</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">Apos</span><span class="p">]):</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;All elements in Apos should be int or float&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">negative_update</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">Aneg</span><span class="p">]):</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;All elements in Aneg should be int or float&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">positive_update</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">([</span><span class="n">x</span> <span class="o">&gt;=</span> <span class="mf">0.0</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">Apos</span><span class="p">]):</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;All elements in Apos should be positive&quot;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">negative_update</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">([</span><span class="n">x</span> <span class="o">&gt;=</span> <span class="mf">0.0</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">Aneg</span><span class="p">]):</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;All elements in Aneg should be positive&quot;</span><span class="p">)</span>		
+
+		
+		<span class="c1"># Runtime error</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">enable_stdp</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;STDP is not enabled on any synapse, might want to skip stdp_setup()&quot;</span><span class="p">)</span>
+
+
+		<span class="c1"># Collect STDP parameters</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">stdp</span> <span class="o">=</span> <span class="kc">True</span> 
+		<span class="bp">self</span><span class="o">.</span><span class="n">stdp_time_steps</span> <span class="o">=</span> <span class="n">time_steps</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">stdp_Apos</span> <span class="o">=</span> <span class="n">Apos</span> 
+		<span class="bp">self</span><span class="o">.</span><span class="n">stdp_Aneg</span> <span class="o">=</span> <span class="n">Aneg</span> 
+		<span class="bp">self</span><span class="o">.</span><span class="n">stdp_positive_update</span> <span class="o">=</span> <span class="n">positive_update</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">stdp_negative_update</span> <span class="o">=</span> <span class="n">negative_update</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="NeuromorphicModel.setup">
+<a class="viewcode-back" href="../superneuromat.html#superneuromat.NeuromorphicModel.setup">[docs]</a>
+	<span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">		</span><span class="sd">&quot;&quot;&quot; Setup the neuromorphic model for simulation</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c1"># Create numpy arrays for neuron state variables</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_neuron_thresholds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">neuron_thresholds</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_neuron_leaks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">neuron_leaks</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_neuron_reset_states</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">neuron_reset_states</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_neuron_refractory_periods_original</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">neuron_refractory_periods</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_neuron_refractory_periods</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_neurons</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_internal_states</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">neuron_reset_states</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_spikes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_neurons</span><span class="p">)</span>
+		
+		<span class="c1"># Create numpy arrays for synapse state variables</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">num_neurons</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_neurons</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_weights</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_synaptic_neuron_ids</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">post_synaptic_neuron_ids</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">synaptic_weights</span>
+
+		<span class="c1"># Create numpy arrays for STDP state variables</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdp</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_stdp_enabled_synapses</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">num_neurons</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_neurons</span><span class="p">))</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_stdp_enabled_synapses</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_synaptic_neuron_ids</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">post_synaptic_neuron_ids</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_stdp</span>
+
+		<span class="c1"># Create numpy array for input spikes state variable</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_input_spikes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_neurons</span><span class="p">)</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="NeuromorphicModel.simulate">
+<a class="viewcode-back" href="../superneuromat.html#superneuromat.NeuromorphicModel.simulate">[docs]</a>
+	<span class="k">def</span><span class="w"> </span><span class="nf">simulate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time_steps</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">		</span><span class="sd">&quot;&quot;&quot; Simulate the neuromorphic spiking neural network </span>
+
+<span class="sd">		Args:</span>
+<span class="sd">			time_steps (int): Number of time steps for which the neuromorphic circuit is to be simulated</span>
+<span class="sd">			backend (string): Backend is either cpu or frontier</span>
+
+<span class="sd">		Raises: </span>
+<span class="sd">			TypeError if:</span>
+<span class="sd">				1. time_steps is not an int</span>
+<span class="sd">				2. backend is not a string</span>
+
+<span class="sd">			ValueError if: </span>
+<span class="sd">				1. time_steps is less than or equal to zero</span>
+<span class="sd">				2. backend is not one of the following values: cpu, frontier</span>
+
+<span class="sd">		&quot;&quot;&quot;</span> 
+
+		<span class="c1"># Type errors</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">time_steps</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;time_steps must be int&quot;</span><span class="p">)</span>
+
+
+		<span class="c1"># Value errors</span>
+		<span class="k">if</span> <span class="n">time_steps</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;time_steps must be greater than zero&quot;</span><span class="p">)</span>
+
+
+		<span class="c1"># Select appropriate simulation function</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span> <span class="o">==</span> <span class="s2">&quot;cpu&quot;</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_simulate_cpu</span><span class="p">(</span><span class="n">time_steps</span><span class="o">=</span><span class="n">time_steps</span><span class="p">)</span>
+
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span> <span class="o">==</span> <span class="s2">&quot;frontier&quot;</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_simulate_frontier</span><span class="p">(</span><span class="n">time_steps</span><span class="o">=</span><span class="n">time_steps</span><span class="p">)</span>
+
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Unsupported backend:&quot;</span><span class="p">,</span> <span class="n">backend</span><span class="p">)</span></div>
+
+
+
+
+	<span class="k">def</span><span class="w"> </span><span class="nf">_simulate_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time_steps</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
+<span class="w">		</span><span class="sd">&quot;&quot;&quot; Simulates the neuromorphic SNN on CPUs</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c1"># Simulate</span>
+		<span class="k">for</span> <span class="n">time_step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">time_steps</span><span class="p">):</span>
+			<span class="c1"># Leak: internal state &gt; reset state</span>
+			<span class="n">indices</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_internal_states</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_neuron_reset_states</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_internal_states</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_internal_states</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_neuron_leaks</span><span class="p">[</span><span class="n">indices</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_neuron_reset_states</span><span class="p">[</span><span class="n">indices</span><span class="p">])</span>
+
+			
+			<span class="c1"># Leak: internal state &lt; reset state</span>
+			<span class="n">indices</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_internal_states</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_neuron_reset_states</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_internal_states</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_internal_states</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_neuron_leaks</span><span class="p">[</span><span class="n">indices</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_neuron_reset_states</span><span class="p">[</span><span class="n">indices</span><span class="p">])</span>
+
+
+			<span class="c1"># Zero out _input_spikes to prepare them for input spikes in current time step</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_input_spikes</span> <span class="o">-=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_spikes</span> 	
+
+
+			<span class="c1"># Include input spikes for current time step</span>
+			<span class="k">if</span> <span class="n">time_step</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_spikes</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_input_spikes</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">input_spikes</span><span class="p">[</span><span class="n">time_step</span><span class="p">][</span><span class="s2">&quot;nids&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_spikes</span><span class="p">[</span><span class="n">time_step</span><span class="p">][</span><span class="s2">&quot;values&quot;</span><span class="p">]</span> 
+
+
+			<span class="c1"># Internal state</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_internal_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_states</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_spikes</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weights</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spikes</span><span class="p">)</span>
+
+
+			<span class="c1"># Compute spikes</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_spikes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">greater</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_internal_states</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_neuron_thresholds</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+			
+
+			<span class="c1"># Refractory period: Compute indices of neuron which are in their refractory period</span>
+			<span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">greater</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_neuron_refractory_periods</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+			
+
+			<span class="c1"># For neurons in their refractory period, zero out their spikes and decrement refractory period by one</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_spikes</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_neuron_refractory_periods</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
+
+
+			<span class="c1"># For spiking neurons, turn on refractory period</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_neuron_refractory_periods</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_spikes</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_neuron_refractory_periods_original</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_spikes</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)]</span>
+
+			
+			<span class="c1"># Reset internal states</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_internal_states</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_spikes</span> <span class="o">==</span> <span class="mf">1.0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_neuron_reset_states</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_spikes</span> <span class="o">==</span> <span class="mf">1.0</span><span class="p">]</span>
+
+
+			<span class="c1"># Append spike train</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">spike_train</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spikes</span><span class="p">)</span>
+
+
+			<span class="c1"># STDP Operations</span>
+			<span class="n">t</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stdp_time_steps</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spike_train</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+			<span class="k">if</span> <span class="n">t</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="n">_update_synapses</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spike_train</span><span class="p">[</span><span class="o">-</span><span class="n">t</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spike_train</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_neurons</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_neurons</span><span class="p">])</span>
+
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdp_positive_update</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_weights</span> <span class="o">+=</span> <span class="p">((</span><span class="n">_update_synapses</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdp_Apos</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">t</span><span class="p">][::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stdp_enabled_synapses</span>
+
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdp_negative_update</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_weights</span> <span class="o">+=</span> <span class="p">(((</span><span class="mi">1</span> <span class="o">-</span> <span class="n">_update_synapses</span><span class="p">)</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdp_Aneg</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">t</span><span class="p">][::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stdp_enabled_synapses</span>
+
+
+		<span class="c1"># Update weights if STDP was enabled</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdp</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">synaptic_weights</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weights</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_synaptic_neuron_ids</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">post_synaptic_neuron_ids</span><span class="p">])</span>
+
+
+
+	<span class="k">def</span><span class="w"> </span><span class="nf">_simulate_frontier</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time_steps</span><span class="p">):</span>
+<span class="w">		</span><span class="sd">&quot;&quot;&quot; Simulates the neuromorphic SNN on the Frontier supercomputer</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c1"># Define argument and return types</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">c_frontier_library</span><span class="o">.</span><span class="n">argtypes</span> <span class="o">=</span> <span class="p">[</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">c_frontier_library</span><span class="o">.</span><span class="n">restype</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span>
+
+
+		<span class="c1"># Call the C function</span>
+		<span class="n">data</span> <span class="o">=</span> <span class="mi">10</span>
+		<span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">c_frontier_library</span><span class="o">.</span><span class="n">simulate_frontier</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+		<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Python Source] Result from C: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+
+
+
+
+<div class="viewcode-block" id="NeuromorphicModel.print_spike_train">
+<a class="viewcode-back" href="../superneuromat.html#superneuromat.NeuromorphicModel.print_spike_train">[docs]</a>
+	<span class="k">def</span><span class="w"> </span><span class="nf">print_spike_train</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">		</span><span class="sd">&quot;&quot;&quot; Prints the spike train</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="k">for</span> <span class="n">time</span><span class="p">,</span> <span class="n">spike_train</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spike_train</span><span class="p">):</span>
+			<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Time: </span><span class="si">{</span><span class="n">time</span><span class="si">}</span><span class="s2">, Spikes: </span><span class="si">{</span><span class="n">spike_train</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+</div>
+
+
+			
+
+
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Prasanna Date, Chathika Gunaratne, Shruti Kulkarni, Robert Patton, Mark Coletti.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
