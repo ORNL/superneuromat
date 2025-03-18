@@ -37,7 +37,7 @@ class DisplayTest(unittest.TestCase):
 
 		print(model)
 
-		# model.print_spike_train()
+		model.print_spike_train()
 
 
 
