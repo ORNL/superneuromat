@@ -4,7 +4,7 @@ import numpy as np
 import sys 
 sys.path.insert(0,"../")
 
-from superneuromat.neuromorphicmodel import NeuromorphicModel
+from src.superneuromat import NeuromorphicModel
 
 
 

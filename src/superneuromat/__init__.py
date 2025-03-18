@@ -132,7 +132,7 @@ class NeuromorphicModel:
 		# Hardware backend parameters
 		self.backend = backend
 
-		print(f"[Python Source] Backend is {backend}")
+		# print(f"[Python Source] Backend is {backend}")
 
 		if backend == "frontier":
 
@@ -157,6 +157,10 @@ class NeuromorphicModel:
 
 			# # Load the shared library
 			# self.c_frontier_library = ctypes.CDLL("./shared_library_frontier.so")
+
+
+		# Simulation parameters
+		self.num_spikes = 0
 
 
 
@@ -602,6 +606,18 @@ class NeuromorphicModel:
 
 
 
+
+	def print_spike_train(self):
+		""" Prints the spike train
+
+		"""
+
+		for time, spike_train in enumerate(self.spike_train):
+			print(f"Time: {time}, Spikes: {spike_train}")
+
+
+
+
 	def _simulate_cpu(self, time_steps: int=1000):
 		""" Simulates the neuromorphic SNN on CPUs
 		"""
@@ -652,6 +668,10 @@ class NeuromorphicModel:
 			self._internal_states[self._spikes == 1.0] = self._neuron_reset_states[self._spikes == 1.0]
 
 
+			# Update spike count
+			self.num_spikes += sum(self._spikes)
+
+
 			# Append spike train
 			self.spike_train.append(self._spikes)
 
@@ -675,6 +695,7 @@ class NeuromorphicModel:
 
 
 
+
 	def _simulate_frontier(self, time_steps):
 		""" Simulates the neuromorphic SNN on the Frontier supercomputer
 		"""
@@ -693,15 +714,7 @@ class NeuromorphicModel:
 
 
 
-
-
-	def print_spike_train(self):
-		""" Prints the spike train
-
-		"""
-
-		for time, spike_train in enumerate(self.spike_train):
-			print(f"Time: {time}, Spikes: {spike_train}")
+	
 
 			
 

@@ -5,9 +5,7 @@ import time
 import sys 
 sys.path.insert(0,"../")
 
-# from superneuromat.neuromorphicmodel import NeuromorphicModel
-from superneuromat import NeuromorphicModel
-# import superneuromat
+from src.superneuromat import NeuromorphicModel
 
 
 class TestFrontier(unittest.TestCase):

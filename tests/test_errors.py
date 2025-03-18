@@ -4,7 +4,7 @@ import unittest
 import sys 
 sys.path.insert(0,"../")
 
-from superneuromat.neuromorphicmodel import NeuromorphicModel
+from src.superneuromat import NeuromorphicModel
 
 
 class TestTypeErrors(unittest.TestCase):
@@ -182,7 +182,7 @@ class TestValueErrors(unittest.TestCase):
 		model.add_spike(-1, n0)
 
 
-	def test_add_spike_time(self):
+	def test_add_spike_neuron_id(self):
 		model = NeuromorphicModel()
 		n0 = model.create_neuron()
 		n1 = model.create_neuron()
