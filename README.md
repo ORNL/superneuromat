@@ -1,5 +1,7 @@
 # SuperNeuroMAT v1.1
 
+SuperNeuroMAT is a matrix-based simulator for simulating spiking neural networks to be used in neuromorphic computing.
+
 
 ## Installation
 1. Install using `pip install superneuromat`
