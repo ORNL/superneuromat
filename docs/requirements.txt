@@ -1,0 +1,20 @@
+# numpy
+numpy
+#pandas
+pandas
+#ctypes
+ctypes
+#os
+os
+#wheel
+wheel
+#build
+build
+#twine
+twine
+#packaging
+packaging
+#sphinx
+sphinx
+# sphinx-rtd-theme
+sphinx-rtd-theme
