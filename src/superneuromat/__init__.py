@@ -11,7 +11,6 @@ TODO:
 1. create_neurons() 
 2. create_synapses() 
 3. Tutorials: one neuron, two neurons 
-4. Efficient STDP algorithm without loop
 
 """
 
