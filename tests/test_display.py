@@ -4,7 +4,7 @@ import unittest
 import sys 
 sys.path.insert(0,"../")
 
-from superneuromat.neuromorphicmodel import NeuromorphicModel
+from src.superneuromat import NeuromorphicModel
 
 
 class DisplayTest(unittest.TestCase):
