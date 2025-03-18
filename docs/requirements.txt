@@ -2,8 +2,6 @@
 numpy
 #pandas
 pandas
-#ctypes
-ctypes
 #os
 os
 #wheel
