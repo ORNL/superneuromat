@@ -1,1 +1,0 @@
-from superneuromat.neuromorphicmodel import NeuromorphicModel

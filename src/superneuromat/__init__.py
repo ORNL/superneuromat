@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+import ctypes
+import os
 
 
 """
@@ -75,10 +77,29 @@ class NeuromorphicModel:
 	"""
 
 
-	def __init__(self):
+	def __init__(self, backend="cpu"):
 		""" Initialize the neuromorphic model
 
+		Args:
+			backend (string): Backend is either 'cpu' or 'frontier'
+
+		Raises: 
+			TypeError if:
+				1. backend is not a string
+
+			ValueError if: 
+				2. backend is not one of the following values: cpu, frontier
+
 		"""
+
+		# Type errors
+		if not isinstance(backend, str):
+			raise TypeError("backend must be either 'cpu', or 'frontier'")
+
+		# Value errors
+		if backend not in {"cpu", "frontier"}:
+			raise ValueError("backend must be either 'cpu', or 'frontier'")
+
 
 		# Neuron parameters
 		self.num_neurons = 0
@@ -108,6 +129,35 @@ class NeuromorphicModel:
 		self.stdp_Aneg = []
 		self.stdp_positive_update = False
 		self.stdp_negative_update = False
+
+		# Hardware backend parameters
+		self.backend = backend
+
+		print(f"[Python Source] Backend is {backend}")
+
+		if backend == "frontier":
+
+			print("This functionality is a work in progress...")
+			
+			# print(os.system("pwd"))
+
+			# # Compile frontier.c program as a shared library
+			# self.c_file_path = "../superneuromat/frontier.c"
+			# self.executable_name = "shared_library_frontier.so"
+			# self.compile_command = f"gcc -shared -o {self.executable_name} {self.c_file_path}"
+
+			# print("[Python Source] Compiling C program")
+
+			# status = os.system(self.compile_command)
+
+			# if status == 0:
+			# 	print("[Python Source] Successfully compiled C program")
+			# else:
+			# 	print("[Python Source] C program compilation unsuccessful")
+
+
+			# # Load the shared library
+			# self.c_frontier_library = ctypes.CDLL("./shared_library_frontier.so")
 
 
 
@@ -514,17 +564,20 @@ class NeuromorphicModel:
 
 
 	def simulate(self, time_steps: int=1000) -> None:
-		""" Simulate the neuromorphic circuit 
+		""" Simulate the neuromorphic spiking neural network 
 
 		Args:
 			time_steps (int): Number of time steps for which the neuromorphic circuit is to be simulated
+			backend (string): Backend is either cpu or frontier
 
 		Raises: 
 			TypeError if:
 				1. time_steps is not an int
+				2. backend is not a string
 
 			ValueError if: 
 				1. time_steps is less than or equal to zero
+				2. backend is not one of the following values: cpu, frontier
 
 		""" 
 
@@ -537,6 +590,22 @@ class NeuromorphicModel:
 		if time_steps <= 0:
 			raise ValueError("time_steps must be greater than zero")
 
+
+		# Select appropriate simulation function
+		if self.backend == "cpu":
+			self._simulate_cpu(time_steps=time_steps)
+
+		elif self.backend == "frontier":
+			self._simulate_frontier(time_steps=time_steps)
+
+		else:
+			raise RuntimeError("Unsupported backend:", backend)
+
+
+
+	def _simulate_cpu(self, time_steps: int=1000):
+		""" Simulates the neuromorphic SNN on CPUs
+		"""
 
 		# Simulate
 		for time_step in range(time_steps):
@@ -604,6 +673,24 @@ class NeuromorphicModel:
 		# Update weights if STDP was enabled
 		if self.stdp:
 			self.synaptic_weights = list(self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
+
+
+
+	def _simulate_frontier(self, time_steps):
+		""" Simulates the neuromorphic SNN on the Frontier supercomputer
+		"""
+
+		# Define argument and return types
+		self.c_frontier_library.argtypes = [ctypes.c_int]
+		self.c_frontier_library.restype = ctypes.c_int
+
+
+		# Call the C function
+		data = 10
+		result = self.c_frontier_library.simulate_frontier(data)
+
+		print(f"[Python Source] Result from C: {result}")
+
 
 
 
