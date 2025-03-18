@@ -1,9 +1,15 @@
-# SuperNeuroMAT
+# SuperNeuroMAT v1.0
 
 
 ## Installation
 1. Install using `pip install superneuromat`
-2. Open up a Python interpretter and do `from superneuromat.neuromorphicmodel import NeuromorphicModel`
+2. Update/upgrade using `pip install superneuromat --upgrade`
+
+
+## Usage
+1. In a Python script or on a Python interpreter, do `import superneuromat as snm`
+2. The main class can be accessed by `model = snm.NeuromorphicModel()`
+3. Refer to docstrings in the source code for the API
 
 
 ## For Development
@@ -13,9 +19,7 @@
 
 
 ## Directory Info
-1. `experiments`: This is for experiments for getting results for publications. Please ignore!
-2. `superneuromat`: This contains the source code for `superneuromat`
-3. `tests`: This contains unittests for development purposes. Please ignore!
-4. `tutorials`: Check out the tutorials to learn how to work with `superneuromat`
+1. `superneuromat`: This contains the source code for `superneuromat`
+2. `tests`: This contains unittests for development purposes. Please ignore!
 
 
