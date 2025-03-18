@@ -1,4 +1,4 @@
-# SuperNeuroMAT v1.0
+# SuperNeuroMAT v1.1
 
 
 ## Installation
