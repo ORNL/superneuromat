@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "superneuromat"
-version = "1.1"
+version = "1.2"
 authors = [{name="Prasanna Date", email="datepa@ornl.gov"}, {name="Chathika Gunaratne"}, {name="Shruti Kulkarni"}, {name="Robert Patton"}, {name="Mark Coletti"}]
 description = "A matrix-based simulation framework for neuromorphic computing"
 readme = "README.md"
