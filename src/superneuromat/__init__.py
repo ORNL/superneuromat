@@ -229,7 +229,8 @@ class NeuromorphicModel:
 				"\nInput Spikes: \n" + \
 				input_spikes_df.to_string(index=False) + "\n" + \
 				"\nSpike Train: \n" + \
-				spike_train
+				spike_train + \
+				f"\nNumber of spikes: {self.num_spikes}\n"
 
 
 
@@ -614,6 +615,8 @@ class NeuromorphicModel:
 
 		for time, spike_train in enumerate(self.spike_train):
 			print(f"Time: {time}, Spikes: {spike_train}")
+
+		print(f"\nNumber of spikes: {self.num_spikes}\n")
 
 
 
