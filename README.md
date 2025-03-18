@@ -1,4 +1,4 @@
-# SuperNeuroMAT v1.3
+# SuperNeuroMAT v1.4
 
 SuperNeuroMAT is a matrix-based simulator for simulating spiking neural networks to be used in neuromorphic computing.
 
