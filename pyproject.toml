@@ -38,3 +38,8 @@ classifiers = [
     url = "https://github.com/ORNL/superneuromat"
     Repository = "https://github.com/ORNL/superneuromat"
     Download = "https://pypi.org/project/ini2toml/#files"
+
+[project.optional-dependencies]
+gpu = [
+    "numba",
+]

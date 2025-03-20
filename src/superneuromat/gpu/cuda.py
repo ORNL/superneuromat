@@ -2,7 +2,10 @@ import numba
 import numpy as np
 from numba import cuda
 
+# Learning resources:
 # https://www.olcf.ornl.gov/cuda-training-series/
+# https://nyu-cds.github.io/python-gpu/
+# https://nyu-cds.github.io/python-numba/05-cuda/
 
 
 def disable_numba_performance_warnings():
