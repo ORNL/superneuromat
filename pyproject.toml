@@ -4,25 +4,45 @@ build-backend = "hatchling.build"
 
 [project]
 name = "superneuromat"
-version = "1.4"
-authors = [{name="Prasanna Date", email="datepa@ornl.gov"}, {name="Chathika Gunaratne"}, {name="Shruti Kulkarni"}, {name="Robert Patton"}, {name="Mark Coletti"}]
-description = "A matrix-based simulation framework for neuromorphic computing"
-readme = "README.md"
-requires-python = ">=3.0"
+version = "0.1.4"
+requires-python = ">=3.8"
+dependencies = ["numpy", "pandas"]
+authors = [
+    {name="Prasanna Date", email="datepa@ornl.gov"},
+    {name="Chathika Gunaratne"},
+    {name="Shruti Kulkarni"},
+    {name="Robert Patton"},
+    {name="Mark Coletti"},
+]
+maintainers = [{name="Prasanna Date", email="datepa@ornl.gov"}]
+readme = {file = "README.md", content-type = "text/markdown"}
+description = "A matrix-based simulation framework for neuromorphic computing."
+keywords = [
+    "Neuromorphic Computing",
+    "Neuromorphic Simulator",
+    "Neuromorphic Algorithms",
+    "Fast Neuromorphic Simulator",
+    "Matrix-Based Neuromorphic Simulator",
+    "Numpy Neuromorphic Simulator",
+]
 classifiers = [
-	"Programming Language :: Python :: 3",
-	"Programming Language :: C",
-	"License :: OSI Approved :: BSD License",
-	"Operating System :: OS Independent",
-	"Development Status :: 5 - Production/Stable",
-	"License :: OSI Approved :: BSD License",
-	"Topic :: Scientific/Engineering",
-	"Topic :: Scientific/Engineering :: Artificial Intelligence"
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C",
+    "License :: OSI Approved :: BSD License",
+    "Development Status :: 3 - Alpha",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence"
 ]
 
 [project.license]
 file = "LICENSE"
 
 [project.urls]
-Homepage = "https://github.com/ORNL/superneuromat"
-Issues = "https://github.com/ORNL/superneuromat/issues"
+    url = "https://github.com/ORNL/superneuromat"
+    Repository = "https://github.com/ORNL/superneuromat"
+    Download = "https://pypi.org/project/ini2toml/#files"
+
+[project.optional-dependencies]
+gpu = [
+    "numba",
+]

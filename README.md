@@ -18,8 +18,9 @@ Documentation available at: https://superneuromat.readthedocs.io/en/latest/
 
 ## For Development
 1. Clone the `superneuromat` repo: `git clone https://github.com/ORNL/superneuromat.git`
-2. Add the path to `superneuromat` to your `$PYTHONPATH`: `export PYTHONPATH=$PYTHONPATH:/path/to/superneuromat`. 
-3. You may want to update the `$PYTHONPATH` in your `.bash_profile` or `.bashrc`.
+2. Install the package as editable inside your virtual environment: `pip install -e superneuromat/`
+
+**Warning:** importing as a relative module (i.e. not installed in your environment) has been deprecated.
 
 
 ## Directory Info
