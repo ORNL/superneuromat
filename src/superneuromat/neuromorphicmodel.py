@@ -2,6 +2,7 @@ import math
 import numpy as np
 import pandas as pd
 from numba import jit, cuda
+import ctypes
 
 
 """
@@ -211,6 +212,7 @@ class NeuromorphicModel:
 
         # Synapses
         synapse_df = pd.DataFrame({
+            "Synapse ID": list(range(self.num_synapses)),
             "Pre Neuron ID": self.pre_synaptic_neuron_ids,
             "Post Neuron ID": self.post_synaptic_neuron_ids,
             "Weight": self.synaptic_weights,
@@ -319,7 +321,14 @@ class NeuromorphicModel:
         # Return neuron ID
         return self.num_neurons - 1
 
-    def create_synapse(self, pre_id: int, post_id: int, weight: float = 1.0, delay: int = 1, enable_stdp: bool = False) -> None:
+    def create_synapse(
+        self,
+        pre_id: int,
+        post_id: int,
+        weight: float = 1.0,
+        delay: int = 1,
+        stdp_enable: bool = False
+    ) -> None:
         """Creates a synapse in the neuromorphic model from a pre-synaptic neuron to a post-synaptic neuron with a given set of synaptic parameters (weight, delay and enable_stdp)
 
         Args:
@@ -337,7 +346,13 @@ class NeuromorphicModel:
                         4. delay is not an int
                         5. enable_stdp is not a bool
 
+            ValueError if:
+                1. pre_id is less than 0
+                2. post_id is less than 0
+                3. delay is less than or equal to 0
+
         """
+        # TODO: deprecate enable_stdp
 
         # Type errors
         if not isinstance(pre_id, int):
@@ -352,8 +367,8 @@ class NeuromorphicModel:
         if not isinstance(delay, int):
             raise TypeError("delay must be an integer")
 
-        if not isinstance(enable_stdp, bool):
-            raise TypeError("enable_stdp must be a bool")
+        if not isinstance(stdp_enable, bool):
+            raise TypeError("stdp_enable must be a bool")
 
         # Value errors
         if pre_id < 0:
@@ -371,7 +386,7 @@ class NeuromorphicModel:
             self.post_synaptic_neuron_ids.append(post_id)
             self.synaptic_weights.append(weight)
             self.synaptic_delays.append(delay)
-            self.enable_stdp.append(enable_stdp)
+            self.enable_stdp.append(stdp_enable)
             self.num_synapses += 1
 
         else:
@@ -380,7 +395,10 @@ class NeuromorphicModel:
                 self.create_synapse(pre_id, temp_id)
                 pre_id = temp_id
 
-            self.create_synapse(pre_id, post_id, weight=weight, enable_stdp=enable_stdp)
+            self.create_synapse(pre_id, post_id, weight=weight, stdp_enable=stdp_enable)
+
+        # Return synapse ID
+        return self.num_synapses - 1
 
     def add_spike(self, time: int, neuron_id: int, value: float = 1.0) -> None:
         """Adds an external spike in the neuromorphic model
@@ -515,7 +533,7 @@ class NeuromorphicModel:
         self.stdp_negative_update = negative_update
 
     def setup(self):
-        """Setup the neuromorphic circuit for simulation"""
+        """Setup the neuromorphic model for simulation"""
 
         # Create numpy arrays for neuron state variables
         self._neuron_thresholds = np.array(self.neuron_thresholds, np.float64)
@@ -526,11 +544,11 @@ class NeuromorphicModel:
         self._internal_states = np.array(self.neuron_reset_states, np.float64)
         self._spikes = np.zeros(self.num_neurons, np.float64)
 
-        # Create numpy arrays for synapses
+        # Create numpy arrays for synapse state variables
         self._weights = np.zeros((self.num_neurons, self.num_neurons), np.float64)
         self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.synaptic_weights
 
-        # Create numpy arrays for STDP operations
+        # Create numpy arrays for STDP state variables
         if self.stdp:
             self._stdp_enabled_synapses = np.zeros((self.num_neurons, self.num_neurons), np.int64)
             self._stdp_enabled_synapses[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.enable_stdp
@@ -551,7 +569,7 @@ class NeuromorphicModel:
         return 'cpu'
 
     def simulate(self, time_steps: int = 1000, callback=None, use='auto') -> None:
-        """Simulate the neuromorphic circuit
+        """Simulate the neuromorphic spiking neural network
 
         Parameters
         ----------
@@ -696,16 +714,23 @@ class NeuromorphicModel:
             self.spike_train.append(self._spikes)
 
             # STDP Operations
-            if self.stdp:
-                for i in range(self.stdp_time_steps):
-                    if len(self.spike_train) >= i + 2:
-                        update_synapses = np.outer(np.array(self.spike_train[-i - 2]), np.array(self.spike_train[-1]))
+            t = min(self.stdp_time_steps, len(self.spike_train) - 1)
 
-                        if self.stdp_positive_update:
-                            self._weights += self.stdp_Apos[i] * update_synapses * self._stdp_enabled_synapses
+            if t > 0:
+                update_synapses = np.outer(
+                    np.array(self.spike_train[-t - 1:-1]),
+                    np.array(self.spike_train[-1])).reshape([-1, self.num_neurons, self.num_neurons]
+                )
 
-                        if self.stdp_negative_update:
-                            self._weights -= self.stdp_Aneg[i] * (1 - update_synapses) * self._stdp_enabled_synapses
+                if self.stdp_positive_update:
+                    self._weights += (
+                        (update_synapses.T * self.stdp_Apos[0:t][::-1]).T
+                    ).sum(axis=0) * self._stdp_enabled_synapses
+
+                if self.stdp_negative_update:
+                    self._weights += (
+                        ((1 - update_synapses).T * self.stdp_Aneg[0:t][::-1]).T
+                    ).sum(axis=0) * self._stdp_enabled_synapses
 
         # Update weights if STDP was enabled
         if self.stdp:
@@ -796,6 +821,20 @@ class NeuromorphicModel:
         # Update weights if STDP was enabled
         if self.stdp:
             self.synaptic_weights = list(self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
+
+    def _simulate_frontier(self, time_steps):
+        """ Simulates the neuromorphic SNN on the Frontier supercomputer
+        """
+
+        # Define argument and return types
+        self.c_frontier_library.argtypes = [ctypes.c_int]
+        self.c_frontier_library.restype = ctypes.c_int
+
+        # Call the C function
+        data = 10
+        result = self.c_frontier_library.simulate_frontier(data)
+
+        print(f"[Python Source] Result from C: {result}")
 
     def print_spike_train(self):
         """Prints the spike train."""
