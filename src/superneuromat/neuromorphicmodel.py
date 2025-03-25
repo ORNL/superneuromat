@@ -266,7 +266,11 @@ class NeuromorphicModel:
                 nids.append(nid)
                 values.append(value)
 
-        input_spikes_df = pd.DataFrame({"Time": times, "Neuron ID": nids, "Value": values})
+        input_spikes_df = pd.DataFrame({
+            "Time": times,
+            "Neuron ID": nids,
+            "Value": values
+        })
 
         # Spike train
         spike_train = ""
@@ -289,32 +293,37 @@ class NeuromorphicModel:
             + "\n"
             + "\nSpike Train: \n"
             + spike_train
+            + f"\nNumber of spikes: {self.num_spikes}\n"
         )
 
     def create_neuron(
-        self, threshold: float = 0.0, leak: float = np.inf, reset_state: float = 0.0, refractory_period: int = 0
+        self,
+        threshold: float = 0.0,
+        leak: float = np.inf,
+        reset_state: float = 0.0,
+        refractory_period: int = 0,
     ) -> int:
         """Create a neuron
 
         Args:
-                threshold (float): Neuron threshold; the neuron spikes if its internal state is strictly greater than the neuron threshold (default: 0.0)
-                leak (float): Neuron leak; the amount by which by which the internal state of the neuron is pushed towards its reset state (default: np.inf)
-                reset_state (float): Reset state of the neuron; the value assigned to the internal state of the neuron after spiking (default: 0.0)
-                refractory_period (int): Refractory period of the neuron; the number of time steps for which the neuron remains in a dormant state after spiking
+            threshold (float): Neuron threshold; the neuron spikes if its internal state is strictly greater than the neuron threshold (default: 0.0)
+            leak (float): Neuron leak; the amount by which by which the internal state of the neuron is pushed towards its reset state (default: np.inf)
+            reset_state (float): Reset state of the neuron; the value assigned to the internal state of the neuron after spiking (default: 0.0)
+            refractory_period (int): Refractory period of the neuron; the number of time steps for which the neuron remains in a dormant state after spiking
 
         Returns:
-                Returns the neuron ID
+            Returns the neuron ID
 
         Raises:
-                TypeError if:
-                        1. threshold is not an int or a float
-                        2. leak is not an int or a float
-                        3. reset_state is not an int or a float
-                        4. refractory_period is not an int
+            TypeError if:
+                1. threshold is not an int or a float
+                2. leak is not an int or a float
+                3. reset_state is not an int or a float
+                4. refractory_period is not an int
 
-                ValueError if:
-                        1. leak is less than 0.0
-                        2. refractory_period is less than 0
+            ValueError if:
+                1. leak is less than 0.0
+                2. refractory_period is less than 0
 
         """
 
@@ -354,7 +363,7 @@ class NeuromorphicModel:
         post_id: int,
         weight: float = 1.0,
         delay: int = 1,
-        stdp_enable: bool = False
+        stdp_enabled: bool = False
     ) -> None:
         """Creates a synapse in the neuromorphic model from a pre-synaptic neuron to a post-synaptic neuron with a given set of synaptic parameters (weight, delay and enable_stdp)
 
@@ -394,8 +403,8 @@ class NeuromorphicModel:
         if not isinstance(delay, int):
             raise TypeError("delay must be an integer")
 
-        if not isinstance(stdp_enable, bool):
-            raise TypeError("stdp_enable must be a bool")
+        if not isinstance(stdp_enabled, bool):
+            raise TypeError("stdp_enabled must be a bool")
 
         # Value errors
         if pre_id < 0:
@@ -413,7 +422,7 @@ class NeuromorphicModel:
             self.post_synaptic_neuron_ids.append(post_id)
             self.synaptic_weights.append(weight)
             self.synaptic_delays.append(delay)
-            self.enable_stdp.append(stdp_enable)
+            self.enable_stdp.append(stdp_enabled)
             self.num_synapses += 1
 
         else:
@@ -422,24 +431,29 @@ class NeuromorphicModel:
                 self.create_synapse(pre_id, temp_id)
                 pre_id = temp_id
 
-            self.create_synapse(pre_id, post_id, weight=weight, stdp_enable=stdp_enable)
+            self.create_synapse(pre_id, post_id, weight=weight, stdp_enabled=stdp_enabled)
 
         # Return synapse ID
         return self.num_synapses - 1
 
-    def add_spike(self, time: int, neuron_id: int, value: float = 1.0) -> None:
+    def add_spike(
+        self,
+        time: int,
+        neuron_id: int,
+        value: float = 1.0
+    ) -> None:
         """Adds an external spike in the neuromorphic model
 
         Args:
-                time (int): The time step at which the external spike is added
-                neuron_id (int): The neuron for which the external spike is added
-                value (float): The value of the external spike (default: 1.0)
+            time (int): The time step at which the external spike is added
+            neuron_id (int): The neuron for which the external spike is added
+            value (float): The value of the external spike (default: 1.0)
 
         Raises:
-                TypeError if:
-                        1. time is not an int
-                        2. neuron_id is not an int
-                        3. value is not an int or float
+            TypeError if:
+                1. time is not an int
+                2. neuron_id is not an int
+                3. value is not an int or float
 
         """
 
@@ -507,31 +521,31 @@ class NeuromorphicModel:
         """Setup the Spike-Time-Dependent Plasticity (STDP) parameters
 
         Args:
-                time_steps (int): Number of time steps over which STDP learning occurs (default: 3)
-                Apos (list): List of parameters for excitatory STDP updates (default: [1.0, 0.5, 0.25]); number of elements in the list must be equal to time_steps
-                Aneg (list): List of parameters for inhibitory STDP updates (default: [1.0, 0.5, 0.25]); number of elements in the list must be equal to time_steps
-                positive_update (bool): Boolean parameter indicating whether excitatory STDP update should be enabled
-                negative_update (bool): Boolean parameter indicating whether inhibitory STDP update should be enabled
+            time_steps (int): Number of time steps over which STDP learning occurs (default: 3)
+            Apos (list): List of parameters for excitatory STDP updates (default: [1.0, 0.5, 0.25]); number of elements in the list must be equal to time_steps
+            Aneg (list): List of parameters for inhibitory STDP updates (default: [1.0, 0.5, 0.25]); number of elements in the list must be equal to time_steps
+            positive_update (bool): Boolean parameter indicating whether excitatory STDP update should be enabled
+            negative_update (bool): Boolean parameter indicating whether inhibitory STDP update should be enabled
 
         Raises:
-                TypeError if:
-                        1. time_steps is not an int
-                        2. Apos is not a list
-                        3. Aneg is not a list
-                        4. positive_update is not a bool
-                        5. negative_update is not a bool
+            TypeError if:
+                1. time_steps is not an int
+                2. Apos is not a list
+                3. Aneg is not a list
+                4. positive_update is not a bool
+                5. negative_update is not a bool
 
-                ValueError if:
-                        1. time_steps is less than or equal to zero
-                        2. Number of elements in Apos is not equal to the time_steps
-                        3. Number of elements in Aneg is not equal to the time_steps
-                        4. The elements of Apos are not int or float
-                        5. The elements of Aneg are not int or float
-                        6. The elements of Apos are not greater than or equal to 0.0
-                        7. The elements of Apos are not greater than or equal to 0.0
+            ValueError if:
+                1. time_steps is less than or equal to zero
+                2. Number of elements in Apos is not equal to the time_steps
+                3. Number of elements in Aneg is not equal to the time_steps
+                4. The elements of Apos are not int or float
+                5. The elements of Aneg are not int or float
+                6. The elements of Apos are not greater than or equal to 0.0
+                7. The elements of Apos are not greater than or equal to 0.0
 
-                RuntimeError if:
-                        1. enable_stdp is not set to True on any of the synapses
+            RuntimeError if:
+                1. enable_stdp is not set to True on any of the synapses
 
         """
 
@@ -899,3 +913,5 @@ class NeuromorphicModel:
 
         for time, spike_train in enumerate(self.spike_train):
             print(f"Time: {time}, Spikes: {spike_train}")
+
+        # print(f"\nNumber of spikes: {self.num_spikes}\n")
