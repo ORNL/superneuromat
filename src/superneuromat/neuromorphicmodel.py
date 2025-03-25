@@ -45,7 +45,6 @@ FEATURE REQUESTS:
 def lif_jit(
     tick: int,
     input_spikes,
-    output_spikes,
     prev_spikes,
     states,
     thresholds,
@@ -56,8 +55,8 @@ def lif_jit(
     weights,
 ):
     # CAUTION: This function has side-effects (not a pure function)
-    # output_spikes, prev_spikes, and states are modified in-place
-    # _____________  ___________      ______
+    # prev_spikes and states are modified in-place
+    # ___________     ______
     # DO NOT ASSIGN THESE VARIABLES WITHIN THIS FUNCTION or things will break
     # DO NOT states = something
 
@@ -93,23 +92,42 @@ def lif_jit(
     # Reset internal states (in-place)
     states[spikes == 1.0] = reset_states[spikes == 1.0]
 
-    # Append spike train
-    output_spikes[tick] = spikes
-    # states, prev_spikes, and output_spikes were modified in-place
+    prev_spikes[:] = spikes
+
+    # states, prev_spikes were modified in-place
     # everything else is local
 
 
 @jit(nopython=True)
-def stdp_update_jit(t_now, n_steps, spike_train, weights_pointer, apos, aneg, stdp_enabled):
-    # STDP Operations
-    for i in range(min(t_now, n_steps)):
-        update_synapses = np.outer(spike_train[t_now - i - 1], spike_train[t_now])
+def stdp_update_jit(n_steps, spike_train, weights_pointer, apos, aneg, stdp_enabled):
+    t = min(len(spike_train) - 1, n_steps)
+    shape = spike_train[-1].shape
+
+    if t > 0:
+        update_synapses = np.outer(
+            spike_train[-t - 1:-1],
+            spike_train[-1]
+        ).reshape((-1, *shape))
 
         if np.any(apos):
-            weights_pointer += apos[i] * update_synapses * stdp_enabled
+            weights_pointer += (
+                (update_synapses.T * apos[0:t][::-1]).T
+            ).sum(axis=0) * stdp_enabled
 
         if np.any(aneg):
-            weights_pointer -= aneg[i] * (1 - update_synapses) * stdp_enabled
+            weights_pointer += (
+                ((1 - update_synapses).T * aneg[0:t][::-1]).T
+            ).sum(axis=0) * stdp_enabled
+
+
+def resize_vec(a, len, dtype=np.float64):
+    a = np.asarray(a, dtype=dtype)
+    if len(a) < len:
+        return a[:len].copy()
+    elif len(a) > len:
+        return np.pad(a, (0, len - len(a)), 'constant')
+    else:
+        return a
 
 
 class NeuromorphicModel:
@@ -187,22 +205,23 @@ class NeuromorphicModel:
 
         # STDP Parameters
         self.stdp = False
-        self.stdp_time_steps = 0
-        self.stdp_Apos = []
-        self.stdp_Aneg = []
+        self._stdp_Apos = []
+        self._stdp_Aneg = []
         self.stdp_positive_update = False
         self.stdp_negative_update = False
 
         self.gpu = cuda.is_available()
 
-    def __repr__(self):
+    @property
+    def stdp_time_steps(self):
+        assert len(self._stdp_Apos) == len(self._stdp_Aneg)
+        return len(self._stdp_Apos)
         """Display the neuromorphic class in a legible format"""
 
-        num_neurons_str = f"Number of neurons: {self.num_neurons}"
-        num_synapses_str = f"Number of synapses: {self.num_synapses}"
-
-        # Neurons
-        neuron_df = pd.DataFrame({
+    @property
+    def neuron_df(self):
+        """Returns a DataFrame containing information about neurons."""
+        return pd.DataFrame({
             "Neuron ID": list(range(self.num_neurons)),
             "Threshold": self.neuron_thresholds,
             "Leak": self.neuron_leaks,
@@ -210,9 +229,10 @@ class NeuromorphicModel:
             "Refractory Period": self.neuron_refractory_periods,
         })
 
-        # Synapses
-        synapse_df = pd.DataFrame({
-            "Synapse ID": list(range(self.num_synapses)),
+    @property
+    def synapse_df(self):
+        """Returns a DataFrame containing information about synapses."""
+        return pd.DataFrame({
             "Pre Neuron ID": self.pre_synaptic_neuron_ids,
             "Post Neuron ID": self.post_synaptic_neuron_ids,
             "Weight": self.synaptic_weights,
@@ -220,18 +240,25 @@ class NeuromorphicModel:
             "STDP Enabled": self.enable_stdp,
         })
 
-        # STDP
-        stdp_info = (
+    @property
+    def stdp_info(self):
+        """Returns a string containing information about STDP."""
+        return (
             f"STDP Enabled: {self.stdp} \n"
             + f"STDP Time Steps: {self.stdp_time_steps} \n"
-            + f"STDP A positive: {self.stdp_Apos} \n"
-            + f"STDP A negative: {self.stdp_Aneg}"
+            + f"STDP A positive: {self._stdp_Apos} \n"
+            + f"STDP A negative: {self._stdp_Aneg}"
         )
+
+    def __repr__(self):
 
         # Input Spikes
         times = []
         nids = []
         values = []
+
+        num_neurons_str = f"Number of neurons: {self.num_neurons}"
+        num_synapses_str = f"Number of synapses: {self.num_synapses}"
 
         for time in self.input_spikes:
             for nid, value in zip(self.input_spikes[time]["nids"], self.input_spikes[time]["values"]):
@@ -249,13 +276,13 @@ class NeuromorphicModel:
         return (
             num_neurons_str + "\n" + num_synapses_str + "\n"
             "\nNeuron Info: \n"
-            + neuron_df.to_string(index=False)
+            + self.neuron_df.to_string(index=False)
             + "\n"
             + "\nSynapse Info: \n"
-            + synapse_df.to_string(index=False)
+            + self.synapse_df.to_string(index=False)
             + "\n"
             + "\nSTDP Info: \n"
-            + stdp_info
+            + self.stdp_info
             + "\n"
             + "\nInput Spikes: \n"
             + input_spikes_df.to_string(index=False)
@@ -390,7 +417,7 @@ class NeuromorphicModel:
             self.num_synapses += 1
 
         else:
-            for d in range(int(delay) - 1):
+            for _d in range(int(delay) - 1):
                 temp_id = self.create_neuron()
                 self.create_synapse(pre_id, temp_id)
                 pre_id = temp_id
@@ -443,11 +470,37 @@ class NeuromorphicModel:
             self.input_spikes[time]["nids"] = [neuron_id]
             self.input_spikes[time]["values"] = [value]
 
+    @property
+    def apos(self):
+        return self._stdp_Apos
+
+    @apos.setter
+    def apos(self, value):
+        value = np.asarray(value, np.float64)
+        if len(value) != len(self._stdp_Aneg):
+            n = max(len(value), len(self._stdp_Aneg))
+            self._stdp_Aneg = resize_vec(self._stdp_Aneg, n)
+            value = resize_vec(value, n)
+        self._stdp_Apos = value
+
+    @property
+    def aneg(self):
+        return self._stdp_Aneg
+
+    @aneg.setter
+    def aneg(self, value):
+        value = np.asarray(value, np.float64)
+        if len(value) != len(self._stdp_Apos):
+            n = max(len(value), len(self._stdp_Apos))
+            self._stdp_Apos = resize_vec(self._stdp_Apos, n)
+            value = resize_vec(value, n)
+        self._stdp_Aneg = value
+
     def stdp_setup(
         self,
         time_steps: int = 3,
-        Apos: list = [1.0, 0.5, 0.25],
-        Aneg: list = [1.0, 0.5, 0.25],
+        Apos: list | None = None,
+        Aneg: list | None = None,
         positive_update: bool = True,
         negative_update: bool = True,
     ) -> None:
@@ -486,11 +539,17 @@ class NeuromorphicModel:
         if not isinstance(time_steps, int):
             raise TypeError("time_steps should be int")
 
+        if Apos is None and Aneg is None:
+            Apos = [1.0, 0.5, 0.25]
+            Aneg = [1.0, 0.5, 0.25]
+
         if not isinstance(Apos, list):
             raise TypeError("Apos should be a list")
+        Apos: list
 
         if not isinstance(Aneg, list):
             raise TypeError("Aneg should be a list")
+        Aneg: list
 
         if not isinstance(positive_update, bool):
             raise TypeError("positive_update must be a bool")
@@ -503,10 +562,12 @@ class NeuromorphicModel:
             raise ValueError("time_steps should be greater than zero")
 
         if positive_update and len(Apos) != time_steps:
-            raise ValueError(f"Length of Apos should be {time_steps}")
+            msg = f"Length of Apos should be {time_steps}"
+            raise ValueError(msg)
 
         if negative_update and len(Aneg) != time_steps:
-            raise ValueError(f"Length of Aneg should be {time_steps}")
+            msg = f"Length of Aneg should be {time_steps}"
+            raise ValueError(msg)
 
         if positive_update and not all([isinstance(x, (int, float)) for x in Apos]):
             raise ValueError("All elements in Apos should be int or float")
@@ -526,9 +587,8 @@ class NeuromorphicModel:
 
         # Collect STDP parameters
         self.stdp = True
-        self.stdp_time_steps = time_steps
-        self.stdp_Apos = Apos
-        self.stdp_Aneg = Aneg
+        self._stdp_Apos = Apos
+        self._stdp_Aneg = Aneg
         self.stdp_positive_update = positive_update
         self.stdp_negative_update = negative_update
 
@@ -536,12 +596,13 @@ class NeuromorphicModel:
         """Setup the neuromorphic model for simulation"""
 
         # Create numpy arrays for neuron state variables
-        self._neuron_thresholds = np.array(self.neuron_thresholds, np.float64)
-        self._neuron_leaks = np.array(self.neuron_leaks, np.float64)
-        self._neuron_reset_states = np.array(self.neuron_reset_states, np.float64)
-        self._neuron_refractory_periods_original = np.array(self.neuron_refractory_periods, np.float64)
+        self._neuron_thresholds = np.asarray(self.neuron_thresholds, np.float64)
+        self._neuron_leaks = np.asarray(self.neuron_leaks, np.float64)
+        self._neuron_reset_states = np.asarray(self.neuron_reset_states, np.float64)
+        self._neuron_refractory_periods_original = np.asarray(self.neuron_refractory_periods, np.float64)
+        self._internal_states = np.asarray(self.neuron_reset_states, np.float64)
+
         self._neuron_refractory_periods = np.zeros(self.num_neurons, np.float64)
-        self._internal_states = np.array(self.neuron_reset_states, np.float64)
         self._spikes = np.zeros(self.num_neurons, np.float64)
 
         # Create numpy arrays for synapse state variables
@@ -552,6 +613,9 @@ class NeuromorphicModel:
         if self.stdp:
             self._stdp_enabled_synapses = np.zeros((self.num_neurons, self.num_neurons), np.int64)
             self._stdp_enabled_synapses[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.enable_stdp
+
+            self._stdp_Apos = np.asarray(self._stdp_Apos, np.float64)
+            self._stdp_Aneg = np.asarray(self._stdp_Aneg, np.float64)
 
         # Create numpy array for input spikes
         self._input_spikes = np.zeros((1, self.num_neurons), np.float64)
@@ -606,8 +670,6 @@ class NeuromorphicModel:
         else:
             self.simulate_cpu(time_steps, callback)
 
-
-
     def simulate_cpu_jit(self, time_steps: int = 1000, callback=None) -> None:
         # print("Using CPU with Numba JIT optimizations")
         max_timestep = max(list(self.input_spikes.keys()) + [time_steps]) + 1
@@ -618,9 +680,6 @@ class NeuromorphicModel:
 
         self._output_spikes = np.zeros((time_steps, len(self._internal_states)), np.float64)
 
-        self.stdp_Apos = np.asarray(self.stdp_Apos, np.float64) if self.stdp_positive_update else np.zeros(1)
-        self.stdp_Aneg = np.asarray(self.stdp_Aneg, np.float64) if self.stdp_negative_update else np.zeros(1)
-
         for tick in range(time_steps):
             if callback is not None:
                 if callable(callback):
@@ -629,7 +688,6 @@ class NeuromorphicModel:
             lif_jit(
                 tick,
                 self._input_spikes,
-                self._output_spikes,  # modified in-place
                 self._spikes,
                 self._internal_states,  # modified in-place
                 self._neuron_thresholds,
@@ -640,18 +698,18 @@ class NeuromorphicModel:
                 self._weights,
             )
 
+            self.spike_train.append(self._spikes)
+
             if self.stdp:
                 stdp_update_jit(
                     tick,
                     self.stdp_time_steps,
-                    self._output_spikes,
+                    self._spikes,
                     self._weights,
-                    self.stdp_Apos,
-                    self.stdp_Aneg,
+                    self.apos,
+                    self.aneg,
                     self._stdp_enabled_synapses,
                 )
-
-        self.spike_train.extend(self._output_spikes)
 
         # Update weights if STDP was enabled
         if self.stdp:
@@ -724,12 +782,12 @@ class NeuromorphicModel:
 
                 if self.stdp_positive_update:
                     self._weights += (
-                        (update_synapses.T * self.stdp_Apos[0:t][::-1]).T
+                        (update_synapses.T * self._stdp_Apos[0:t][::-1]).T
                     ).sum(axis=0) * self._stdp_enabled_synapses
 
                 if self.stdp_negative_update:
                     self._weights += (
-                        ((1 - update_synapses).T * self.stdp_Aneg[0:t][::-1]).T
+                        ((1 - update_synapses).T * self._stdp_Aneg[0:t][::-1]).T
                     ).sum(axis=0) * self._stdp_enabled_synapses
 
         # Update weights if STDP was enabled
@@ -759,8 +817,8 @@ class NeuromorphicModel:
 
         self._output_spikes = np.zeros((time_steps, len(self._internal_states)), np.float64)
 
-        self.stdp_Apos = np.asarray(self.stdp_Apos, np.float64) if self.stdp_positive_update else np.zeros(1)
-        self.stdp_Aneg = np.asarray(self.stdp_Aneg, np.float64) if self.stdp_negative_update else np.zeros(1)
+        # self.stdp_Apos = np.asarray(self._stdp_Apos, np.float64) if self.stdp_positive_update else np.zeros(1)
+        # self.stdp_Aneg = np.asarray(self._stdp_Aneg, np.float64) if self.stdp_negative_update else np.zeros(1)
 
         post_synapse = cuda.to_device(np.zeros(self.num_neurons, np.float64))
         output_spikes = cuda.to_device(self._output_spikes[-1].astype(np.int8))
@@ -811,7 +869,7 @@ class NeuromorphicModel:
                 for i in range(min(tick, self.stdp_time_steps)):
                     old_spikes = cuda.to_device(self._output_spikes[tick - i - 1].astype(np.int8))
                     gpu.stdp_update[m_blocks, m_tpb](weights, old_spikes, output_spikes,
-                                    stdp_enabled, self.stdp_Apos[i], self.stdp_Aneg[i])
+                                    stdp_enabled, self._stdp_Apos[i], self._stdp_Aneg[i])
 
         self.spike_train.extend(self._output_spikes)
         self._weights = weights.copy_to_host()
