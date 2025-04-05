@@ -44,6 +44,13 @@ FEATURE REQUESTS:
 fl64 = np.float64
 
 
+def is_intlike(x):
+    if isinstance(x, int):
+        return True
+    else:
+        return x == int(x)
+
+
 # @jit(nopython=True)
 def lif_jit(
     tick: int,
@@ -333,7 +340,7 @@ class NeuromorphicModel:
         refractory_period: int = 0,
         refractory_state: int = 0,
         initial_state: float = 0.0,
-    ) -> int:
+    ) -> Neuron:
         """
         Create a neuron in the neuromorphic model.
 
@@ -404,7 +411,7 @@ class NeuromorphicModel:
         weight: float = 1.0,
         delay: int = 1,
         stdp_enabled: bool = False
-    ) -> None:
+    ) -> Synapse:
         """Creates a synapse in the neuromorphic model from a pre-synaptic neuron to a post-synaptic neuron with a given set of synaptic parameters (weight, delay and enable_stdp)
 
         Parameters
@@ -445,20 +452,20 @@ class NeuromorphicModel:
         if isinstance(post_id, Neuron):
             post_id = post_id.idx
 
-        if not isinstance(pre_id, int):
+        if not isinstance(pre_id, (int, float)) or not is_intlike(pre_id):
             raise TypeError("pre_id must be int")
+        pre_id = int(pre_id)
 
-        if not isinstance(post_id, int):
+        if not isinstance(post_id, (int, float)) or not is_intlike(post_id):
             raise TypeError("post_id must be int")
+        post_id = int(post_id)
 
         if not isinstance(weight, (int, float)):
             raise TypeError("weight must be a float")
 
-        if not isinstance(delay, int):
+        if not isinstance(delay, (int, float)) or not is_intlike(delay):
             raise TypeError("delay must be an integer")
-
-        if not isinstance(stdp_enabled, bool):
-            raise TypeError("stdp_enabled must be a bool")
+        delay = int(delay)
 
         # Value errors
         if pre_id < 0:
@@ -517,11 +524,13 @@ class NeuromorphicModel:
         """
 
         # Type errors
-        if not isinstance(time, int):
+        if not isinstance(time, (int, float)) or not is_intlike(time):
             raise TypeError("time must be int")
+        time = int(time)
 
-        if not isinstance(neuron_id, int):
+        if not isinstance(neuron_id, (int, float)) or not is_intlike(time):
             raise TypeError("neuron_id must be int")
+        time = int(time)
 
         if not isinstance(value, (int, float)):
             raise TypeError("value must be int or float")
@@ -618,8 +627,9 @@ class NeuromorphicModel:
         """
 
         # Type errors
-        if not isinstance(time_steps, int):
+        if not isinstance(time_steps, (int, float)) or not is_intlike(time_steps):
             raise TypeError("time_steps should be int")
+        time_steps = int(time_steps)
 
         if Apos is None and Aneg is None:
             Apos = [1.0, 0.5, 0.25]
