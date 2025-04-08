@@ -1,7 +1,10 @@
 import numpy as np
 import pandas as pd
-import ctypes
+# import ctypes
 import os
+# import multiprocessing as mp
+import subprocess
+# import mmap
 
 
 """
@@ -9,8 +12,10 @@ import os
 TODO:
 
 1. create_neurons() 
-2. create_synapses() 
-3. Tutorials: one neuron, two neurons 
+2. create_synapses()
+3. create_neurons_from_file()
+4. create_synapses_from_file() 
+5. Tutorials: one neuron, two neurons 
 
 """
 
@@ -23,7 +28,6 @@ FEATURE REQUESTS:
 1. Visualize spike raster
 2. Monitor STDP synapses
 3. Reset neuromorphic model
-4. Count number of spikes
 
 """
 
@@ -76,7 +80,7 @@ class NeuromorphicModel:
 	"""
 
 
-	def __init__(self, backend="cpu"):
+	def __init__(self, backend="cpu", num_mpi_ranks=1, dtype=32):
 		""" Initialize the neuromorphic model
 
 		Args:
@@ -98,6 +102,9 @@ class NeuromorphicModel:
 		# Value errors
 		if backend not in {"cpu", "frontier"}:
 			raise ValueError("backend must be either 'cpu', or 'frontier'")
+
+		if dtype not in {32, 64}:
+			raise ValueError("dtype must be 32 or 64")
 
 
 		# Neuron parameters
@@ -131,33 +138,22 @@ class NeuromorphicModel:
 
 		# Hardware backend parameters
 		self.backend = backend
-
-		# print(f"[Python Source] Backend is {backend}")
+		self.num_mpi_ranks = num_mpi_ranks
+		self.fifo_python = None 
+		self.fifo_c = None
+		self.current_directory = None
 
 		if backend == "frontier":
+			self._setup_frontier_communication()
 
-			print("This functionality is a work in progress...")
-			
-			# print(os.system("pwd"))
+		if dtype == 64:
+			self.dtype_int = np.int64
+			self.dtype_float = np.float64
+		else:
+			self.dtype_int = np.int32
+			self.dtype_float = np.float32
 
-			# # Compile frontier.c program as a shared library
-			# self.c_file_path = "../superneuromat/frontier.c"
-			# self.executable_name = "shared_library_frontier.so"
-			# self.compile_command = f"gcc -shared -o {self.executable_name} {self.c_file_path}"
-
-			# print("[Python Source] Compiling C program")
-
-			# status = os.system(self.compile_command)
-
-			# if status == 0:
-			# 	print("[Python Source] Successfully compiled C program")
-			# else:
-			# 	print("[Python Source] C program compilation unsuccessful")
-
-
-			# # Load the shared library
-			# self.c_frontier_library = ctypes.CDLL("./shared_library_frontier.so")
-
+		# self.shared_memory_name = None
 
 		# Simulation parameters
 		self.num_spikes = 0
@@ -451,7 +447,7 @@ class NeuromorphicModel:
 		negative_update: bool=True
 	) -> None:
 
-		""" Setup the Spike-Time-Dependent Plasticity (STDP) parameters
+		""" Choose the appropriate STDP setup function based on backend
 
 		Args:
 			time_steps (int): Number of time steps over which STDP learning occurs (default: 3)
@@ -527,42 +523,32 @@ class NeuromorphicModel:
 			raise RuntimeError("STDP is not enabled on any synapse, might want to skip stdp_setup()")
 
 
-		# Collect STDP parameters
+		# Set STDP flag
 		self.stdp = True 
-		self.stdp_time_steps = time_steps
-		self.stdp_Apos = Apos 
-		self.stdp_Aneg = Aneg 
-		self.stdp_positive_update = positive_update
-		self.stdp_negative_update = negative_update
+
+
+		# Choose the appropriate STDP setup function based on backend
+		self._stdp_setup_cpu(time_steps, Apos, Aneg, positive_update, negative_update)
+
+		if self.backend == "frontier":
+			self._stdp_setup_frontier()
 
 
 
 
 	def setup(self):
-		""" Setup the neuromorphic model for simulation
+		""" Choose the appropriate setup function based on backend
 
 		"""
 
-		# Create numpy arrays for neuron state variables
-		self._neuron_thresholds = np.array(self.neuron_thresholds)
-		self._neuron_leaks = np.array(self.neuron_leaks)
-		self._neuron_reset_states = np.array(self.neuron_reset_states)
-		self._neuron_refractory_periods_original = np.array(self.neuron_refractory_periods)
-		self._neuron_refractory_periods = np.zeros(self.num_neurons)
-		self._internal_states = np.array(self.neuron_reset_states)
-		self._spikes = np.zeros(self.num_neurons)
-		
-		# Create numpy arrays for synapse state variables
-		self._weights = np.zeros((self.num_neurons, self.num_neurons))
-		self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.synaptic_weights
+		if self.backend == "cpu":
+			self._setup_cpu()
 
-		# Create numpy arrays for STDP state variables
-		if self.stdp:
-			self._stdp_enabled_synapses = np.zeros((self.num_neurons, self.num_neurons))
-			self._stdp_enabled_synapses[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.enable_stdp
+		elif self.backend == "frontier":
+			self._setup_frontier()
 
-		# Create numpy array for input spikes state variable
-		self._input_spikes = np.zeros(self.num_neurons)
+		else:
+			raise RuntimeError(f"Backend {self.backend} not supported currently, only backends supported are 'cpu' and 'frontier'")
 
 
 
@@ -621,8 +607,71 @@ class NeuromorphicModel:
 
 
 
+	def _stdp_setup_cpu(	
+		self, 
+		time_steps: int=3, 
+		Apos: list=[1.0, 0.5, 0.25], 
+		Aneg: list=[1.0, 0.5, 0.25], 
+		positive_update: bool=True,
+		negative_update: bool=True
+	) -> None:
+
+		""" Setup the Spike-Time-Dependent Plasticity (STDP) parameters on CPU backend
+
+		Args:
+			time_steps (int): Number of time steps over which STDP learning occurs (default: 3)
+			Apos (list): List of parameters for excitatory STDP updates (default: [1.0, 0.5, 0.25]); number of elements in the list must be equal to time_steps
+			Aneg (list): List of parameters for inhibitory STDP updates (default: [1.0, 0.5, 0.25]); number of elements in the list must be equal to time_steps
+			positive_update (bool): Boolean parameter indicating whether excitatory STDP update should be enabled
+			negative_update (bool): Boolean parameter indicating whether inhibitory STDP update should be enabled
+
+		"""
+
+		# Collect STDP parameters
+		self.stdp_time_steps = time_steps
+		self.stdp_Apos = Apos 
+		self.stdp_Aneg = Aneg 
+		self.stdp_positive_update = positive_update
+		self.stdp_negative_update = negative_update
+
+
+
+	def _setup_cpu(self):
+		""" Setup the neuromorphic model for simulation on CPU backend
+
+		"""
+
+		# Create numpy arrays for neuron state variables
+		self._neuron_thresholds = np.array(self.neuron_thresholds)
+		self._neuron_leaks = np.array(self.neuron_leaks)
+		self._neuron_reset_states = np.array(self.neuron_reset_states)
+		self._neuron_refractory_periods_original = np.array(self.neuron_refractory_periods)
+		self._neuron_refractory_periods = np.zeros(self.num_neurons)
+		self._internal_states = np.array(self.neuron_reset_states)
+		self._spikes = np.zeros(self.num_neurons)
+		
+		# Create numpy arrays for synapse state variables
+		self._weights = np.zeros((self.num_neurons, self.num_neurons))
+		self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.synaptic_weights
+
+		# Create numpy arrays for STDP state variables
+		if self.stdp:
+			self._stdp_enabled_synapses = np.zeros((self.num_neurons, self.num_neurons))
+			self._stdp_enabled_synapses[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.enable_stdp
+
+		# Create numpy array for input spikes state variable
+		self._input_spikes = np.zeros(self.num_neurons)
+
+
+
+
 	def _simulate_cpu(self, time_steps: int=1000):
-		""" Simulates the neuromorphic SNN on CPUs
+		""" Simulates the neuromorphic SNN on CPU backend
+
+		Args:
+			time_steps (int): Number of time steps for which the neuromorphic circuit is to be simulated
+			backend (string): Backend is either cpu or frontier
+
 		"""
 
 		# Simulate
@@ -698,21 +747,234 @@ class NeuromorphicModel:
 
 
 
+	def _setup_frontier_communication(self):
+		""" Setup the communication 
+		"""
+
+		# Current directory
+		self.current_directory = os.path.dirname(os.path.abspath(__file__))
+
+		
+		# Define the FIFO path
+		self.fifo_python = self.current_directory + "/fifo_python"
+		self.fifo_c = self.current_directory + "/fifo_c"
+
+		
+		# Compile and run C program
+		compile_command = ["mpicc", "-Wall", self.current_directory + "/frontier.c", "-o", self.current_directory + "/frontier.o"]
+		run_command = ["mpiexec", "-np", str(self.num_mpi_ranks), self.current_directory + "/frontier.o", self.fifo_python, self.fifo_c]
+
+		subprocess.run(compile_command)
+		print("[Python _setup_frontier_communication] frontier.c compiled")
+
+		subprocess.Popen(run_command)
+		print("[Python _setup_frontier_communication] frontier.o execution started")
+		print()
+
+
+
+	def _stdp_setup_frontier(self):
+
+		""" Setup the Spike-Time-Dependent Plasticity (STDP) parameters for Frontier backend
+
+		"""
+
+		print("[Python _stdp_setup_frontier] Entered the _stdp_setup_frontier function")
+
+
+		if not os.path.exists(self.fifo_python):
+			os.mkfifo(self.fifo_python)
+
+		if not os.path.exists(self.fifo_c):
+			os.mkfifo(self.fifo_c)
+
+		print("[Python _stdp_setup_frontier] fifo_python and fifo_c created")
+
+		# Send data over the pipe
+		with open(self.fifo_python, "wb") as fp:
+			fp.write(self.dtype_int(self.stdp_time_steps))
+			print("[Python _stdp_setup_frontier] Wrote stdp_time_steps to fifo_python")
+			fp.write(np.array(self.stdp_Apos).astype(self.dtype_float))
+			print("[Python _stdp_setup_frontier] Wrote stdp_Apos to fifo_python")
+			fp.write(np.array(self.stdp_Aneg).astype(self.dtype_float))
+			print("[Python _stdp_setup_frontier] Wrote stdp_Aneg to fifo_python")
+			fp.write(self.dtype_int(self.stdp_positive_update))
+			fp.write(self.dtype_int(self.stdp_negative_update))
+			
+			# with open(self.fifo_c, "rb") as fc:
+			# 	data = fc.read()
+
+		print("[Python _stdp_setup_frontier] STDP data sent")
+
+
+		# Initialize the data
+		# first_data = 1.0
+		# first_data = [1.0, 2.0, 3.0, 4.0, 5.0]
+		
+		# Setup the C shared library
+		# c_executable_path = os.path.dirname(os.path.abspath(__file__)) + "/frontier.o"
+		# lib = ctypes.CDLL(lib_path)
+
+		# Setup the ctypes datatypes
+		# c_float_array_type = ctypes.c_float * time_steps
+
+		# Setup the data
+		# time_steps = ctypes.c_int(time_steps)
+		# Apos = c_float_array_type(*Apos)
+		# Aneg = c_float_array_type(*Aneg)
+		# positive_update = ctypes.c_int(positive_update)
+		# negative_update = ctypes.c_int(negative_update)
+
+		# Setup the C function
+		# c_stdp_setup_frontier = c_lib.stdp_setup_frontier
+		# c_stdp_setup_frontier.argtypes = [ctypes.c_int, c_float_array_type, c_float_array_type, ctypes.c_bool, ctypes.c_bool]
+		# c_stdp_setup_frontier.restype = ctypes.c_int
+
+		# lib.stdp_setup_frontier.argtypes = [ctypes.c_int, c_float_array_type, c_float_array_type, ctypes.c_bool, ctypes.c_bool]
+		# lib.stdp_setup_frontier.restype = ctypes.c_int
+
+		# Call the function
+		# val = lib.stdp_setup_frontier(time_steps, Apos, Aneg, positive_update, negative_update)
+
+		# Call the function
+		# c_lib.stdp_setup_frontier(ctypes.c_float_p(first_data))
+
+		# print(f"[Python _stdp_setup_frontier] Function returned with value {val}")
+
+
+		# Shared memory will contain: 
+		# 5 neuron properties: number of neurons, thresholds, leaks, reset states, and refractory periods, 
+		# 4 synapse properties: weights, delays, and stdp enabled, and
+		# 5 STDP properties: STDP time steps, Apos, Aneg, positive update, and negative update
+		# shared_memory_size = 0
+		# shared_memory_size += size(np.int32) + size(self.dtype) * self.num_neurons * 4
+		# shared_memory_size += size(np.int32) + size(self.dtype) * self.num_synapses * 3 
+		# shared_memory_size += size(np.int32) * 3 + size(self.dtype) * self.stdp_time_steps * 2
+
+
+		# process = subprocess.Popen(current_directory + "reader", stdin=subprocess.PIPE, text=True)
+		# process.communicate()
+
+
+
+
+
+
+
+	def _setup_frontier(self):
+		""" Setup the neuromorphic model for simulation on Frontier backend
+
+		"""
+
+		print("[Python _setup_frontier] Entered the _setup_frontier function")
+
+
+		# Make fifos
+		if not os.path.exists(self.fifo_python):
+			os.mkfifo(self.fifo_python)
+
+		# if not os.path.exists(self.fifo_c):
+		# 	os.mkfifo(self.fifo_c)
+
+		print("[Python _setup_frontier] fifo_python created")
+
+
+		# Send neuron and synapse data over the pipe
+		with open(self.fifo_python, "wb") as fp:
+			# Neuron parameters: num_neurons, neuron_thresholds, neuron_leaks, neuron_reset_states, and neuron_refractory_periods
+			fp.write(self.dtype_int(self.num_neurons))
+			fp.write(np.array(self.neuron_thresholds).astype(self.dtype_float))
+			fp.write(np.array(self.neuron_leaks).astype(self.dtype_float))
+			fp.write(np.array(self.neuron_reset_states).astype(self.dtype_float))
+			fp.write(np.array(self.neuron_refractory_periods).astype(self.dtype_int))
+
+			# Synapse parameters: num_synapses, pre_synaptic_neuron_ids, post_synaptic_neuron_ids, synaptic_weights, stdp_enabled
+			fp.write(self.dtype_int(self.num_synapses))
+			fp.write(np.array(self.pre_synaptic_neuron_ids).astype(self.dtype_int))
+			fp.write(np.array(self.post_synaptic_neuron_ids).astype(self.dtype_int))
+			fp.write(np.array(self.synaptic_weights).astype(self.dtype_float))
+			fp.write(np.array(self.enable_stdp).astype(self.dtype_int))
+
+
+		print("[Python _setup_frontier] Neuron and synapse data sent")
+
+		# with open(self.fifo_c, "rb") as fc:
+		# 	data = fc.readline()
+		# 	print(f"Data received from C: {str(data)}")
+
+
+
+
+		# Initialize the data
+		# second_data = 5.0
+		# second_data = [6.0, 7.0, 8.0, 9.0, 10.0]
+
+		# # Setup the C shared library
+		# c_lib_path = os.path.dirname(os.path.abspath(__file__)) + "/frontier.so"
+		# c_lib = ctypes.CDLL(c_lib_path)
+
+		# # Setup the function
+		# c_setup_frontier = c_lib.setup_frontier
+		# c_setup_frontier.argtypes = [ctypes.c_float]
+		# c_setup_frontier.restype = ctypes.c_int
+
+
+		# Setup the C shared library
+		# lib_path = os.path.dirname(os.path.abspath(__file__)) + "/frontier.o"
+		# lib = ctypes.CDLL(lib_path)
+
+		# # Setup the ctypes datatypes and data
+		# c_float_array_type = ctypes.c_float * len(second_data)
+
+		# # Setup the C function
+		# c_setup_frontier = lib.setup_frontier
+		# c_setup_frontier.argtypes = [ctypes.c_int, c_float_array_type]
+		# c_setup_frontier.restype = ctypes.c_int
+
+		# Call the functions
+		# lib.initialize_mpi();
+		# val = c_setup_frontier(len(second_data), c_float_array_type(*second_data))
+
+		# num_processes = 4
+		
+		# print(f"[Python _setup_frontier] Function returned with value {result}")
+	
+
+
 
 	def _simulate_frontier(self, time_steps):
 		""" Simulates the neuromorphic SNN on the Frontier supercomputer
+		
+		Args:
+			time_steps (int): Number of time steps for which the neuromorphic circuit is to be simulated
+			backend (string): Backend is either cpu or frontier
+
 		"""
 
-		# Define argument and return types
-		self.c_frontier_library.argtypes = [ctypes.c_int]
-		self.c_frontier_library.restype = ctypes.c_int
+		print("[Python _simulate_frontier] Entered the _simulate_frontier function")
 
+		# Setup the C shared library
+		# c_lib_path = os.path.dirname(os.path.abspath(__file__)) + "/frontier.so"
+		# c_lib = ctypes.CDLL(c_lib_path)
 
-		# Call the C function
-		data = 10
-		result = self.c_frontier_library.simulate_frontier(data)
+		# Setup the ctypes datatypes and data
+		# c_float_pointer_type = ctypes.POINTER(ctypes.c_float)
 
-		print(f"[Python Source] Result from C: {result}")
+		# Setup the function
+		# c_simulate_frontier = c_lib.simulate_frontier
+		# c_simulate_frontier.argtypes = []
+		# c_simulate_frontier.restype = c_float_pointer_type
+
+		# Call the function
+		# val = c_simulate_frontier()
+		# val = np.frombuffer(val, dtype=np.float32)
+
+		# if val:
+		# 	val = [val[i] for i in range(5)]
+		# 	print(f"[Python _simulate_frontier] Function returned {val}")
+		# else:
+		# 	print("Function did not return anything good")
+
 
 
 

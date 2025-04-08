@@ -123,10 +123,10 @@ class StdpTest(unittest.TestCase):
 		n4 = model.create_neuron()
 
 		model.create_synapse(n0, n0, weight=-1.0, stdp_enabled=True)
-		model.create_synapse(n0, n1, weight=0.0, stdp_enabled=True)
-		model.create_synapse(n0, n2, weight=0.0, stdp_enabled=True)
-		model.create_synapse(n0, n3, weight=0.0, stdp_enabled=True)
-		model.create_synapse(n0, n4, weight=0.0, stdp_enabled=True)
+		model.create_synapse(n0, n1, weight=0.0001, stdp_enabled=True)
+		model.create_synapse(n0, n2, weight=0.0001, stdp_enabled=True)
+		model.create_synapse(n0, n3, weight=0.0001, stdp_enabled=True)
+		model.create_synapse(n0, n4, weight=0.0001, stdp_enabled=True)
 
 		model.add_spike(0, n0, 1.0)
 		model.add_spike(1, n0, 1.0)
@@ -146,6 +146,52 @@ class StdpTest(unittest.TestCase):
 
 		print("Synaptic weights after:")
 		print(model._weights)
+
+		print(model._internal_states)
+
+		model.print_spike_train()
+		print()
+
+
+
+	def test_stdp_3(self):
+		"""
+		"""
+
+		model = NeuromorphicModel()
+
+		n0 = model.create_neuron()
+		n1 = model.create_neuron()
+		n2 = model.create_neuron()
+		n3 = model.create_neuron()
+		n4 = model.create_neuron()
+
+		model.create_synapse(n0, n0, weight=-1.0, stdp_enabled=True)
+		model.create_synapse(n0, n1, weight=0.0001, stdp_enabled=True)
+		model.create_synapse(n0, n2, weight=0.0001, stdp_enabled=True)
+		model.create_synapse(n0, n3, weight=0.0001, stdp_enabled=True)
+		model.create_synapse(n0, n4, weight=0.0001, stdp_enabled=True)
+
+		model.add_spike(2, n0, 1.0)
+		model.add_spike(3, n0, 1.0)
+		model.add_spike(3, n1, 1.0)
+		model.add_spike(4, n2, 1.0)
+		model.add_spike(5, n3, 1.0)
+		model.add_spike(6, n4, 1.0)
+
+		model.stdp_setup(time_steps=2, Apos=[1.0, 0.5], Aneg=[0.01, 0.005], positive_update=True, negative_update=True)
+
+		model.setup()
+		
+		print("Synaptic weights before:")
+		print(model._weights)
+
+		model.simulate(8)
+
+		print("Synaptic weights after:")
+		print(model._weights)
+
+		print(model._internal_states)
 
 		model.print_spike_train()
 		print()
