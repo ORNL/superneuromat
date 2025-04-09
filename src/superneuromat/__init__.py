@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.sparse import csc_array
 import pandas as pd
 # import ctypes
 import os
@@ -138,6 +139,7 @@ class NeuromorphicModel:
 
 		# Hardware backend parameters
 		self.backend = backend
+		self.sparse = "auto"
 		self.num_mpi_ranks = num_mpi_ranks
 		self.fifo_python = None 
 		self.fifo_c = None
@@ -536,11 +538,34 @@ class NeuromorphicModel:
 
 
 
-	def setup(self):
+	def setup(self, sparse="auto"):
 		""" Choose the appropriate setup function based on backend
+		
+		Args:
+			sparse (bool): If True, forces simulation to use sparse computations
+
+		Raises:
+			TypeError if:
+				1. sparse is not True or False
 
 		"""
 
+		# Type errors
+		if not (isinstance(sparse, bool) or (sparse == "auto")):
+			raise TypeError("sparse must be True, False, or 'auto'")
+
+		
+		# Set self.sparse
+		if sparse == "auto": 
+			if (self.num_neurons > 100) and (self.num_synapses < 0.1 * self.num_neurons**2):
+				self.sparse = True
+			else:
+				self.sparse = False
+		else:
+			self.sparse = sparse
+
+
+		# Choose appropriate setup function based on the backend
 		if self.backend == "cpu":
 			self._setup_cpu()
 
@@ -651,13 +676,19 @@ class NeuromorphicModel:
 		self._spikes = np.zeros(self.num_neurons)
 		
 		# Create numpy arrays for synapse state variables
-		self._weights = np.zeros((self.num_neurons, self.num_neurons))
-		self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.synaptic_weights
+		if self.sparse:
+			self._weights = csc_array((self.synaptic_weights, (self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids)), shape=[self.num_neurons, self.num_neurons])
+		else:
+			self._weights = np.zeros((self.num_neurons, self.num_neurons))
+			self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.synaptic_weights
 
 		# Create numpy arrays for STDP state variables
 		if self.stdp:
-			self._stdp_enabled_synapses = np.zeros((self.num_neurons, self.num_neurons))
-			self._stdp_enabled_synapses[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.enable_stdp
+			if self.sparse:
+				self._stdp_enabled_synapses = csc_array((self.enable_stdp, (self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids)), shape=[self.num_neurons, self.num_neurons])
+			else:
+				self._stdp_enabled_synapses = np.zeros((self.num_neurons, self.num_neurons))
+				self._stdp_enabled_synapses[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.enable_stdp
 
 		# Create numpy array for input spikes state variable
 		self._input_spikes = np.zeros(self.num_neurons)
@@ -676,6 +707,8 @@ class NeuromorphicModel:
 
 		# Simulate
 		for time_step in range(time_steps):
+			print(f"\n{time_step} Starting internal state: {self._internal_states}")
+
 			# Leak: internal state > reset state
 			indices = (self._internal_states > self._neuron_reset_states)
 			self._internal_states[indices] = np.maximum(self._internal_states[indices] - self._neuron_leaks[indices], self._neuron_reset_states[indices])
@@ -685,6 +718,7 @@ class NeuromorphicModel:
 			indices = (self._internal_states < self._neuron_reset_states)
 			self._internal_states[indices] = np.minimum(self._internal_states[indices] + self._neuron_leaks[indices], self._neuron_reset_states[indices])
 
+			print(f"{time_step} After leak internal state: {self._internal_states}")
 
 			# Zero out _input_spikes to prepare them for input spikes in current time step
 			self._input_spikes -= self._input_spikes 	
@@ -694,13 +728,22 @@ class NeuromorphicModel:
 			if time_step in self.input_spikes:
 				self._input_spikes[self.input_spikes[time_step]["nids"]] = self.input_spikes[time_step]["values"] 
 
+			print(f"{time_step} Input spikes: {self._input_spikes}")
+
 
 			# Internal state
+			vector = (self._weights.T @ self._spikes)
+			
+			print(f"{time_step} vector: {vector}")
+
 			self._internal_states = self._internal_states + self._input_spikes + (self._weights.T @ self._spikes)
+			
+			print(time_step, type(self._internal_states), self._internal_states)
 
 
 			# Compute spikes
 			self._spikes = np.greater(self._internal_states, self._neuron_thresholds).astype(int)
+			print(time_step, type(self._spikes), self._spikes)
 			
 
 			# Refractory period: Compute indices of neuron which are in their refractory period
@@ -733,6 +776,12 @@ class NeuromorphicModel:
 
 			if t > 0:
 				_update_synapses = np.outer(np.array(self.spike_train[-t-1:-1]), np.array(self.spike_train[-1])).reshape([-1, self.num_neurons, self.num_neurons])
+
+				# if self.sparse:
+				# 	_update_synapses = csc_array(np.outer(np.array(self.spike_train[-t-1:-1]), np.array(self.spike_train[-1])).reshape([-1, self.num_neurons, self.num_neurons]))
+				# else:
+				# 	_update_synapses = np.outer(np.array(self.spike_train[-t-1:-1]), np.array(self.spike_train[-1])).reshape([-1, self.num_neurons, self.num_neurons])
+
 
 				if self.stdp_positive_update:
 					self._weights += ((_update_synapses.T * self.stdp_Apos[0:t][::-1]).T).sum(axis=0) * self._stdp_enabled_synapses
