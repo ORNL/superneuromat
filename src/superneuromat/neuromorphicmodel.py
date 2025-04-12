@@ -2,7 +2,6 @@ import math
 import copy
 import warnings
 import numpy as np
-import pandas as pd
 from numba import jit, cuda
 from .accessor_classes import Neuron, Synapse, NeuronList, SynapseList
 
@@ -11,36 +10,10 @@ from typing import Any
 
 """
 
-TODO:
-
-1. Input spikes [DONE]
-2. Remove threshold and leak from the weight matrix? [DONE]
-3. Implement synaptic delays by adding proxy neurons [DONE, BUT IMPEDES PERFORMANCE]
-4. Have Neuron and Synapse classes? [NOPE - NOT EFFICIENT]
-5. Reset state [DONE]
-6. Spike monitoring [DONE]
-7. Leak should push towards zero regardless of positive or negative internal state [DONE]
-8. Refractory period [DONE]
-9. STDP (outer product) [DONE]
-10. Function arguments in a way that includes the data type [DONE]
-11. Type, value and runtime errors: Test thoroughly using unittest [DONE]
-12. Print/display function to list all variables, all neuron parameters and all synapse parameters [DONE]
-13. Docstrings everywhere [DONE]
-14. create_neurons()
-15. create_synapses()
-16. Tutorials: one neuron, two neurons
-17. Leak equations should not check for spikes [DONE]
-
-"""
-
-
-"""
-
 FEATURE REQUESTS:
 
 1. Visualize spike raster
 2. Monitor STDP synapses
-3. Reset neuromorphic model
 
 """
 
@@ -68,8 +41,8 @@ def lif_jit(
     weights,
 ):
     # CAUTION: This function has side-effects (not a pure function)
-    # prev_spikes and states are modified in-place
-    # ___________     ______
+    # spikes and states and refractory_periods are modified in-place
+    # ______     ______     __________________
     # DO NOT ASSIGN THESE VARIABLES WITHIN THIS FUNCTION or things will break
     # DO NOT states = something
 
@@ -88,7 +61,7 @@ def lif_jit(
     # Internal state (in-place)
     states += input_spikes[tick] + (weights.T @ spikes)
 
-    # Compute spikes (in-place) into prev_spikes (numba doesn't support keyword 'out')
+    # Compute spikes (in-place) into spikes (numba doesn't support keyword 'out')
     np.greater(states, thresholds, spikes)
 
     # Refractory period: Compute indices of neuron which are in their refractory period
@@ -105,9 +78,9 @@ def lif_jit(
     # Reset internal states (in-place)
     states[mask] = reset_states[mask]
 
-    spikes[:] = spikes
+    # spikes[:] = spikes
 
-    # states, prev_spikes were modified in-place
+    # states, spikes, refractory_periods were modified in-place
     # everything else is local
 
 
@@ -257,6 +230,7 @@ class NeuromorphicModel:
     @property
     def neuron_df(self):
         """Returns a DataFrame containing information about neurons."""
+        import pandas as pd
         return pd.DataFrame({
             "Neuron ID": list(range(self.num_neurons)),
             "Threshold": self.neuron_thresholds,
@@ -268,6 +242,7 @@ class NeuromorphicModel:
     @property
     def synapse_df(self):
         """Returns a DataFrame containing information about synapses."""
+        import pandas as pd
         return pd.DataFrame({
             "Pre Neuron ID": self.pre_synaptic_neuron_ids,
             "Post Neuron ID": self.post_synaptic_neuron_ids,
@@ -288,12 +263,20 @@ class NeuromorphicModel:
 
     @property
     def ispikes(self):
-        return np.asarray(self.spike_train, dtype=np.int8)
+        return np.asarray(self.spike_train, dtype=np.bool)
+
+    def neuron_spike_totals(self, time_index=None):
+        # TODO: make time_index reference global/model time, not just ispikes index, which may have been cleared
+        if time_index is None:
+            return np.sum(self.ispikes, axis=0)
+        else:
+            return np.sum(self.ispikes[time_index], axis=0)
 
     def __str__(self):
         return self.prettys()
 
     def prettys(self):
+        import pandas as pd
 
         # Input Spikes
         times = []
@@ -750,8 +733,8 @@ class NeuromorphicModel:
 
     def devec(self):
         # De-vectorize from numpy arrays to lists
-        self.neuron_states = self._internal_states.tolist()
-        self.neuron_refractory_periods_state = self._neuron_refractory_periods.tolist()
+        self.neuron_states: list[float] = self._internal_states.tolist()
+        self.neuron_refractory_periods_state: list[float] = self._neuron_refractory_periods.tolist()
 
         # Update weights if STDP was enabled
         if self._do_stdp:
@@ -828,8 +811,9 @@ class NeuromorphicModel:
         """
 
         # Type errors
-        if not isinstance(time_steps, int):
+        if not is_intlike(time_steps):
             raise TypeError("time_steps must be int")
+        time_steps = int(time_steps)
 
         # Value errors
         if time_steps <= 0:
