@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "superneuromat"
 version = "0.1.4"
 requires-python = ">=3.8"
-dependencies = ["numpy", "pandas"]
+dependencies = ["numpy"]
 authors = [
     {name="Prasanna Date", email="datepa@ornl.gov"},
     {name="Chathika Gunaratne"},
@@ -45,4 +45,14 @@ file = "LICENSE"
 [project.optional-dependencies]
 gpu = [
     "numba",
+]
+docs = [
+    "pydata-sphinx-theme~=0.16.1",
+    "sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinx-copybutton",
+    "sphinx-togglebutton",
+    "sphinx-design",
+    "numpydoc",
+    "myst-parser",
 ]
