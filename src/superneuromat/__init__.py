@@ -191,6 +191,8 @@ class NeuromorphicModel:
 		# STDP
 		stdp_info = f"STDP Enabled: {self.stdp} \n" + \
 					f"STDP Time Steps: {self.stdp_time_steps} \n" + \
+					f"STDP Positive Update: {self.stdp_positive_update} \n" + \
+					f"STDP Negative Update: {self.stdp_negative_update} \n" + \
 					f"STDP A positive: {self.stdp_Apos} \n" + \
 					f"STDP A negative: {self.stdp_Aneg}"
 
@@ -774,7 +776,8 @@ class NeuromorphicModel:
 			# STDP Operations
 			t = min(self.stdp_time_steps, len(self.spike_train)-1)
 
-			if t > 0:
+			if (self.stdp) and (t > 0):
+			# if t > self.stdp_time_steps:
 				_update_synapses = np.outer(np.array(self.spike_train[-t-1:-1]), np.array(self.spike_train[-1])).reshape([-1, self.num_neurons, self.num_neurons])
 
 				# if self.sparse:
@@ -787,8 +790,12 @@ class NeuromorphicModel:
 					self._weights += ((_update_synapses.T * self.stdp_Apos[0:t][::-1]).T).sum(axis=0) * self._stdp_enabled_synapses
 
 				if self.stdp_negative_update:
-					self._weights += (((1 - _update_synapses).T * self.stdp_Aneg[0:t][::-1]).T).sum(axis=0) * self._stdp_enabled_synapses
+					self._weights -= (((1 - _update_synapses).T * self.stdp_Aneg[0:t][::-1]).T).sum(axis=0) * self._stdp_enabled_synapses
 
+
+			print(f"[Tick {time_step}] Internal State: {self._internal_states}")
+			print(f"[Tick {time_step}] Spikes: {self._spikes}")
+			print(f"[Tick {time_step}] Weights: {self._weights}")
 
 		# Update weights if STDP was enabled
 		if self.stdp:
