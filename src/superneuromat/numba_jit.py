@@ -47,7 +47,7 @@ def lif_jit(
     refractory_periods[indices] -= 1
 
     # For spiking neurons, turn on refractory period
-    mask = spikes.astype(bool)
+    mask = spikes.astype(np.bool)
     refractory_periods[mask] = refractory_periods_original[mask]
 
     # Reset internal states (in-place)
