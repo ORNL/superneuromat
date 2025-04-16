@@ -171,29 +171,55 @@ class SparseTest(unittest.TestCase):
 
 		"""
 
-		t = 3
+		t = 3 # STDP time steps
+		n = 4 # Num neurons
+
+		Apos = [1, 0.5, 0.25]
+		Aneg = [0.1, 0.05, 0.025]
+
 		dtype_int = np.int32
 
 		spike_train = [	[1,0,1,0],
-						[0,1,0,0],
+						[0,1,1,0],
 						[0,0,0,1],
 						[1,0,0,0],
 						[0,0,1,0]
-		
 					  ]
 
 		# Create spike vector and (sparse) matrix
-		spike_vector = np.array(spike_train[-1], dtype=dtype_int)
-		spike_matrix = csc_array(spike_train[-t-1:-1], dtype=dtype_int)
+		# vector = np.array(spike_train[-1], dtype=dtype_int)
+		# sparse_matrix = csc_array(spike_train[-t-1:-1], dtype=dtype_int)
+		# dense_matrix = np.array(spike_train[-t-1:-1], dtype=dtype_int)
 
 
-		# Einsum for outer product
-		outer_product = np.outer(spike_matrix, spike_vector)
+		# # Einsum for outer product
+		# # sparse_outer = np.outer(sparse_matrix, vector)
+		# sparse_outer = np.einsum("ij,k->ijk", sparse_matrix.todense(), vector)
+		# # sparse_outer = (sparse_matrix.transpose() @ vector.reshape([-1,n])).transpose()
+		# dense_outer = np.outer(dense_matrix, vector).reshape([-1, n, n])
 
-		# Print spike vector and matrix
-		print(type(spike_vector[0]), type(spike_vector), spike_vector)
-		print(type(spike_matrix[0,0]), type(spike_matrix), spike_matrix)
-		print(type(outer_product[0,0]), type(outer_product), outer_product)
+		# # Print spike vector and matrix
+		# print(type(vector[0]), type(vector), vector)
+		# print(type(sparse_matrix[0,0]), type(sparse_matrix), sparse_matrix)
+		# print()
+
+		# print(sparse_matrix.shape)
+		# print(type(sparse_outer[0,0]), type(sparse_outer))
+		# print()
+		# print(sparse_outer)
+		# print()
+
+		# print(dense_matrix.shape, vector.shape, dense_outer.shape)
+		# print(dense_matrix)
+		# print()
+		# print(dense_outer)
+
+
+
+
+		Spre = csc_array(spike_train[-t-1:-1])
+		Snow = csc_array(spike_train[-1]*t)
+
 
 
 

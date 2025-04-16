@@ -67,7 +67,7 @@ class StdpTest(unittest.TestCase):
 		assert (model.synaptic_weights[0] == 1.0) 
 		assert (model.synaptic_weights[1] == 0.825) 
 
-		print("test_positive_update completed successfully")
+		print("test_negative_update completed successfully")
 
 
 
