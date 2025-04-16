@@ -2,10 +2,16 @@ import math
 import copy
 import warnings
 import numpy as np
-from numba import jit, cuda
 from .accessor_classes import Neuron, Synapse, NeuronList, SynapseList
 
 from typing import Any
+
+try:
+    import numba
+    from numba import cuda
+    from .numba_jit import lif_jit, stdp_update_jit
+except ImportError:
+    numba = None
 
 
 """
@@ -20,79 +26,37 @@ FEATURE REQUESTS:
 fl64 = np.float64
 
 
+def check_numba():
+    msg = """Numba is not installed. Please install Numba to use this feature.
+    You can install JIT support for SuperNeuroMAT with `pip install superneuromat[jit]`,
+    or install Numba manually with `pip install numba`.
+    """
+    global numba
+    if numba is None:
+        try:
+            import numba
+        except ImportError as err:
+            raise ImportError(msg) from err
+
+
+def check_gpu():
+    msg = """GPU support is not installed. Please install Numba to use this feature.
+    You can install JIT support for SuperNeuroMAT with `pip install superneuromat[gpu]`,
+    or see the install instructions for GPU support at https://ornl.github.io/superneuromat/guide/install.html#gpu-support.
+    """
+    global numba
+    if numba is None:
+        try:
+            from numba import gpu
+        except ImportError as err:
+            raise ImportError(msg) from err
+
+
 def is_intlike(x):
     if isinstance(x, int):
         return True
     else:
         return x == int(x)
-
-
-@jit(nopython=True)
-def lif_jit(
-    tick: int,
-    input_spikes,
-    spikes,
-    states,
-    thresholds,
-    leaks,
-    reset_states,
-    refractory_periods,
-    refractory_periods_original,
-    weights,
-):
-    # CAUTION: This function has side-effects (not a pure function)
-    # spikes and states and refractory_periods are modified in-place
-    # ______     ______     __________________
-    # DO NOT ASSIGN THESE VARIABLES WITHIN THIS FUNCTION or things will break
-    # DO NOT states = something
-
-    # Leak: internal state > reset state
-    indices = states > reset_states
-    states[indices] = np.maximum(
-        states[indices] - leaks[indices], reset_states[indices]
-    )
-
-    # Leak: internal state < reset state
-    indices = states < reset_states
-    states[indices] = np.minimum(
-        states[indices] + leaks[indices], reset_states[indices]
-    )
-
-    # Internal state (in-place)
-    states += input_spikes[tick] + (weights.T @ spikes)
-
-    # Compute spikes (in-place) into spikes (numba doesn't support keyword 'out')
-    np.greater(states, thresholds, spikes)
-
-    # Refractory period: Compute indices of neuron which are in their refractory period
-    indices = refractory_periods > 0
-
-    # For neurons in their refractory period, zero out their spikes and decrement refractory period by one
-    spikes[indices] = 0
-    refractory_periods[indices] -= 1
-
-    # For spiking neurons, turn on refractory period
-    mask = spikes.astype(np.bool)
-    refractory_periods[mask] = refractory_periods_original[mask]
-
-    # Reset internal states (in-place)
-    states[mask] = reset_states[mask]
-
-    # spikes[:] = spikes
-
-    # states, spikes, refractory_periods were modified in-place
-    # everything else is local
-
-
-@jit(nopython=True)
-def stdp_update_jit(tsteps, spike_train, weights_pointer, apos, aneg, stdp_enabled, do_pos, do_neg):
-    # STDP Operations
-    for i in range(tsteps):
-        update_synapses = np.outer(spike_train[~i - 1], spike_train[-1])
-        if do_pos:
-            weights_pointer += apos[i] * update_synapses * stdp_enabled
-        if do_neg:
-            weights_pointer += aneg[i] * (1 - update_synapses) * stdp_enabled
 
 
 def resize_vec(a, len, dtype=np.float64):
@@ -206,7 +170,7 @@ class NeuromorphicModel:
         self.neurons = NeuronList(self)
         self.synapses = SynapseList(self)
 
-        self.gpu = cuda.is_available()
+        self.gpu = numba and cuda.is_available()
         self._backend = None
         self.manual_setup = False
 
@@ -263,7 +227,7 @@ class NeuromorphicModel:
 
     @property
     def ispikes(self):
-        return np.asarray(self.spike_train, dtype=np.bool)
+        return np.asarray(self.spike_train, dtype=bool)
 
     def neuron_spike_totals(self, time_index=None):
         # TODO: make time_index reference global/model time, not just ispikes index, which may have been cleared
@@ -783,9 +747,9 @@ class NeuromorphicModel:
         score += self.num_neurons * 1
         score += time_steps * 100
 
-        if score > self.gpu_threshold and self.gpu:
+        if self.gpu and score > self.gpu_threshold:
             return 'gpu'
-        elif score > self.jit_threshold:
+        elif numba and score > self.jit_threshold:
             return 'jit'
         return 'cpu'
 
@@ -836,6 +800,7 @@ class NeuromorphicModel:
     def simulate_cpu_jit(self, time_steps: int = 1, callback=None) -> None:
         # print("Using CPU with Numba JIT optimizations")
         self._backend = 'jit'
+        check_numba()
         if not self.manual_setup:
             self._setup()
             self.setup_input_spikes(time_steps)
@@ -969,6 +934,7 @@ class NeuromorphicModel:
         """
         # print("Using CUDA GPU via Numba")
         self._backend = 'gpu'
+        check_gpu()
         from .gpu import cuda as gpu
         if self.disable_performance_warnings:
             gpu.disable_numba_performance_warnings()

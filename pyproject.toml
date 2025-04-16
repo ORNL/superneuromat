@@ -43,8 +43,13 @@ file = "LICENSE"
     Download = "https://pypi.org/project/ini2toml/#files"
 
 [project.optional-dependencies]
+jit = [
+    "numba~=0.61.0"
+]
 gpu = [
-    "numba",
+    "numba-cuda",
+    "numba~=0.61.0",
+    "numpy<2.2.0"
 ]
 docs = [
     "pydata-sphinx-theme~=0.16.1",
