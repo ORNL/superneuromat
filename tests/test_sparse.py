@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+from scipy.sparse import csc_array
 import time 
 
 import sys 
@@ -160,6 +161,41 @@ class SparseTest(unittest.TestCase):
 		end = time.time() 
 
 		print(f"Test 1 completed in {end - start} sec")
+
+
+
+
+
+	def test_sparse_5(self):
+		""" Test sparsity during STDP updates
+
+		"""
+
+		t = 3
+		dtype_int = np.int32
+
+		spike_train = [	[1,0,1,0],
+						[0,1,0,0],
+						[0,0,0,1],
+						[1,0,0,0],
+						[0,0,1,0]
+		
+					  ]
+
+		# Create spike vector and (sparse) matrix
+		spike_vector = np.array(spike_train[-1], dtype=dtype_int)
+		spike_matrix = csc_array(spike_train[-t-1:-1], dtype=dtype_int)
+
+
+		# Einsum for outer product
+		outer_product = np.outer(spike_matrix, spike_vector)
+
+		# Print spike vector and matrix
+		print(type(spike_vector[0]), type(spike_vector), spike_vector)
+		print(type(spike_matrix[0,0]), type(spike_matrix), spike_matrix)
+		print(type(outer_product[0,0]), type(outer_product), outer_product)
+
+
 
 
 
