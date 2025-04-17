@@ -13,3 +13,61 @@ def getenvbool(key, default=None):
         if s == '':
             return default
     return s
+
+
+def is_intlike(x):
+    if isinstance(x, int):
+        return True
+    else:
+        return x == int(x)
+
+
+def pretty_spike_train(spike_train, max_steps=11, max_neurons=28, use_unicode=True):
+    """Prints the spike train."""
+    lines = []
+    steps = len(spike_train)
+    neurons = len(spike_train[0]) if steps else 0
+    t_nchar = len(str(steps - 1))
+    i_nchar = max(len(str(neurons - 1)), 2)  # should be at least 2 wide
+    c0 = f"{'│ ':>{i_nchar}}" if use_unicode else f"{' 0':>{i_nchar}}"
+    c1 = f"{'├─':>{i_nchar}}" if use_unicode else f"{' 1':>{i_nchar}}"
+    sep = '' if use_unicode else ''
+    ellip = '…' if use_unicode else '.'
+    vellip = '⋮' if use_unicode else '.'
+
+    horizontally_continuous = max_neurons is None or neurons <= max_neurons
+
+    def spiked_str(spiked):
+        if horizontally_continuous:
+            return sep.join([c1 if x else c0 for x in spiked])
+        else:
+            fi = max_neurons // 2
+            li = max_neurons // 2
+            first = spiked[:fi]
+            last = spiked[-li:]
+            return sep.join([c1 if x else c0 for x in first] + [ellip] + [c1 if x else c0 for x in last])
+
+    # print header
+    if horizontally_continuous:
+        ids = [f"{i:<{i_nchar}d}" for i in range(neurons)]
+    else:
+        fi = max_neurons // 2
+        first = [f"{i:>{i_nchar}d}" for i in range(fi)]
+        last = [f"{i:>{i_nchar}d}" for i in range(neurons - fi, neurons)]
+        ids = first + [ellip] + last
+    lines.append(f"{'t':>{t_nchar}s}:  {sep.join(ids)}")
+
+    if max_steps is None or len(spike_train) <= max_steps:
+        for time, spiked in enumerate(spike_train):
+            lines.append(f"{time:>{t_nchar}d}: [{spiked_str(spiked)}]")
+    else:
+        fi = max_steps // 2
+        li = max_steps // 2
+        first = spike_train[:fi]
+        last = spike_train[-li:]
+        for time, spiked in enumerate(first):
+            lines.append(f"{time:>{t_nchar}d}: [{spiked_str(spiked)}]")
+        lines.append(f"{'.' * t_nchar}  [{vellip * max(len(spike_train[0]), max_neurons)}]")
+        for time, spiked in enumerate(last):
+            lines.append(f"{time + steps - fi:>{t_nchar}d}: [{spiked_str(spiked)}]")
+    return lines

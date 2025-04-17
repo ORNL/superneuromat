@@ -2,7 +2,7 @@ import math
 import copy
 import warnings
 import numpy as np
-from .util import getenvbool
+from .util import getenvbool, is_intlike, pretty_spike_train
 from .accessor_classes import Neuron, Synapse, NeuronList, SynapseList
 
 from typing import Any
@@ -54,13 +54,6 @@ def check_gpu():
             from numba import cuda
         except ImportError as err:
             raise ImportError(msg) from err
-
-
-def is_intlike(x):
-    if isinstance(x, int):
-        return True
-    else:
-        return x == int(x)
 
 
 def resize_vec(a, n, dtype=np.float64):  # TODO: unused, consider removing.
@@ -275,16 +268,6 @@ class NeuromorphicModel:
         })
 
     @property
-    def stdp_info(self):
-        """Returns a string containing information about STDP."""
-        return (
-            f"STDP Enabled: {self.stdp} \n"
-            + f"STDP Time Steps: {self.stdp_time_steps} \n"
-            + f"STDP A positive: {self._stdp_Apos} \n"
-            + f"STDP A negative: {self._stdp_Aneg}"
-        )
-
-    @property
     def ispikes(self) -> np.ndarray[(int, int), bool]:
         return np.asarray(self.spike_train, dtype=bool)
 
@@ -296,19 +279,56 @@ class NeuromorphicModel:
             return np.sum(self.ispikes[time_index], axis=0)
 
     def __str__(self):
-        return self.prettys()
+        return self.pretty()
 
-    def prettys(self):
+    def pretty_print(self, **kwargs):
+        print(self.pretty(), **kwargs)
+
+    def short(self):
+        return f"Neuromorphic Model with {self.num_neurons} neurons and {self.num_synapses} synapses"
+
+    def stdp_info(self):
+        return '\n'.join([
+            f"STDP is globally {' en' if self.stdp else 'dis'}abled" + f" with {self.stdp_time_steps} time steps",
+            f"apos: {self.apos}",
+            f"aneg: {self.aneg}",
+        ])
+
+    def neuron_info(self, max_neurons=None):
+        if max_neurons is None or self.num_neurons <= max_neurons:
+            rows = (neuron.info_row() for neuron in self.neurons)
+        else:
+            fi = max_neurons // 2
+            first = [neuron.info_row() for neuron in self.neurons[:fi]]
+            last = [neuron.info_row() for neuron in self.neurons[-fi:]]
+            rows = first + [Neuron.row_cont()] + last
+        return '\n'.join([
+            "Neuron Info:",
+            Neuron.row_header(),
+            '\n'.join(rows),
+        ])
+
+    def synapse_info(self, max_synapses=None):
+        if max_synapses is None or self.num_synapses <= max_synapses:
+            rows = (synapse.info_row() for synapse in self.synapses)
+        else:
+            fi = max_synapses // 2
+            first = [synapse.info_row() for synapse in self.synapses[:fi]]
+            last = [synapse.info_row() for synapse in self.synapses[-fi:]]
+            rows = first + [Synapse.row_cont()] + last
+        return '\n'.join([
+            "Synapse Info:",
+            Synapse.row_header(),
+            '\n'.join(rows),
+        ])
+
+    def pretty(self):
         import pandas as pd
 
         # Input Spikes
         times = []
         nids = []
         values = []
-
-        num_neurons_str = f"Number of neurons: {self.num_neurons}"
-        num_synapses_str = f"Number of synapses: {self.num_synapses}"
-
         for time in self.input_spikes:
             for nid, value in zip(self.input_spikes[time]["nids"], self.input_spikes[time]["values"]):
                 times.append(time)
@@ -321,29 +341,21 @@ class NeuromorphicModel:
             "Value": values
         })
 
-        # Spike train
-        spike_train = ""
-        for time, spikes in enumerate(self.spike_train):
-            spike_train += f"Time: {time}, Spikes: {spikes}\n"
-
-        return (
-            num_neurons_str + "\n" + num_synapses_str + "\n"
-            "\nNeuron Info: \n"
-            + self.neuron_df.to_string(index=False)
-            + "\n"
-            + "\nSynapse Info: \n"
-            + self.synapse_df.to_string(index=False)
-            + "\n"
-            + "\nSTDP Info: \n"
-            + self.stdp_info
-            + "\n"
-            + "\nInput Spikes: \n"
-            + input_spikes_df.to_string(index=False)
-            + "\n"
-            + "\nSpike Train: \n"
-            + spike_train
-            + f"\nNumber of spikes: {self.ispikes.sum()}\n"
-        )
+        lines = [
+            self.short(),
+            '',
+            self.neuron_info(30),
+            '',
+            self.synapse_info(40),
+            '',
+            "Input Spikes:",
+            input_spikes_df.to_string(index=False),
+            '',
+            "Spike Train:",
+            self.pretty_spike_train(),
+            f"{self.ispikes.sum()} spikes since last reset",
+        ]
+        return '\n'.join(lines)
 
     def create_neuron(
         self,
@@ -990,7 +1002,7 @@ class NeuromorphicModel:
             stdp_enabled = cuda.to_device(self._stdp_enabled_synapses)
 
         post_synapse = cuda.to_device(np.zeros(self.num_neurons, self.dd))
-        output_spikes = cuda.to_device(self._spikes.astype(self.dd))
+        output_spikes = cuda.to_device(self._spikes.astype(np.int8))
         states = cuda.to_device(self._internal_states)
         thresholds = cuda.to_device(self._neuron_thresholds)
         leaks = cuda.to_device(self._neuron_leaks)
@@ -1047,13 +1059,12 @@ class NeuromorphicModel:
             self.devec()
             self.consume_input_spikes(time_steps)
 
-    def print_spike_train(self):
+    def print_spike_train(self, max_steps=None, max_neurons=None, use_unicode=True):
         """Prints the spike train."""
+        print(self.pretty_spike_train(max_steps, max_neurons, use_unicode))
 
-        for time, spike_train in enumerate(self.spike_train):
-            print(f"Time: {time}, Spikes: {spike_train}")
-
-        # print(f"\nNumber of spikes: {self.num_spikes}\n")
+    def pretty_spike_train(self, max_steps=11, max_neurons=28, use_unicode=True):
+        return '\n'.join(pretty_spike_train(self.spike_train, max_steps, max_neurons, use_unicode))
 
     def copy(self):
         """Returns a copy of the neuromorphic model"""
