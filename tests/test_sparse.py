@@ -1,171 +1,157 @@
 import unittest
 import numpy as np
-import time 
+import time
 
-import sys 
+import sys
 sys.path.insert(0, "../")
 
 from src.superneuromat import NeuromorphicModel
 
 
 class SparseTest(unittest.TestCase):
-	""" Test sparse operations
+    """ Test sparse operations
 
-	"""
+    """
 
-	def test_sparse_1(self):
-		""" Less than 200 neurons, should default to model.sparse = False
-		"""
+    def test_sparse_1(self):
+        """ Less than 200 neurons, should default to model.sparse = False
+        """
 
-		start = time.time()
+        start = time.time()
 
-		num_neurons = 2
+        num_neurons = 2
 
-		model = NeuromorphicModel()
+        model = NeuromorphicModel()
 
-		a = model.create_neuron()
-		b = model.create_neuron()
+        a = model.create_neuron()
+        b = model.create_neuron()
 
-		s = model.create_synapse(a, b, stdp_enabled=True)
+        s = model.create_synapse(a, b, stdp_enabled=True)
 
-		model.add_spike(0, a, 50.0)
-		model.add_spike(3, b, 23.5)
-		model.add_spike(1, a, 0.02)
-		model.add_spike(4, b, 0.6)
+        model.add_spike(0, a, 50.0)
+        model.add_spike(3, b, 23.5)
+        model.add_spike(1, a, 0.02)
+        model.add_spike(4, b, 0.6)
 
-		model.stdp_setup()
-		model.setup()
-		model.simulate(10)
+        model.stdp_setup()
+        model.setup()
+        model.simulate(10)
 
-		print(f"model.sparse: {model.sparse}")
-		print(model)
+        print(f"model.sparse: {model.sparse}")
+        print(model)
 
+        end = time.time()
 
-		end = time.time() 
+        print(f"Test 1 completed in {end - start} sec")
 
-		print(f"Test 1 completed in {end - start} sec")
+    def test_sparse_2(self):
+        """ Less than 200 neurons, explicitly making model.sparse = True
+        """
 
+        start = time.time()
 
+        num_neurons = 2
 
-	def test_sparse_2(self):
-		""" Less than 200 neurons, explicitly making model.sparse = True
-		"""
+        model = NeuromorphicModel()
 
-		start = time.time()
+        a = model.create_neuron()
+        b = model.create_neuron()
 
-		num_neurons = 2
+        s = model.create_synapse(a, b, stdp_enabled=True)
 
-		model = NeuromorphicModel()
+        model.add_spike(0, a, 50.0)
+        model.add_spike(3, b, 23.5)
+        model.add_spike(1, a, 0.02)
+        model.add_spike(4, b, 0.6)
 
-		a = model.create_neuron()
-		b = model.create_neuron()
+        model.stdp_setup()
 
-		s = model.create_synapse(a, b, stdp_enabled=True)
+        print(model)
 
-		model.add_spike(0, a, 50.0)
-		model.add_spike(3, b, 23.5)
-		model.add_spike(1, a, 0.02)
-		model.add_spike(4, b, 0.6)
+        model.setup(sparse=True)
+        model.simulate(10)
 
-		model.stdp_setup()
-		
-		print(model)
+        print(f"model.sparse: {model.sparse}")
+        print(model)
 
-		model.setup(sparse = True)
-		model.simulate(10)
+        end = time.time()
 
-		print(f"model.sparse: {model.sparse}")
-		print(model)
+        print(f"Test 1 completed in {end - start} sec")
 
-		end = time.time() 
+    def test_sparse_3(self):
+        """ More than 200 neurons, within sparsity threshold, explicitly making model.sparse = False
+        """
 
-		print(f"Test 1 completed in {end - start} sec")
+        start = time.time()
 
+        num_neurons = 12000
+        sparsity = 0.005
+        num_spikes = 100
+        num_simulation_time_steps = 20
+        np.random.seed(42)
 
+        model = NeuromorphicModel()
 
-	def test_sparse_3(self):
-		""" More than 200 neurons, within sparsity threshold, explicitly making model.sparse = False
-		"""
+        for i in range(num_neurons):
+            model.create_neuron(refractory_period=2)
 
-		start = time.time()
+        for i in range(int(num_neurons * num_neurons * sparsity)):
+            model.create_synapse(np.random.randint(num_neurons), np.random.randint(num_neurons), stdp_enabled=True)
 
-		num_neurons = 12000
-		sparsity = 0.005
-		num_spikes = 100
-		num_simulation_time_steps = 20
-		np.random.seed(42)
+        for i in range(num_spikes):
+            model.add_spike(np.random.randint(num_simulation_time_steps), np.random.randint(num_neurons), np.random.random() * 10)
 
+        model.stdp_setup()
 
-		model = NeuromorphicModel()
+        # print(model)
 
-		for i in range(num_neurons):
-			model.create_neuron(refractory_period=2)
+        model.setup(sparse=False)
+        model.simulate(num_simulation_time_steps)
 
-		for i in range(int(num_neurons * num_neurons * sparsity)):
-			model.create_synapse(np.random.randint(num_neurons), np.random.randint(num_neurons), stdp_enabled=True)
+        print(f"model.sparse: {model.sparse}")
+        # print(model)
 
-		for i in range(num_spikes):
-			model.add_spike(np.random.randint(num_simulation_time_steps), np.random.randint(num_neurons), np.random.random() * 10)
+        end = time.time()
 
-		model.stdp_setup()
-		
-		# print(model)
+        print(f"Test 1 completed in {end - start} sec")
 
-		model.setup(sparse = False)
-		model.simulate(num_simulation_time_steps)
+    def test_sparse_4(self):
+        """ More than 200 neurons, within sparsity threshold, explicitly making model.sparse = True
+        """
 
-		print(f"model.sparse: {model.sparse}")
-		# print(model)
+        start = time.time()
 
-		end = time.time() 
+        num_neurons = 12000
+        sparsity = 0.005
+        num_spikes = 100
+        num_simulation_time_steps = 20
+        np.random.seed(42)
 
-		print(f"Test 1 completed in {end - start} sec")
+        model = NeuromorphicModel()
 
+        for i in range(num_neurons):
+            model.create_neuron(refractory_period=2)
 
+        for i in range(int(num_neurons * num_neurons * sparsity)):
+            model.create_synapse(np.random.randint(num_neurons), np.random.randint(num_neurons), stdp_enabled=True)
 
-	def test_sparse_4(self):
-		""" More than 200 neurons, within sparsity threshold, explicitly making model.sparse = True
-		"""
+        for i in range(num_spikes):
+            model.add_spike(np.random.randint(num_simulation_time_steps), np.random.randint(num_neurons), np.random.random() * 10)
 
-		start = time.time()
+        model.stdp_setup()
 
-		num_neurons = 12000
-		sparsity = 0.005
-		num_spikes = 100
-		num_simulation_time_steps = 20
-		np.random.seed(42)
+        # print(model)
 
+        model.setup(sparse=True)
+        model.simulate(num_simulation_time_steps)
 
-		model = NeuromorphicModel()
+        print(f"model.sparse: {model.sparse}")
+        # print(model)
 
-		for i in range(num_neurons):
-			model.create_neuron(refractory_period=2)
+        end = time.time()
 
-		for i in range(int(num_neurons * num_neurons * sparsity)):
-			model.create_synapse(np.random.randint(num_neurons), np.random.randint(num_neurons), stdp_enabled=True)
-
-		for i in range(num_spikes):
-			model.add_spike(np.random.randint(num_simulation_time_steps), np.random.randint(num_neurons), np.random.random() * 10)
-
-		model.stdp_setup()
-		
-		# print(model)
-
-		model.setup(sparse = True)
-		model.simulate(num_simulation_time_steps)
-
-		print(f"model.sparse: {model.sparse}")
-		# print(model)
-
-		end = time.time() 
-
-		print(f"Test 1 completed in {end - start} sec")
-
-
-
-
+        print(f"Test 1 completed in {end - start} sec")
 
 
 if __name__ == "__main__":
-	unittest.main()
-
+    unittest.main()

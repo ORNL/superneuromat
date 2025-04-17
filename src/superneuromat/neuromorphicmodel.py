@@ -2,6 +2,7 @@ import math
 import copy
 import warnings
 import numpy as np
+from .util import getenvbool
 from .accessor_classes import Neuron, Synapse, NeuronList, SynapseList
 
 from typing import Any
@@ -18,7 +19,6 @@ try:
     from scipy.sparse import csc_array
 except ImportError:
     csc_array = None
-
 
 """
 
@@ -63,12 +63,12 @@ def is_intlike(x):
         return x == int(x)
 
 
-def resize_vec(a, len, dtype=np.float64):
+def resize_vec(a, n, dtype=np.float64):  # TODO: unused, consider removing.
     a = np.asarray(a, dtype=dtype)
-    if len(a) < len:
-        return a[:len].copy()
-    elif len(a) > len:
-        return np.pad(a, (0, len - len(a)), 'constant')
+    if len(a) < n:
+        return a[:n].copy()
+    elif len(a) > n:
+        return np.pad(a, (0, n - len(a)), 'constant')
     else:
         return a
 
@@ -143,12 +143,14 @@ class NeuromorphicModel:
 
     """
 
-    gpu_threshold = 10000
-    jit_threshold = 1000
+    gpu_threshold = 100.0
+    jit_threshold = 50.0
     disable_performance_warnings = True
 
     def __init__(self):
         """Initialize the neuromorphic model"""
+
+        self.default_dtype = np.float64
 
         # Neuron parameters
         self.neuron_thresholds = []
@@ -174,24 +176,28 @@ class NeuromorphicModel:
 
         # STDP Parameters
         self.stdp = True
-        self._stdp_Apos = []
-        self._stdp_Aneg = []
+        self.apos = []
+        self.aneg = []
+        self._stdp_Apos = np.array([])
+        self._stdp_Aneg = np.array([])
         self._do_stdp = False
         self.stdp_positive_update = True
         self.stdp_negative_update = True
-
-        self.default_dtype = np.float64
 
         self.neurons = NeuronList(self)
         self.synapses = SynapseList(self)
 
         self.gpu = numba and cuda.is_available()
-        self._backend = 'auto'  # default backend setting. can be overridden at simulate time.
+        # default backend setting. can be overridden at simulate time.
+        self._backend = getenvbool('SNMAT_BACKEND', default='auto')
         self._last_used_backend = None
         self._sparse = False  # default sparsity setting.
         self._return_sparse = False  # whether to return spikes sparsely
         self._use_sparse = False
         self.manual_setup = False
+
+        self.allow_incorrect_stdp_sign = getenvbool('SNMAT_ALLOW_INCORRECT_STDP_SIGN', default=False)
+        self.allow_signed_leak = getenvbool('SNMAT_ALLOW_SIGNED_LEAK', default=False)
 
     def last_used_backend_type(self):
         return self._last_used_backend
@@ -201,9 +207,16 @@ class NeuromorphicModel:
         return self._backend
 
     @backend.setter
-    def backend(self, value):
+    def backend(self, use):
         # TODO: validate if selected backend is available and valid
-        self._backend = value
+        if not isinstance(use, str) or use.lower() not in ['auto', 'cpu', 'jit', 'gpu']:
+            msg = f"Invalid backend: {use}"
+            raise ValueError(msg)
+        if use == 'jit':
+            check_numba()
+        elif use == 'gpu':
+            check_gpu()
+        self._backend = use
 
     @property
     def dd(self):
@@ -229,11 +242,11 @@ class NeuromorphicModel:
     @property
     def stdp_time_steps(self):
         if self.stdp_positive_update and self.stdp_negative_update:
-            assert len(self._stdp_Apos) == len(self._stdp_Aneg)  # pyright:ignore[reportArgumentType]
+            assert len(self._stdp_Apos) == len(self._stdp_Aneg)
         if self.stdp_positive_update:
-            return len(self._stdp_Apos)  # pyright:ignore[reportArgumentType]
+            return len(self._stdp_Apos)
         elif self.stdp_negative_update:
-            return len(self._stdp_Aneg)  # pyright:ignore[reportArgumentType]
+            return len(self._stdp_Aneg)
         else:
             return 0
 
@@ -272,7 +285,7 @@ class NeuromorphicModel:
         )
 
     @property
-    def ispikes(self):
+    def ispikes(self) -> np.ndarray[(int, int), bool]:
         return np.asarray(self.spike_train, dtype=bool)
 
     def neuron_spike_totals(self, time_index=None):
@@ -379,7 +392,7 @@ class NeuromorphicModel:
 
         if not isinstance(leak, (int, float)):
             raise TypeError("leak must be int or float")
-        if leak < 0.0:
+        if not self.allow_signed_leak and leak < 0.0:
             raise ValueError("leak must be grater than or equal to zero")
 
         if not is_intlike(refractory_period):
@@ -561,49 +574,21 @@ class NeuromorphicModel:
             self.input_spikes[time]["nids"] = [neuron_id]
             self.input_spikes[time]["values"] = [value]
 
-    @property
-    def apos(self):
-        return self._stdp_Apos
-
-    @apos.setter
-    def apos(self, value):
-        value = np.asarray(value, self.dd)
-        if self.stdp_negative_update and len(value) != len(self._stdp_Aneg):  # pyright:ignore[reportArgumentType]
-            n = max(len(value), len(self._stdp_Aneg))  # pyright:ignore[reportArgumentType]
-            self._stdp_Aneg = resize_vec(self._stdp_Aneg, n)
-            value = resize_vec(value, n)
-        self._stdp_Apos = value
-
-    @property
-    def aneg(self):
-        return self._stdp_Aneg
-
-    @aneg.setter
-    def aneg(self, value):
-        value = np.asarray(value, self.dd)
-        if self.stdp_positive_update and len(value) != len(self._stdp_Apos):  # pyright:ignore[reportArgumentType]
-            n = max(len(value), len(self._stdp_Apos))  # pyright:ignore[reportArgumentType]
-            self._stdp_Apos = resize_vec(self._stdp_Apos, n)
-            value = resize_vec(value, n)
-        self._stdp_Aneg = value
-
     def stdp_setup(
         self,
-        time_steps: int = 0,
         Apos: list | None = None,
         Aneg: list | None = None,
-        positive_update: bool = True,
-        negative_update: bool = True,
+        positive_update: bool | Any = True,
+        negative_update: bool | Any = True,
+        time_steps=None,
     ) -> None:
         """Setup the Spike-Time-Dependent Plasticity (STDP) parameters
 
         Parameters
         ----------
-        time_steps : int
-            Number of time steps over which STDP learning occurs
-        Apos : list, default=None
+        Apos : list, default=[1.0, 0.5, 0.25]
             List of parameters for excitatory STDP updates
-        Aneg : list, default=None
+        Aneg : list, default=[-1.0, -0.5, -0.25]
             List of parameters for inhibitory STDP updates
         positive_update : bool
             Boolean parameter indicating whether excitatory STDP update should be enabled
@@ -612,74 +597,64 @@ class NeuromorphicModel:
 
         Raises
         TypeError
-            if:
-            1. time_steps is not an int
-            2. Apos is not a list
-            3. Aneg is not a list
-            4. positive_update is not a bool
-            5. negative_update is not a bool
+
+            * Apos is not a list
+            * Aneg is not a list
+            * positive_update is not a bool
+            * negative_update is not a bool
 
         ValueError
-            if:
-                1. time_steps is less than or equal to zero
-                2. Number of elements in Apos is not equal to the time_steps
-                3. Number of elements in Aneg is not equal to the time_steps
-                4. The elements of Apos are not int or float
-                5. The elements of Aneg are not int or float
-                6. The elements of Apos are not greater than or equal to 0.0
-                7. The elements of Apos are not greater than or equal to 0.0
+
+                * Number of elements in Apos is not equal to that of Aneg
+                * The elements of Apos, Aneg are not int or float
+                * The elements of Apos, Aneg are not greater than or equal to 0.0
 
         RuntimeError
-            if:
+
                 1. enable_stdp is not set to True on any of the synapses
 
         """
 
-        # Type errors
-        if not isinstance(time_steps, (int, float)) or not is_intlike(time_steps):
-            raise TypeError("time_steps should be int")
-        time_steps = int(time_steps)
+        if Apos is None and Aneg is None:
+            Apos = [1.0, 0.5, 0.25]
+            Aneg = [-1.0, -0.5, -0.25]
 
-        # Value error
-        if time_steps <= 0:
-            raise ValueError("time_steps should be greater than zero")
+        # Collect STDP parameters
+        self.stdp = True
+        self.stdp_positive_update = bool(positive_update)
+        self.stdp_negative_update = bool(negative_update)
 
         if positive_update:
             if not isinstance(Apos, (list, np.ndarray)):
                 raise TypeError("Apos should be a list")
             Apos: list
-            if len(Apos) != time_steps:
-                msg = f"Length of Apos should be {time_steps}"
-                raise ValueError(msg)
             if not all([isinstance(x, (int, float)) for x in Apos]):
                 raise ValueError("All elements in Apos should be int or float")
+            self.apos = np.asarray(Apos, self.dd)
 
         if negative_update:
             if not isinstance(Aneg, (list, np.ndarray)):
                 raise TypeError("Aneg should be a list")
             Aneg: list
-            if len(Aneg) != time_steps:
-                msg = f"Length of Aneg should be {time_steps}"
-                raise ValueError(msg)
             if not all([isinstance(x, (int, float)) for x in Aneg]):
-                raise ValueError("All elements in Aneg should be int or float")
+                raise ValueError("All elements in Aneg should be int or float.")
+            self.aneg = np.asarray(Aneg, self.dd)
 
-        # if positive_update and not all([x >= 0.0 for x in Apos]):
-        #     raise ValueError("All elements in Apos should be positive")
+        if positive_update and negative_update:
+            if len(Apos) != len(Aneg):  # pyright: ignore[reportArgumentType]
+                raise ValueError("Apos and Aneg should have the same size.")
 
-        # if negative_update and not all([x >= 0.0 for x in Aneg]):
-        #     raise ValueError("All elements in Aneg should be positive")
+        if not self.allow_incorrect_stdp_sign:
+            if positive_update and not all([x >= 0.0 for x in Apos]):
+                raise ValueError("All elements in Apos should be positive")
+            if negative_update and not all([x <= 0.0 for x in Aneg]):
+                raise ValueError("All elements in Aneg should be negative")
 
-        # Runtime error
         if not any(self.enable_stdp):
-            raise RuntimeError("STDP is not enabled on any synapse")
-
-        # Collect STDP parameters
-        self.stdp = True
-        self._stdp_Apos = Apos
-        self._stdp_Aneg = Aneg
-        self.stdp_positive_update = positive_update
-        self.stdp_negative_update = negative_update
+            raise warnings.warn("STDP is not enabled on any synapse.", RuntimeWarning, stacklevel=2)
+        if time_steps is not None:
+            warnings.warn("time_steps is deprecated and has no effect. It will be removed in a future version.",
+                          FutureWarning, stacklevel=2)
 
     def setup(self):
         if not self.manual_setup:
@@ -732,8 +707,13 @@ class NeuromorphicModel:
         if self._do_stdp:
             self._stdp_enabled_synapses = self.stdp_enabled_mat()
 
-            self._stdp_Apos = np.asarray(self.apos, self.dd)
-            self._stdp_Aneg = np.asarray(self.aneg, self.dd)
+            if self._do_positive_update and self._do_negative_update:
+                if len(self.apos) != len(self.aneg):
+                    raise ValueError("apos and aneg must be the same length")
+            if self._do_positive_update:
+                self._stdp_Apos = np.asarray(self.apos, self.dd)
+            if self._do_negative_update:
+                self._stdp_Aneg = np.asarray(self.aneg, self.dd)
 
         # Create numpy array for input spikes for each timestep
         self._input_spikes = np.zeros((1, self.num_neurons), self.dd)
@@ -785,6 +765,7 @@ class NeuromorphicModel:
         del self._neuron_thresholds, self._neuron_leaks, self._neuron_reset_states, self._internal_states
         del self._neuron_refractory_periods, self._neuron_refractory_periods_original, self._weights
         del self._input_spikes, self._spikes
+        del self._stdp_Apos, self._stdp_Aneg
         if hasattr(self, "_stdp_enabled_synapses"):
             del self._stdp_enabled_synapses
         if hasattr(self, "_output_spikes"):
@@ -792,9 +773,7 @@ class NeuromorphicModel:
 
     def recommend(self, time_steps: int):
         """Recommend a backend to use based on network size and continuous sim time steps."""
-        score = 0
-        score += self.num_neurons * 1
-        score += time_steps * 100
+        score = self.num_neurons ** 2 * time_steps / 1e6
 
         if self.gpu and score > self.gpu_threshold:
             return 'gpu'
@@ -812,7 +791,7 @@ class NeuromorphicModel:
         callback : function, optional
             Function to be called after each time step, by default None
         use : str, default=None
-            Which backend to use. Can be 'cpu', 'jit', or 'gpu'.
+            Which backend to use. Can be 'auto', 'cpu', 'jit', or 'gpu'.
             If None, model.backend will be used, which is 'auto' by default.
             'auto' will choose a backend based on the network size and time steps.
 
@@ -888,14 +867,14 @@ class NeuromorphicModel:
                         t,
                         spikes,
                         self._weights,
-                        self.apos,
-                        self.aneg,
+                        self._stdp_Apos,
+                        self._stdp_Aneg,
                         self._stdp_enabled_synapses,
                     )
                 elif self._do_positive_update:
-                    stdp_update_jit_apos(t, spikes, self._weights, self.apos, self._stdp_enabled_synapses)
+                    stdp_update_jit_apos(t, spikes, self._weights, self._stdp_Apos, self._stdp_enabled_synapses)
                 elif self._do_negative_update:
-                    stdp_update_jit_aneg(t, spikes, self._weights, self.aneg, self._stdp_enabled_synapses)
+                    stdp_update_jit_aneg(t, spikes, self._weights, self._stdp_Aneg, self._stdp_enabled_synapses)
 
         if not self.manual_setup:
             self.devec()
@@ -1000,13 +979,18 @@ class NeuromorphicModel:
             self._setup()
             self.setup_input_spikes(time_steps)
 
-        if len(self.apos) != len(self.aneg):  # pyright: ignore[reportArgumentType]
-            raise ValueError("apos and aneg must be the same length")
-        self.stdp_Apos = np.asarray(self.apos, self.dd) if self._do_positive_update else np.zeros(len(self.apos), self.dd)  # pyright: ignore[reportArgumentType]
-        self.stdp_Aneg = np.asarray(self.aneg, self.dd) if self._do_negative_update else np.zeros(len(self.aneg), self.dd)  # pyright: ignore[reportArgumentType]
+        if self._do_stdp:
+            apos = self._stdp_Apos
+            aneg = self._stdp_Aneg
+            if self._do_positive_update and not self._do_negative_update:
+                aneg = np.zeros(len(self._stdp_Apos), self.dd)
+            elif self._do_negative_update and not self._do_positive_update:
+                apos = np.zeros(len(self._stdp_Aneg), self.dd)
+            assert len(apos) == len(aneg), "apos and aneg must be the same length"
+            stdp_enabled = cuda.to_device(self._stdp_enabled_synapses)
 
         post_synapse = cuda.to_device(np.zeros(self.num_neurons, self.dd))
-        output_spikes = cuda.to_device(self._output_spikes[-1].astype(np.int8))
+        output_spikes = cuda.to_device(self._spikes.astype(self.dd))
         states = cuda.to_device(self._internal_states)
         thresholds = cuda.to_device(self._neuron_thresholds)
         leaks = cuda.to_device(self._neuron_leaks)
@@ -1014,8 +998,6 @@ class NeuromorphicModel:
         refractory_periods = cuda.to_device(self._neuron_refractory_periods)
         refractory_periods_original = cuda.to_device(self._neuron_refractory_periods_original)
         weights = cuda.to_device(self._weights)
-        if self._do_stdp:
-            stdp_enabled = cuda.to_device(self._stdp_enabled_synapses)
 
         v_tpb = min(self.num_neurons, 32)
         v_blocks = math.ceil(self.num_neurons / v_tpb)
@@ -1054,14 +1036,16 @@ class NeuromorphicModel:
                 for i in range(min(tick, self.stdp_time_steps)):
                     old_spikes = cuda.to_device(self._output_spikes[tick - i - 1].astype(np.int8))
                     gpu.stdp_update[m_blocks, m_tpb](weights, old_spikes, output_spikes,
-                                    stdp_enabled, self._stdp_Apos[i], self._stdp_Aneg[i])
+                                    stdp_enabled, apos[i], aneg[i])
 
         self.spike_train.extend(self._output_spikes)
         self._weights = weights.copy_to_host()
         self._neuron_refractory_periods = refractory_periods.copy_to_host()
         self._internal_states = states.copy_to_host()
 
-        self.devec()
+        if not self.manual_setup:
+            self.devec()
+            self.consume_input_spikes(time_steps)
 
     def print_spike_train(self):
         """Prints the spike train."""
