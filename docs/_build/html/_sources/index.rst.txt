@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to SuperNeuroMAT documentation
-======================================
+Welcome to SuperNeuroMAT's documentation!
+=========================================
 
 SuperNeuroMAT is a fast and scalable simulator for spiking neural networks (SNNs). It is meant to be run on multi-core systems. SuperNeuroMAT models SNN computations using matrix and vector operations. 
 
