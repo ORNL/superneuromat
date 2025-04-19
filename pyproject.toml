@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "superneuromat"
-version = "2.0.0"
+version = "2.0.1"
 authors = [
-	{name="Prasanna Date", email="datepa@ornl.gov"}, 
+	{name="Prasanna Date"}, 
 	{name="Chathika Gunaratne"}, 
 	{name="Shruti Kulkarni"}, 
 	{name="Robert Patton"}, 
