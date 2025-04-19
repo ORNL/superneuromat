@@ -4,7 +4,7 @@ import numpy as np
 import sys 
 sys.path.insert(0, "../src/")
 
-from superneuromat import NeuromorphicModel
+from superneuromat import SNN
 
 
 class ResetTest(unittest.TestCase):
@@ -18,7 +18,7 @@ class ResetTest(unittest.TestCase):
 		"""
 
 		# Create SNN, neurons, and synapses
-		snn = NeuromorphicModel()
+		snn = SNN()
 
 		a = snn.create_neuron()
 		b = snn.create_neuron()
@@ -56,7 +56,7 @@ class ResetTest(unittest.TestCase):
 		assert (not np.any(snn._refractory_periods))
 		assert (not np.any(snn._spikes))
 		assert (snn._weights[0,1] == 1.0) and (snn._weights[1,0] == 1.0)
-		assert (snn.spike_train == [])
+		assert (not snn.spike_train)
 		assert (snn.count_spikes() == 0)
 		assert (not np.any(snn._input_spikes))
 

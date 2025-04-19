@@ -1,10 +1,11 @@
 import numpy as np
 from scipy.sparse import csc_array
 import pandas as pd
+
 # import ctypes
-import os
+# import os
 # import multiprocessing as mp
-import subprocess
+# import subprocess
 # import mmap
 
 
@@ -28,24 +29,23 @@ FEATURE REQUESTS:
 
 1. Visualize spike raster
 2. Monitor STDP synapses
-3. Reset neuromorphic model
 
 """
 
 
 
 
-class NeuromorphicModel:
-	""" Defines a neuromorphic model with neurons and synapses
+class SNN:
+	""" Defines a spiking neural network (SNN) with neurons and synapses
 
 	Attributes:
-		num_neurons (int): Number of neurons in the neuromorphic model
+		num_neurons (int): Number of neurons in the SNN
 		neuron_thresholds (list): List of neuron thresholds
 		neuron_leaks (list): List of neuron leaks, defined as the amount by which the internal states of the neurons are pushed towards the neurons' reset states
 		neuron_reset_states (list): List of neuron reset states
 		neuron_refractory_periods (list): List of neuron refractory periods
 
-		num_synapses (int): Number of synapses in the neuromorphic model
+		num_synapses (int): Number of synapses in the SNN
 		pre_synaptic_neuron_ids (list): List of pre-synaptic neuron IDs
 		post_synaptic_neuron_ids (list): List of post-synaptic neuron IDs
 		synaptic_weights (list): List of synaptic weights
@@ -55,19 +55,19 @@ class NeuromorphicModel:
 		input_spikes (dict): Dictionary of input spikes indexed by time
 		spike_train (list): List of spike trains for each time step
 		
-		stdp (bool): Boolean parameter that denotes whether STDP learning has been enabled in the neuromorphic model
+		stdp (bool): Boolean parameter that denotes whether STDP learning has been enabled in the SNN
 		stdp_time_steps (int): Number of time steps over which STDP updates are made
 		stdp_Apos (list): List of STDP parameters per time step for excitatory update of weights
 		stdp_Aneg (list): List of STDP parameters per time step for inhibitory update of weights
 
 
 	Methods:
-		create_neuron: Creates a neuron in the neuromorphic model
-		create_synapse: Creates a synapse in the neuromorphic model
+		create_neuron: Creates a neuron in the SNN
+		create_synapse: Creates a synapse in the SNN
 		add_spike: Add an external spike at a particular time step for a given neuron with a given value
 		stdp_setup: Setup the STDP parameters
-		setup: Setup the neuromorphic model and prepare for simulation
-		simulate: Simulate the neuromorphic model for a given number of time steps
+		setup: Setup the SNN and prepare for simulation
+		simulate: Simulate the SNN for a given number of time steps
 		print_spike_train: Print the spike train
 		
 
@@ -75,14 +75,15 @@ class NeuromorphicModel:
 		1. Delay is implemented by adding a chain of proxy neurons. A delay of 10 between neuron A and neuron B would add 9 proxy neurons between A and B.
 		2. Leak brings the internal state of the neuron back to the reset state. The leak value is the amount by which the internal state of the neuron is pushed towards its reset state.
 		3. Deletion of neurons is not permitted
-		4. Input spikes can have a value
-		5. All neurons are monitored by default
+		4. Multiple synapses from one neuron to any another neuron are not permitted
+		5. Input spikes can have a value
+		6. All neurons are monitored by default
 
 	"""
 
 
 	def __init__(self, backend="cpu", num_mpi_ranks=1):
-		""" Initialize the neuromorphic model
+		""" Initialize the SNN
 
 		Args:
 			backend (string): Backend is either 'cpu' or 'frontier'
@@ -116,6 +117,7 @@ class NeuromorphicModel:
 		self.num_synapses = 0
 		self.pre_synaptic_neuron_ids = []
 		self.post_synaptic_neuron_ids = []
+		self.synapse_indices = set()
 		self.synaptic_weights_original = []
 		self.synaptic_weights = [] 				
 		self.synaptic_delays = []
@@ -159,11 +161,12 @@ class NeuromorphicModel:
 		self._weights = None 
 		self._stdp_enabled_synapses = None 
 		self._input_spikes = None
+		self._Asum = None 
+		self._Aneg = None
 
 		# Run Frontier setup communication if backend is Frontier
 		if backend == "frontier":
 			self._setup_frontier_communication()
-
 
 
 
@@ -318,7 +321,7 @@ class NeuromorphicModel:
 		stdp_enabled: bool=False
 	) -> None:
 
-		""" Creates a synapse in the neuromorphic model from a pre-synaptic neuron to a post-synaptic neuron with a given set of synaptic parameters (weight, delay and enable_stdp)
+		""" Creates a synapse in the SNN from a pre-synaptic neuron to a post-synaptic neuron with a given set of synaptic parameters (weight, delay and enable_stdp)
 
 		Args:
 			pre_id (int): ID of the pre-synaptic neuron
@@ -339,6 +342,9 @@ class NeuromorphicModel:
 				1. pre_id is less than 0
 				2. post_id is less than 0
 				3. delay is less than or equal to 0
+
+			RuntimeError if:
+				1. A synapse with the same (pre_id, post_id) already exists
 
 		""" 
 
@@ -368,7 +374,15 @@ class NeuromorphicModel:
 
 		if delay <= 0:
 			raise ValueError("delay must be greater than or equal to 1")
+
+
+		# Check for duplicate synapses
+		if (pre_id, post_id) in self.synapse_indices:
+			raise RuntimeError(f"Synapse from neuron {pre_id} to neuron {post_id} already created")
 		
+
+		# Add synapse index to the synapse_indices set
+		self.synapse_indices.add((pre_id, post_id))
 
 		# Collect synapse parameters
 		if delay == 1:
@@ -402,7 +416,7 @@ class NeuromorphicModel:
 		value: float=1.0
 	) -> None:
 		
-		""" Adds an external spike in the neuromorphic model 
+		""" Adds an external spike in the SNN 
 
 		Args:
 			time (int): The time step at which the external spike is added
@@ -788,12 +802,6 @@ class NeuromorphicModel:
 
 
 
-		
-
-
-
-
-
 	def print_spike_train(self):
 		""" Prints the spike train
 
@@ -834,10 +842,17 @@ class NeuromorphicModel:
 		self.stdp_positive_update = positive_update
 		self.stdp_negative_update = negative_update
 
+		if not self.stdp_positive_update:
+			self.stdp_Apos = [0.0] * self.stdp_time_steps
+
+		if not self.stdp_negative_update:
+			self.stdp_Aneg = [0.0] * self.stdp_time_steps
+
+
 
 
 	def _setup_cpu(self):
-		""" Setup the neuromorphic model for simulation on CPU backend
+		""" Setup the SNN for simulation on CPU backend
 
 		"""
 
@@ -865,6 +880,9 @@ class NeuromorphicModel:
 				self._stdp_enabled_synapses = np.zeros((self.num_neurons, self.num_neurons), dtype=self.dtype_float)
 				self._stdp_enabled_synapses[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.enable_stdp
 
+			self._Aneg = np.array(self.stdp_Aneg[::-1])
+			self._Asum = (np.array(self.stdp_Apos[::-1]) + self._Aneg).reshape([-1,1]).astype(self.dtype_float)			
+
 		# Create numpy array for input spikes state variable
 		self._input_spikes = np.zeros(self.num_neurons, dtype=self.dtype_float)
 
@@ -888,16 +906,15 @@ class NeuromorphicModel:
 			indices = (self._internal_states > self._neuron_reset_states)
 			self._internal_states[indices] = np.maximum(self._internal_states[indices] - self._neuron_leaks[indices], self._neuron_reset_states[indices], dtype=self.dtype_float)
 			
-			print(f"{time_step} After positive leak: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
+			# print(f"{time_step} After positive leak: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
 
 			
 			# Leak: internal state < reset state
 			indices = (self._internal_states < self._neuron_reset_states)
 			self._internal_states[indices] = np.minimum(self._internal_states[indices] + self._neuron_leaks[indices], self._neuron_reset_states[indices], dtype=self.dtype_float)
 			
-			# print(time_step, type(self._internal_states[0]), self._internal_states)
+			# print(f"{time_step} After negative leak: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
 
-			print(f"{time_step} After negative leak: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
 
 			# Zero out _input_spikes to prepare them for input spikes in current time step
 			self._input_spikes -= self._input_spikes 	
@@ -907,95 +924,99 @@ class NeuromorphicModel:
 			if time_step in self.input_spikes:
 				self._input_spikes[self.input_spikes[time_step]["nids"]] = self.input_spikes[time_step]["values"] 
 
-			print(f"{time_step} After input spikes: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
+			# print(f"{time_step} After input spikes: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
 
 
 			# Internal state			
 			self._internal_states = self._internal_states + self._input_spikes + (self._weights.T @ self._spikes).astype(self.dtype_float)
 			
-			print(f"{time_step} After internal state: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
+			# print(f"{time_step} After internal state: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
 
 
 			# Compute spikes
 			self._spikes = np.greater(self._internal_states, self._neuron_thresholds).astype(self.dtype_int)
 			
-			print(f"{time_step} After computing spikes: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
+			# print(f"{time_step} After computing spikes: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
 			
 
 			# Refractory period: Compute indices of neuron which are in their refractory period
 			indices = np.greater(self._neuron_refractory_periods, 0)
 			
-			print(f"{time_step} After refractory period: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
+			# print(f"{time_step} After refractory period: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
 			
 
 			# For neurons in their refractory period, zero out their spikes and decrement refractory period by one
 			self._spikes[indices] = 0
 			self._neuron_refractory_periods[indices] -= 1
 
-			print(f"{time_step} After zeroing out spikes for neurons in refractory period: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
+			# print(f"{time_step} After zeroing out spikes for neurons in refractory period: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
 
 
 			# For spiking neurons, turn on refractory period
-			self._neuron_refractory_periods[self._spikes.astype(bool)] = self._neuron_refractory_periods_original[self._spikes.astype(bool)]
+			mask = self._spikes.astype(bool)
+			self._neuron_refractory_periods[mask] = self._neuron_refractory_periods_original[mask]
 
-			print(f"{time_step} After turning on refractory period: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
+			# print(f"{time_step} After turning on refractory period: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
 
 			
 			# Reset internal states
-			self._internal_states[self._spikes == 1.0] = self._neuron_reset_states[self._spikes == 1.0]
-			print(time_step, type(self._internal_states[0]), self._internal_states)
+			self._internal_states[mask] = self._neuron_reset_states[mask]
 
-			print(f"{time_step} After resetting internal state: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
+			# print(f"{time_step} After resetting internal state: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
 
 
 			# Update spike count
 			self.num_spikes += self._spikes.sum()
 
-			print(f"{time_step} After counting spikes: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
+			# print(f"{time_step} After counting spikes: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
 
 
 			# Append spike train
 			self.spike_train.append(self._spikes)
 
-			print(f"{time_step} After spike train: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
+			# print(f"{time_step} After spike train: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
 
 
 			# STDP Operations
 			t = min(self.stdp_time_steps, len(self.spike_train)-1)
 
 			if (self.stdp) and (t > 0):
-			# if t > self.stdp_time_steps:
-				_update_synapses = np.outer(np.array(self.spike_train[-t-1:-1], dtype=self.dtype_float), np.array(self.spike_train[-1], dtype=self.dtype_float)).reshape([-1, self.num_neurons, self.num_neurons])
+				if self.sparse:
+					Sprev = csc_array(self.spike_train[-t-1:-1], shape=[t, self.num_neurons], dtype=self.dtype_float)
+					Scurr = csc_array([self.spike_train[-1]] * t, shape=[t, self.num_neurons], dtype=self.dtype_float)
+					# self._weights += ( ( ( (self._Asum[-t:] * Sprev).T @ Scurr) * self._stdp_enabled_synapses) - (self._Aneg[-t:].sum() * self._stdp_enabled_synapses) ).astype(self.dtype_float)
 
-				print(f"{time_step} After computing update synapses: {type(_update_synapses[0,0,0])}, {type(_update_synapses)}, {_update_synapses}")
+				else:
+					Sprev = np.array(self.spike_train[-t-1:-1], dtype=self.dtype_float)
+					Scurr = np.array([self.spike_train[-1]] * t, dtype=self.dtype_float)
+				
+				self._weights += ((((self._Asum[-t:] * Sprev).T @ Scurr) * self._stdp_enabled_synapses) - (self._Aneg[-t:].sum() * self._stdp_enabled_synapses)).astype(self.dtype_float)
 
-				# if self.sparse:
-				# 	_update_synapses = csc_array(np.outer(np.array(self.spike_train[-t-1:-1]), np.array(self.spike_train[-1])).reshape([-1, self.num_neurons, self.num_neurons]))
-				# else:
+
+				# else: 
 				# 	_update_synapses = np.outer(np.array(self.spike_train[-t-1:-1], dtype=self.dtype_float), np.array(self.spike_train[-1], dtype=self.dtype_float)).reshape([-1, self.num_neurons, self.num_neurons])
 
-
-				if self.stdp_positive_update:
-					self._weights += (((_update_synapses.T * self.stdp_Apos[0:t][::-1]).T).sum(axis=0) * self._stdp_enabled_synapses).astype(self.dtype_float)
-
-				print(f"{time_step} After positive STDP: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
+				# 	print(f"{time_step} After computing update synapses: {type(_update_synapses[0,0,0])}, {type(_update_synapses)}, {_update_synapses}")
 
 
-				if self.stdp_negative_update:
-					self._weights -= ((((1 - _update_synapses).T * self.stdp_Aneg[0:t][::-1]).T).sum(axis=0) * self._stdp_enabled_synapses).astype(self.dtype_float)
-	
-				print(f"{time_step} After negative STDP: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
+				# 	if self.stdp_positive_update:
+				# 		self._weights += (((_update_synapses.T * self.stdp_Apos[0:t][::-1]).T).sum(axis=0) * self._stdp_enabled_synapses).astype(self.dtype_float)
+
+				# 	print(f"{time_step} After positive STDP: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
 
 
-			# print(f"[Tick {time_step}] Internal State: {self._internal_states}")
-			# print(f"[Tick {time_step}] Spikes: {self._spikes}")
-			# print(f"[Tick {time_step}] Weights: {self._weights}")
+				# 	if self.stdp_negative_update:
+				# 		self._weights -= ((((1 - _update_synapses).T * self.stdp_Aneg[0:t][::-1]).T).sum(axis=0) * self._stdp_enabled_synapses).astype(self.dtype_float)
+		
+				# 	print(f"{time_step} After negative STDP: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
 
+		
 		# Update weights if STDP was enabled
 		if self.stdp:
 			self.synaptic_weights = list(self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
 
-		print(f"{time_step} After updating orignial weights: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
+		# print(f"{time_step} After updating orignial weights: {type(self._weights[0,0])}, {type(self._weights)}, {self._weights}")
+
 
 
 
@@ -1022,6 +1043,7 @@ class NeuromorphicModel:
 		subprocess.Popen(run_command)
 		print("[Python _setup_frontier_communication] frontier.o execution started")
 		print()
+
 
 
 
@@ -1110,11 +1132,8 @@ class NeuromorphicModel:
 
 
 
-
-
-
 	def _setup_frontier(self):
-		""" Setup the neuromorphic model for simulation on Frontier backend
+		""" Setup the SNN for simulation on Frontier backend
 
 		"""
 

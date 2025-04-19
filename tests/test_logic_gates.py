@@ -1,9 +1,10 @@
 import unittest
+import numpy as np
 
 import sys 
-sys.path.insert(0,"../")
+sys.path.insert(0,"../src/")
 
-from src.superneuromat import NeuromorphicModel
+from superneuromat import SNN
 
 
 
@@ -13,9 +14,12 @@ class LogicGatesTest(unittest.TestCase):
 	"""
 
 	def test_and(self):
-		# AND GATE
+		""" AND gate
+
+		"""
+
 		print("\nAND GATE")
-		and_gate = NeuromorphicModel()
+		and_gate = SNN()
 
 		# Create neurons
 		a_id = and_gate.create_neuron(threshold=0.0)
@@ -48,13 +52,27 @@ class LogicGatesTest(unittest.TestCase):
 
 		# Print spike train and neuromorphic model
 		and_gate.print_spike_train()
-		print(and_gate)
+
+		assert (np.array_equal(np.array(and_gate.spike_train), np.array([	[0,0,0],
+																			[0,0,0],
+																			[0,1,0],
+																			[0,0,0],
+																			[1,0,0],
+																			[0,0,0],
+																			[1,1,0],
+																			[0,0,1]
+																		])))
+
+		print("test_and completed successfully")
 
 
 	def test_or(self):
-		# OR GATE
+		""" OR gate
+
+		"""
+
 		print("\nOR GATE")
-		or_gate = NeuromorphicModel()
+		or_gate = SNN()
 
 		# Create neurons
 		a_id = or_gate.create_neuron()
@@ -87,7 +105,18 @@ class LogicGatesTest(unittest.TestCase):
 
 		# Print spike train and neuromorphic model
 		or_gate.print_spike_train()
-		print(or_gate)
+		
+		assert (np.array_equal(np.array(or_gate.spike_train), np.array([	[0,0,0],
+																			[0,0,0],
+																			[0,1,0],
+																			[0,0,1],
+																			[1,0,0],
+																			[0,0,1],
+																			[1,1,0],
+																			[0,0,1]
+																		])))
+
+		print("test_or completed successfully")
 
 
 

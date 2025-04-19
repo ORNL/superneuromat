@@ -4,7 +4,7 @@ import numpy as np
 import sys 
 sys.path.insert(0, "../src/")
 
-from superneuromat import NeuromorphicModel
+from superneuromat import SNN
 
 
 class DtypeTest(unittest.TestCase):
@@ -18,7 +18,7 @@ class DtypeTest(unittest.TestCase):
 		"""
 
 		# Create SNN, neurons, and synapses
-		snn = NeuromorphicModel()
+		snn = SNN()
 
 		a = snn.create_neuron()
 		b = snn.create_neuron()
@@ -65,7 +65,7 @@ class DtypeTest(unittest.TestCase):
 		"""
 
 		# Create SNN, neurons, and synapses
-		snn = NeuromorphicModel()
+		snn = SNN()
 
 		a = snn.create_neuron()
 		b = snn.create_neuron()
@@ -112,7 +112,7 @@ class DtypeTest(unittest.TestCase):
 		"""
 
 		# Create SNN, neurons, and synapses
-		snn = NeuromorphicModel()
+		snn = SNN()
 
 		a = snn.create_neuron()
 		b = snn.create_neuron()
@@ -163,7 +163,7 @@ class DtypeTest(unittest.TestCase):
 		"""
 
 		# Create SNN, neurons, and synapses
-		snn = NeuromorphicModel()
+		snn = SNN()
 
 		a = snn.create_neuron()
 		b = snn.create_neuron()
@@ -180,10 +180,6 @@ class DtypeTest(unittest.TestCase):
 		snn.stdp_setup(Aneg=[0.1, 0.05, 0.025])
 		snn.setup(dtype=32, sparse=True)
 		snn.simulate(10)
-
-
-		# Reset
-		# snn.reset()
 
 
 		# Print SNN after simulation

@@ -3,7 +3,7 @@ import unittest
 import sys
 sys.path.insert(0, "../src/")
 
-from superneuromat import NeuromorphicModel
+from superneuromat import SNN
 
 
 class CountSpikeTest(unittest.TestCase):
@@ -16,7 +16,7 @@ class CountSpikeTest(unittest.TestCase):
 
 		"""
 
-		snn = NeuromorphicModel()
+		snn = SNN()
 
 		a = snn.create_neuron()
 		b = snn.create_neuron()
@@ -34,9 +34,7 @@ class CountSpikeTest(unittest.TestCase):
 
 		print(snn)
 
-		# print("Expected spike count: 10")
-		# print(f"Received spike count: {snn.count_spikes()}")
-		# print("test_count_spike completed successfully")
+		print("test_count_spike completed successfully")
 
 
 
