@@ -14,8 +14,8 @@ import superneuromat
 
 
 project = 'SuperNeuroMAT'
-copyright = '2025, Prasanna Date, Chathika Gunaratne, Shruti Kulkarni, Mark Coletti, Robert Patton, Thomas Potok'
-author = 'Prasanna Date, Chathika Gunaratne, Shruti Kulkarni, Mark Coletti, Robert Patton, Thomas Potok'
+copyright = '2025, Prasanna Date, Chathika Gunaratne, Shruti Kulkarni, Robert Patton, Mark Coletti'
+author = 'Prasanna Date, Chathika Gunaratne, Shruti Kulkarni, Robert Patton, Mark Coletti'
 release = '2.0.0'
 
 # -- General configuration ---------------------------------------------------

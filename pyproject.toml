@@ -4,11 +4,22 @@ build-backend = "hatchling.build"
 
 [project]
 name = "superneuromat"
-version = "1.4"
-authors = [{name="Prasanna Date", email="datepa@ornl.gov"}, {name="Chathika Gunaratne"}, {name="Shruti Kulkarni"}, {name="Robert Patton"}, {name="Mark Coletti"}]
-description = "A matrix-based simulation framework for neuromorphic computing"
+version = "2.0.0"
+authors = [
+	{name="Prasanna Date", email="datepa@ornl.gov"}, 
+	{name="Chathika Gunaratne"}, 
+	{name="Shruti Kulkarni"}, 
+	{name="Robert Patton"}, 
+	{name="Mark Coletti"}
+]
+description = "A fast and scalable matrix-based simulator for spiking neural networks (SNNs)."
 readme = "README.md"
 requires-python = ">=3.0"
+dependencies = [
+	"numpy",
+	"scipy",
+	"pandas",
+]
 classifiers = [
 	"Programming Language :: Python :: 3",
 	"Programming Language :: C",
@@ -26,3 +37,4 @@ file = "LICENSE"
 [project.urls]
 Homepage = "https://github.com/ORNL/superneuromat"
 Issues = "https://github.com/ORNL/superneuromat/issues"
+Documentation = "https://app.readthedocs.org/projects/superneuromat/"

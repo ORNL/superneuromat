@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.6.27)  18 APR 2025 23:47
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.6.27)  19 APR 2025 00:13
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -855,7 +855,7 @@ LaTeX Font Info:    Trying to load font information for U+msb on input line 81.
 (/usr/local/texlive/2024/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-Overfull \hbox (323.53821pt too wide) in paragraph at lines 81--81
+Overfull \hbox (195.47626pt too wide) in paragraph at lines 81--81
  [][]
  []
 
@@ -900,20 +900,14 @@ nput line 545.
 LaTeX Font Info:    Font shape `T1/txtt/m/it' in size <10> not available
 (Font)              Font shape `T1/txtt/m/sl' tried instead on input line 589.
  [5{/usr/local/texlive/2024/texmf-dist/fonts/enc/dvips/fontawesome5/fa5free2.en
-c}] [6] [7] [8] [9
-
-
-
-] (./superneuromat.ind [10
-
-
-]
+c}] [6] [7] (./superneuromat.ind [8]
 Underfull \hbox (badness 10000) in paragraph at lines 32--33
 []\T1/txtt/m/n/10 neuron_refractory_periods \T1/qtm/m/n/10 (\T1/qtm/m/it/10 su-
 perneu-ro-mat.SNN
  []
 
-[11
+[9
+
 
 ]) (./superneuromat.aux)
  ***********
@@ -921,13 +915,13 @@ LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-02-20>
  ***********
 Package rerunfilecheck Info: File `superneuromat.out' has not changed.
-(rerunfilecheck)             Checksum: 2E5F0B711C73D028B93C0665A16D65E4;499.
+(rerunfilecheck)             Checksum: 7E897AD9EE8FC0D64C9F124038AAE694;353.
  ) 
 Here is how much of TeX's memory you used:
- 19935 strings out of 474116
- 356226 string characters out of 5743682
+ 19931 strings out of 474116
+ 356188 string characters out of 5743682
  1943187 words of memory out of 5000000
- 41820 multiletter control sequences out of 15000+600000
+ 41819 multiletter control sequences out of 15000+600000
  603895 words of font info for 76 fonts, out of 8000000 for 9000
  1142 hyphenation exceptions out of 8191
  72i,11n,83p,1202b,912s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -942,10 +936,10 @@ texlive/2024/texmf-dist/fonts/type1/public/tex-gyre/qtmri.pfb></usr/local/texli
 ve/2024/texmf-dist/fonts/type1/public/txfonts/t1xbtt.pfb></usr/local/texlive/20
 24/texmf-dist/fonts/type1/public/txfonts/t1xtt.pfb></usr/local/texlive/2024/tex
 mf-dist/fonts/type1/public/txfonts/t1xtt.pfb>
-Output written on superneuromat.pdf (15 pages, 217288 bytes).
+Output written on superneuromat.pdf (13 pages, 215373 bytes).
 PDF statistics:
- 261 PDF objects out of 1000 (max. 8388607)
- 222 compressed objects within 3 object streams
- 75 named destinations out of 1000 (max. 500000)
- 53 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 245 PDF objects out of 1000 (max. 8388607)
+ 208 compressed objects within 3 object streams
+ 72 named destinations out of 1000 (max. 500000)
+ 45 words of extra memory for PDF output out of 10000 (max. 10000000)
 
