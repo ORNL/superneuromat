@@ -43,8 +43,11 @@
               <!-- Local TOC -->
               <div class="local-toc"><ul>
 <li><a class="reference internal" href="#">Welcome to SuperNeuroMAT’s documentation!</a></li>
-<li><a class="reference internal" href="#superneuromat-package">superneuromat package</a><ul>
-<li><a class="reference internal" href="#module-superneuromat">Module contents</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#usage">Usage</a></li>
+<li><a class="reference internal" href="#development">Development</a></li>
+<li><a class="reference internal" href="#cite-superneuromat">Cite SuperNeuroMAT</a></li>
+<li><a class="reference internal" href="#module-superneuromat">SuperNeuroMAT</a><ul>
 <li><a class="reference internal" href="#superneuromat.SNN"><code class="docutils literal notranslate"><span class="pre">SNN</span></code></a><ul>
 <li><a class="reference internal" href="#superneuromat.SNN.num_neurons"><code class="docutils literal notranslate"><span class="pre">SNN.num_neurons</span></code></a></li>
 <li><a class="reference internal" href="#superneuromat.SNN.neuron_thresholds"><code class="docutils literal notranslate"><span class="pre">SNN.neuron_thresholds</span></code></a></li>
@@ -84,8 +87,6 @@
 </ul>
 </li>
 </ul>
-</li>
-</ul>
 </div>
         </div>
       </div>
@@ -113,17 +114,74 @@
              
   <section id="welcome-to-superneuromat-s-documentation">
 <h1>Welcome to SuperNeuroMAT’s documentation!<a class="headerlink" href="#welcome-to-superneuromat-s-documentation" title="Link to this heading"></a></h1>
-<p>SuperNeuroMAT is a fast and scalable simulator for spiking neural networks (SNNs). It is meant to be run on multi-core systems. SuperNeuroMAT models SNN computations using matrix and vector operations.</p>
-<p>Key features of SuperNeuroMAT include:
-1. Support for Leaky Integrate and Fire (LIF) neuron model
-2. Support for Spike-Timing-Dependent Plasticity (STDP) learning mechanism</p>
+<p>SuperNeuroMAT is a matrix-based simulator for simulating spiking neural networks, which are used in neuromorphic computing. It is one of the fastest, if not the fastest, simlators for simulating spiking neural networks.</p>
+<p>Some salient features of SuperNeuroMAT are:</p>
+<ol class="arabic simple">
+<li><p>Support for leaky integrate and fire neuron model with the following parameters: neuron threshold, neuron leak, and neuron refractory period</p></li>
+<li><p>Support for Spiking-Time-Dependent Plasticity (STDP) synapses with weights and delays</p></li>
+<li><p>No restrictions on connectivity of the neurons, all-to-all connections as well as self connections possible</p></li>
+<li><p>Constant leak supported</p></li>
+<li><p>STDP learning can be configured to turn on/off positive updates and negative updates</p></li>
+<li><p>Excessive synaptic delay can slow down the execution of the simulation, so try to avoid as much as possible</p></li>
+<li><p>Leak refers to the constant amount by which the internal state (membrane potential) of a neuron changes in each time step of the simulation; therefore, zero leak means the neuron fully retains the value in its internal state, and infinite leak means the neuron never retains the value in its internal state</p></li>
+<li><p>STDP implementation is extremely fast</p></li>
+<li><p>The model of neuromorphic computing supported in SuperNeuroMAT is Turing-complete</p></li>
+<li><p>All underlying computational operations are matrix-based and currently supported on CPUs</p></li>
+</ol>
 <div class="toctree-wrapper compound">
 </div>
 </section>
-<section id="superneuromat-package">
-<h1>superneuromat package<a class="headerlink" href="#superneuromat-package" title="Link to this heading"></a></h1>
+<section id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h1>
+<ol class="arabic simple">
+<li><p>Install using <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">superneuromat</span></code></p></li>
+<li><p>Update/upgrade using <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">superneuromat</span> <span class="pre">--upgrade</span></code></p></li>
+</ol>
+</section>
+<section id="usage">
+<h1>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h1>
+<ol class="arabic simple">
+<li><p>In a Python script or on a Python interpreter, do <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">superneuromat</span> <span class="pre">as</span> <span class="pre">snm</span></code></p></li>
+<li><p>The main class can be accessed by <code class="docutils literal notranslate"><span class="pre">model</span> <span class="pre">=</span> <span class="pre">snm.NeuromorphicModel()</span></code></p></li>
+<li><p>Refer to docstrings in the source code or on the <a class="reference external" href="https://superneuromat.readthedocs.io/en/latest/">readthedocs</a> page for the API</p></li>
+</ol>
+</section>
+<section id="development">
+<h1>Development<a class="headerlink" href="#development" title="Link to this heading"></a></h1>
+<ol class="arabic simple">
+<li><p>Clone the <code class="docutils literal notranslate"><span class="pre">superneuromat</span></code> repo: <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">https://github.com/ORNL/superneuromat.git</span></code></p></li>
+<li><p>Add the path to <code class="docutils literal notranslate"><span class="pre">superneuromat</span></code> to your <code class="docutils literal notranslate"><span class="pre">$PYTHONPATH</span></code>: <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">PYTHONPATH=$PYTHONPATH:/path/to/superneuromat</span></code>.</p></li>
+<li><p>You may want to update the <code class="docutils literal notranslate"><span class="pre">$PYTHONPATH</span></code> in your <code class="docutils literal notranslate"><span class="pre">.bash_profile</span></code> or <code class="docutils literal notranslate"><span class="pre">.bashrc</span></code>.</p></li>
+</ol>
+</section>
+<section id="cite-superneuromat">
+<h1>Cite SuperNeuroMAT<a class="headerlink" href="#cite-superneuromat" title="Link to this heading"></a></h1>
+<ol class="arabic simple">
+<li><p>Please cite SuperNeuroMAT using:</p></li>
+</ol>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>@inproceedings{date2023superneuro,
+  title={SuperNeuro: A fast and scalable simulator for neuromorphic computing},
+  author={Date, Prasanna and Gunaratne, Chathika and R. Kulkarni, Shruti and Patton, Robert and Coletti, Mark and Potok, Thomas},
+  booktitle={Proceedings of the 2023 International Conference on Neuromorphic Systems},
+  pages={1--4},
+  year={2023}
+}
+</pre></div>
+</div>
+<ol class="arabic simple">
+<li><dl class="simple">
+<dt>References for SuperNeuroMAT:</dt><dd><ul class="simple">
+<li><p><a class="reference external" href="https://dl.acm.org/doi/abs/10.1145/3589737.3606000">SuperNeuro: A Fast and Scalable Simulator for Neuromorphic Computing</a></p></li>
+<li><p><a class="reference external" href="https://dl.acm.org/doi/abs/10.1145/3546790.3546806">Neuromorphic Computing is Turing-Complete</a></p></li>
+<li><p><a class="reference external" href="https://dl.acm.org/doi/abs/10.1145/3477145.3477154">Computational Complexity of Neuromorphic Algorithms</a></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ol>
+</section>
 <section id="module-superneuromat">
-<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-superneuromat" title="Link to this heading"></a></h2>
+<span id="superneuromat"></span><h1>SuperNeuroMAT<a class="headerlink" href="#module-superneuromat" title="Link to this heading"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="superneuromat.SNN">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">superneuromat.</span></span><span class="sig-name descname"><span class="pre">SNN</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">backend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_mpi_ranks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/superneuromat.html#SNN"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#superneuromat.SNN" title="Link to this definition"></a></dt>
@@ -621,7 +679,6 @@
 
 </dd></dl>
 
-</section>
 </section>
 
 

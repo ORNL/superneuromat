@@ -1,4 +1,8 @@
 \babel@toc {english}{}\relax 
-\contentsline {chapter}{\numberline {1}superneuromat package}{3}{chapter.1}%
-\contentsline {section}{\numberline {1.1}Module contents}{3}{section.1.1}%
-\contentsline {chapter}{Index}{9}{section*.37}%
+\contentsline {chapter}{\numberline {1}Installation}{3}{chapter.1}%
+\contentsline {chapter}{\numberline {2}Usage}{5}{chapter.2}%
+\contentsline {chapter}{\numberline {3}Development}{7}{chapter.3}%
+\contentsline {chapter}{\numberline {4}Cite SuperNeuroMAT}{9}{chapter.4}%
+\contentsline {chapter}{\numberline {5}SuperNeuroMAT}{11}{chapter.5}%
+\contentsline {chapter}{Python Module Index}{17}{section*.37}%
+\contentsline {chapter}{Index}{19}{section*.38}%

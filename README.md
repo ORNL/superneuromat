@@ -1,6 +1,6 @@
-# SuperNeuroMAT v1.4
+# SuperNeuroMAT v2.0.0
 
-SuperNeuroMAT is a matrix-based simulator for simulating spiking neural networks to be used in neuromorphic computing. It is one of the fastest, if not the fastest, simlators for simulating spiking neural networks.
+SuperNeuroMAT is a matrix-based simulator for simulating spiking neural networks, which are used in neuromorphic computing. It is one of the fastest, if not the fastest, simlators for simulating spiking neural networks.
 
 Some salient features of SuperNeuroMAT are:
 1. Support for leaky integrate and fire neuron model with the following parameters: neuron threshold, neuron leak, and neuron refractory period

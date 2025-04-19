@@ -86,19 +86,148 @@
 
 
 \sphinxAtStartPar
-SuperNeuroMAT is a fast and scalable simulator for spiking neural networks (SNNs). It is meant to be run on multi\sphinxhyphen{}core systems. SuperNeuroMAT models SNN computations using matrix and vector operations.
+SuperNeuroMAT is a matrix\sphinxhyphen{}based simulator for simulating spiking neural networks, which are used in neuromorphic computing. It is one of the fastest, if not the fastest, simlators for simulating spiking neural networks.
 
 \sphinxAtStartPar
-Key features of SuperNeuroMAT include:
-1. Support for Leaky Integrate and Fire (LIF) neuron model
-2. Support for Spike\sphinxhyphen{}Timing\sphinxhyphen{}Dependent Plasticity (STDP) learning mechanism
+Some salient features of SuperNeuroMAT are:
+\begin{enumerate}
+\sphinxsetlistlabels{\arabic}{enumi}{enumii}{}{.}%
+\item {} 
+\sphinxAtStartPar
+Support for leaky integrate and fire neuron model with the following parameters: neuron threshold, neuron leak, and neuron refractory period
+
+\item {} 
+\sphinxAtStartPar
+Support for Spiking\sphinxhyphen{}Time\sphinxhyphen{}Dependent Plasticity (STDP) synapses with weights and delays
+
+\item {} 
+\sphinxAtStartPar
+No restrictions on connectivity of the neurons, all\sphinxhyphen{}to\sphinxhyphen{}all connections as well as self connections possible
+
+\item {} 
+\sphinxAtStartPar
+Constant leak supported
+
+\item {} 
+\sphinxAtStartPar
+STDP learning can be configured to turn on/off positive updates and negative updates
+
+\item {} 
+\sphinxAtStartPar
+Excessive synaptic delay can slow down the execution of the simulation, so try to avoid as much as possible
+
+\item {} 
+\sphinxAtStartPar
+Leak refers to the constant amount by which the internal state (membrane potential) of a neuron changes in each time step of the simulation; therefore, zero leak means the neuron fully retains the value in its internal state, and infinite leak means the neuron never retains the value in its internal state
+
+\item {} 
+\sphinxAtStartPar
+STDP implementation is extremely fast
+
+\item {} 
+\sphinxAtStartPar
+The model of neuromorphic computing supported in SuperNeuroMAT is Turing\sphinxhyphen{}complete
+
+\item {} 
+\sphinxAtStartPar
+All underlying computational operations are matrix\sphinxhyphen{}based and currently supported on CPUs
+
+\end{enumerate}
 
 
-\chapter{superneuromat package}
-\label{\detokenize{index:superneuromat-package}}
+\chapter{Installation}
+\label{\detokenize{index:installation}}\begin{enumerate}
+\sphinxsetlistlabels{\arabic}{enumi}{enumii}{}{.}%
+\item {} 
+\sphinxAtStartPar
+Install using \sphinxcode{\sphinxupquote{pip install superneuromat}}
 
-\section{Module contents}
-\label{\detokenize{index:module-superneuromat}}\label{\detokenize{index:module-contents}}\index{module@\spxentry{module}!superneuromat@\spxentry{superneuromat}}\index{superneuromat@\spxentry{superneuromat}!module@\spxentry{module}}\index{SNN (class in superneuromat)@\spxentry{SNN}\spxextra{class in superneuromat}}
+\item {} 
+\sphinxAtStartPar
+Update/upgrade using \sphinxcode{\sphinxupquote{pip install superneuromat \sphinxhyphen{}\sphinxhyphen{}upgrade}}
+
+\end{enumerate}
+
+
+\chapter{Usage}
+\label{\detokenize{index:usage}}\begin{enumerate}
+\sphinxsetlistlabels{\arabic}{enumi}{enumii}{}{.}%
+\item {} 
+\sphinxAtStartPar
+In a Python script or on a Python interpreter, do \sphinxcode{\sphinxupquote{import superneuromat as snm}}
+
+\item {} 
+\sphinxAtStartPar
+The main class can be accessed by \sphinxcode{\sphinxupquote{model = snm.NeuromorphicModel()}}
+
+\item {} 
+\sphinxAtStartPar
+Refer to docstrings in the source code or on the \sphinxhref{https://superneuromat.readthedocs.io/en/latest/}{readthedocs} page for the API
+
+\end{enumerate}
+
+
+\chapter{Development}
+\label{\detokenize{index:development}}\begin{enumerate}
+\sphinxsetlistlabels{\arabic}{enumi}{enumii}{}{.}%
+\item {} 
+\sphinxAtStartPar
+Clone the \sphinxcode{\sphinxupquote{superneuromat}} repo: \sphinxcode{\sphinxupquote{git clone https://github.com/ORNL/superneuromat.git}}
+
+\item {} 
+\sphinxAtStartPar
+Add the path to \sphinxcode{\sphinxupquote{superneuromat}} to your \sphinxcode{\sphinxupquote{\$PYTHONPATH}}: \sphinxcode{\sphinxupquote{export PYTHONPATH=\$PYTHONPATH:/path/to/superneuromat}}.
+
+\item {} 
+\sphinxAtStartPar
+You may want to update the \sphinxcode{\sphinxupquote{\$PYTHONPATH}} in your \sphinxcode{\sphinxupquote{.bash\_profile}} or \sphinxcode{\sphinxupquote{.bashrc}}.
+
+\end{enumerate}
+
+
+\chapter{Cite SuperNeuroMAT}
+\label{\detokenize{index:cite-superneuromat}}\begin{enumerate}
+\sphinxsetlistlabels{\arabic}{enumi}{enumii}{}{.}%
+\item {} 
+\sphinxAtStartPar
+Please cite SuperNeuroMAT using:
+
+\end{enumerate}
+
+\begin{sphinxVerbatim}[commandchars=\\\{\}]
+@inproceedings\PYGZob{}date2023superneuro,
+  title=\PYGZob{}SuperNeuro: A fast and scalable simulator for neuromorphic computing\PYGZcb{},
+  author=\PYGZob{}Date, Prasanna and Gunaratne, Chathika and R. Kulkarni, Shruti and Patton, Robert and Coletti, Mark and Potok, Thomas\PYGZcb{},
+  booktitle=\PYGZob{}Proceedings of the 2023 International Conference on Neuromorphic Systems\PYGZcb{},
+  pages=\PYGZob{}1\PYGZhy{}\PYGZhy{}4\PYGZcb{},
+  year=\PYGZob{}2023\PYGZcb{}
+\PYGZcb{}
+\end{sphinxVerbatim}
+\begin{enumerate}
+\sphinxsetlistlabels{\arabic}{enumi}{enumii}{}{.}%
+\item {} \begin{description}
+\sphinxlineitem{References for SuperNeuroMAT:}\begin{itemize}
+\item {} 
+\sphinxAtStartPar
+\sphinxhref{https://dl.acm.org/doi/abs/10.1145/3589737.3606000}{SuperNeuro: A Fast and Scalable Simulator for Neuromorphic Computing}
+
+\item {} 
+\sphinxAtStartPar
+\sphinxhref{https://dl.acm.org/doi/abs/10.1145/3546790.3546806}{Neuromorphic Computing is Turing\sphinxhyphen{}Complete}
+
+\item {} 
+\sphinxAtStartPar
+\sphinxhref{https://dl.acm.org/doi/abs/10.1145/3477145.3477154}{Computational Complexity of Neuromorphic Algorithms}
+
+\end{itemize}
+
+\end{description}
+
+\end{enumerate}
+
+
+\chapter{SuperNeuroMAT}
+\label{\detokenize{index:module-superneuromat}}\label{\detokenize{index:superneuromat}}\index{module@\spxentry{module}!superneuromat@\spxentry{superneuromat}}\index{superneuromat@\spxentry{superneuromat}!module@\spxentry{module}}\index{SNN (class in superneuromat)@\spxentry{SNN}\spxextra{class in superneuromat}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{index:superneuromat.SNN}}
@@ -1081,6 +1210,12 @@ enable\_stdp is not set to True on any of the synapses
 
 
 
+\renewcommand{\indexname}{Python Module Index}
+\begin{sphinxtheindex}
+\let\bigletter\sphinxstyleindexlettergroup
+\bigletter{s}
+\item\relax\sphinxstyleindexentry{superneuromat}\sphinxstyleindexpageref{index:\detokenize{module-superneuromat}}
+\end{sphinxtheindex}
 
 \renewcommand{\indexname}{Index}
 \printindex

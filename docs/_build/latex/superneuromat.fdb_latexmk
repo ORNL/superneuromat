@@ -1,11 +1,11 @@
 # Fdb version 4
-["makeindex superneuromat.idx"] 1745034458.42162 "superneuromat.idx" "superneuromat.ind" "superneuromat" 1745036020.90668 0
-  "superneuromat.idx" 1745036020.63138 4682 00aba2ade20984de03335d5724fe5578 "pdflatex"
+["makeindex superneuromat.idx"] 1745040486.94896 "superneuromat.idx" "superneuromat.ind" "superneuromat" 1745040489.03429 0
+  "superneuromat.idx" 1745040488.78601 4718 9773c8275131f4ce3a526f65fa06dc0a "pdflatex"
   (generated)
   "superneuromat.ilg"
   "superneuromat.ind"
   (rewritten before read)
-["pdflatex"] 1745036019.03212 "superneuromat.tex" "superneuromat.pdf" "superneuromat" 1745036020.90734 0
+["pdflatex"] 1745040487.18068 "superneuromat.tex" "superneuromat.pdf" "superneuromat" 1745040489.03469 0
   "/usr/local/texlive/2024/texmf-dist/fonts/enc/dvips/fontawesome5/fa5free2.enc" 1622837620 2906 e48aa7c95dea478a2e011bcb4f7878c9 ""
   "/usr/local/texlive/2024/texmf-dist/fonts/enc/dvips/tex-gyre/q-ec.enc" 1529098226 2457 aaabbccba4df2a7f7371410ee4e075a3 ""
   "/usr/local/texlive/2024/texmf-dist/fonts/enc/dvips/tex-gyre/q-ts1.enc" 1529098226 3124 3813fd4c981d99822890a2861b0d274c ""
@@ -35,7 +35,9 @@
   "/usr/local/texlive/2024/texmf-dist/fonts/tfm/public/txfonts/t1xbtt.tfm" 1136768653 1436 f00b2a275be56a8355f5c3b07a5a7a4c ""
   "/usr/local/texlive/2024/texmf-dist/fonts/tfm/public/txfonts/t1xtt.tfm" 1136768653 1384 8943063000d26272532f74ca134dfecd ""
   "/usr/local/texlive/2024/texmf-dist/fonts/tfm/public/txfonts/t1xttsl.tfm" 1136768653 1624 fb8f48c6308ace0a799f9278aba03e18 ""
+  "/usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb" 1248133631 37912 77d683123f92148345f3fc36a38d9ab1 ""
   "/usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb" 1248133631 32569 5e5ddc8df908dea60932f3c484a54c0d ""
+  "/usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy5.pfb" 1248133631 32915 7bf7720c61a5b3a7ff25b0964421c9b6 ""
   "/usr/local/texlive/2024/texmf-dist/fonts/type1/public/fontawesome5/FontAwesome5Free-Solid.pfb" 1651520503 295323 d099723373a00cc17d5ae0c9738bb5b3 ""
   "/usr/local/texlive/2024/texmf-dist/fonts/type1/public/tex-gyre/qhvb.pfb" 1257299502 112164 176018dd42fcc60204173fa10e357da5 ""
   "/usr/local/texlive/2024/texmf-dist/fonts/type1/public/tex-gyre/qhvbi.pfb" 1257299502 104926 77ce2f0433ac7fd33dbe9968d127e4fb ""
@@ -158,7 +160,7 @@
   "/usr/local/texlive/2024/texmf-var/web2c/pdftex/pdflatex.fmt" 1719503100 8221420 4df5495ac1c0ed1e07138bada7582f7b ""
   "/usr/local/texlive/2024/texmf.cnf" 1710266656 577 e590dabc9e28c5b61546e15f63eebcdf ""
   "sphinx.sty" 1742273249.48615 54203 ee7fe875437470f5328ee20661bb9f1d ""
-  "sphinxhighlight.sty" 1745036016.48611 7553 83fb52292c17957d9f4aadcb28c57a87 ""
+  "sphinxhighlight.sty" 1745040484.39322 7553 83fb52292c17957d9f4aadcb28c57a87 ""
   "sphinxlatexadmonitions.sty" 1742273249.48806 19111 5e67a0f91439018bceb7cadf319345e6 ""
   "sphinxlatexcontainers.sty" 1742273249.48836 900 d61f923db071a7b54d3cee8a1e6935d3 ""
   "sphinxlatexgraphics.sty" 1742273249.48865 4918 c9266041d02bc615d54b890e96e3acd3 ""
@@ -173,16 +175,16 @@
   "sphinxlatexstyletext.sty" 1742273249.4916 6759 9e932c65374cfb62686485d331bc975c ""
   "sphinxlatextables.sty" 1742273249.49231 57643 7f1013c2fa11942370d867527bdda568 ""
   "sphinxmanual.cls" 1742273249.49277 4241 7b0d7a37df7b5715fb0dbd585c52ecdb ""
-  "sphinxmessages.sty" 1745036016.59064 745 3f5fcd6cdd7964ed608767954a8ced6f ""
+  "sphinxmessages.sty" 1745040484.5009 745 3f5fcd6cdd7964ed608767954a8ced6f ""
   "sphinxoptionsgeometry.sty" 1742273249.49315 2060 6c27b3eba37bde592ae8908ab2c1ac0f ""
   "sphinxoptionshyperref.sty" 1742273249.49345 1093 e468489bae7631a7f387b4b0f7bc15d4 ""
   "sphinxpackageboxes.sty" 1742273249.49391 36106 1be2053eb1cb9b083b3a75e3657bcb24 ""
   "sphinxpackagefootnote.sty" 1742273249.49461 15330 2fb656b6ce8cd1f6aba2d1c508fb51e5 ""
-  "superneuromat.aux" 1745036020.6287 3802 7f43a7bb42fe032a3f43f1e3f98a93ea "pdflatex"
-  "superneuromat.ind" 1745034458.64733 3013 a0f4f0d2533355ca58dad752a479302a "makeindex superneuromat.idx"
-  "superneuromat.out" 1745036020.63059 353 7e897ad9ee8fc0d64c9f124038aae694 "pdflatex"
-  "superneuromat.tex" 1745036011.75697 36434 621ec6b768e8302ba3637757e192583a ""
-  "superneuromat.toc" 1745036020.63157 230 69c5a133bbb4092f490b3f5f4b0b7db2 "pdflatex"
+  "superneuromat.aux" 1745040488.78355 4581 b007d79d4a2665b02c50fe406a433cf7 "pdflatex"
+  "superneuromat.ind" 1745040487.1755 3039 bd269606f44e7b4a8690ffbe71273f1d "makeindex superneuromat.idx"
+  "superneuromat.out" 1745040488.78527 729 cbc5083133ee582ff5ecbe0ad1b8731e "pdflatex"
+  "superneuromat.tex" 1745040480.05714 41117 b639d7827dcfb24e925cc76200b403ad ""
+  "superneuromat.toc" 1745040488.78625 482 49dd710e4039a60cb529fdb470e69cb0 "pdflatex"
   (generated)
   "superneuromat.aux"
   "superneuromat.idx"

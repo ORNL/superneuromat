@@ -5,61 +5,62 @@
 \let\spxextra \sphinxstyleindexextra
 
   \bigletter A
-  \item \spxentry{add\_spike()}\spxextra{superneuromat.SNN method}, \hyperpage{5}
+  \item \spxentry{add\_spike()}\spxextra{superneuromat.SNN method}, \hyperpage{13}
 
   \indexspace
   \bigletter C
-  \item \spxentry{count\_spikes()}\spxextra{superneuromat.SNN method}, \hyperpage{5}
-  \item \spxentry{create\_neuron()}\spxextra{superneuromat.SNN method}, \hyperpage{5, 6}
-  \item \spxentry{create\_synapse()}\spxextra{superneuromat.SNN method}, \hyperpage{5, 6}
+  \item \spxentry{count\_spikes()}\spxextra{superneuromat.SNN method}, \hyperpage{13}
+  \item \spxentry{create\_neuron()}\spxextra{superneuromat.SNN method}, \hyperpage{12, 13}
+  \item \spxentry{create\_synapse()}\spxextra{superneuromat.SNN method}, \hyperpage{13, 14}
 
   \indexspace
   \bigletter E
-  \item \spxentry{enable\_stdp}\spxextra{superneuromat.SNN attribute}, \hyperpage{4}
+  \item \spxentry{enable\_stdp}\spxextra{superneuromat.SNN attribute}, \hyperpage{12}
 
   \indexspace
   \bigletter I
-  \item \spxentry{input\_spikes}\spxextra{superneuromat.SNN attribute}, \hyperpage{4}
+  \item \spxentry{input\_spikes}\spxextra{superneuromat.SNN attribute}, \hyperpage{12}
 
   \indexspace
   \bigletter M
   \item \spxentry{module}
-    \subitem \spxentry{superneuromat}, \hyperpage{3}
+    \subitem \spxentry{superneuromat}, \hyperpage{11}
 
   \indexspace
   \bigletter N
-  \item \spxentry{neuron\_leaks}\spxextra{superneuromat.SNN attribute}, \hyperpage{3}
-  \item \spxentry{neuron\_refractory\_periods}\spxextra{superneuromat.SNN attribute}, \hyperpage{3}
-  \item \spxentry{neuron\_reset\_states}\spxextra{superneuromat.SNN attribute}, \hyperpage{3}
-  \item \spxentry{neuron\_thresholds}\spxextra{superneuromat.SNN attribute}, \hyperpage{3}
-  \item \spxentry{num\_neurons}\spxextra{superneuromat.SNN attribute}, \hyperpage{3}
-  \item \spxentry{num\_synapses}\spxextra{superneuromat.SNN attribute}, \hyperpage{3}
+  \item \spxentry{neuron\_leaks}\spxextra{superneuromat.SNN attribute}, \hyperpage{11}
+  \item \spxentry{neuron\_refractory\_periods}\spxextra{superneuromat.SNN attribute}, 
+		\hyperpage{11}
+  \item \spxentry{neuron\_reset\_states}\spxextra{superneuromat.SNN attribute}, \hyperpage{11}
+  \item \spxentry{neuron\_thresholds}\spxextra{superneuromat.SNN attribute}, \hyperpage{11}
+  \item \spxentry{num\_neurons}\spxextra{superneuromat.SNN attribute}, \hyperpage{11}
+  \item \spxentry{num\_synapses}\spxextra{superneuromat.SNN attribute}, \hyperpage{11}
 
   \indexspace
   \bigletter P
-  \item \spxentry{post\_synaptic\_neuron\_ids}\spxextra{superneuromat.SNN attribute}, \hyperpage{4}
-  \item \spxentry{pre\_synaptic\_neuron\_ids}\spxextra{superneuromat.SNN attribute}, \hyperpage{3}
-  \item \spxentry{print\_spike\_train()}\spxextra{superneuromat.SNN method}, \hyperpage{5}, 
-		\hyperpage{7}
+  \item \spxentry{post\_synaptic\_neuron\_ids}\spxextra{superneuromat.SNN attribute}, 
+		\hyperpage{11}
+  \item \spxentry{pre\_synaptic\_neuron\_ids}\spxextra{superneuromat.SNN attribute}, \hyperpage{11}
+  \item \spxentry{print\_spike\_train()}\spxextra{superneuromat.SNN method}, \hyperpage{13, 14}
 
   \indexspace
   \bigletter R
-  \item \spxentry{reset()}\spxextra{superneuromat.SNN method}, \hyperpage{7}
+  \item \spxentry{reset()}\spxextra{superneuromat.SNN method}, \hyperpage{14}
 
   \indexspace
   \bigletter S
-  \item \spxentry{setup()}\spxextra{superneuromat.SNN method}, \hyperpage{5}, \hyperpage{7}
-  \item \spxentry{simulate()}\spxextra{superneuromat.SNN method}, \hyperpage{5}, \hyperpage{8}
-  \item \spxentry{SNN}\spxextra{class in superneuromat}, \hyperpage{3}
-  \item \spxentry{spike\_train}\spxextra{superneuromat.SNN attribute}, \hyperpage{4}
-  \item \spxentry{stdp}\spxextra{superneuromat.SNN attribute}, \hyperpage{4}
-  \item \spxentry{stdp\_Aneg}\spxextra{superneuromat.SNN attribute}, \hyperpage{4}
-  \item \spxentry{stdp\_Apos}\spxextra{superneuromat.SNN attribute}, \hyperpage{4}
-  \item \spxentry{stdp\_setup()}\spxextra{superneuromat.SNN method}, \hyperpage{5}, \hyperpage{8}
-  \item \spxentry{stdp\_time\_steps}\spxextra{superneuromat.SNN attribute}, \hyperpage{4}
+  \item \spxentry{setup()}\spxextra{superneuromat.SNN method}, \hyperpage{13}, \hyperpage{15}
+  \item \spxentry{simulate()}\spxextra{superneuromat.SNN method}, \hyperpage{13}, \hyperpage{15}
+  \item \spxentry{SNN}\spxextra{class in superneuromat}, \hyperpage{11}
+  \item \spxentry{spike\_train}\spxextra{superneuromat.SNN attribute}, \hyperpage{12}
+  \item \spxentry{stdp}\spxextra{superneuromat.SNN attribute}, \hyperpage{12}
+  \item \spxentry{stdp\_Aneg}\spxextra{superneuromat.SNN attribute}, \hyperpage{12}
+  \item \spxentry{stdp\_Apos}\spxextra{superneuromat.SNN attribute}, \hyperpage{12}
+  \item \spxentry{stdp\_setup()}\spxextra{superneuromat.SNN method}, \hyperpage{13}, \hyperpage{16}
+  \item \spxentry{stdp\_time\_steps}\spxextra{superneuromat.SNN attribute}, \hyperpage{12}
   \item \spxentry{superneuromat}
-    \subitem \spxentry{module}, \hyperpage{3}
-  \item \spxentry{synaptic\_delays}\spxextra{superneuromat.SNN attribute}, \hyperpage{4}
-  \item \spxentry{synaptic\_weights}\spxextra{superneuromat.SNN attribute}, \hyperpage{4}
+    \subitem \spxentry{module}, \hyperpage{11}
+  \item \spxentry{synaptic\_delays}\spxextra{superneuromat.SNN attribute}, \hyperpage{12}
+  \item \spxentry{synaptic\_weights}\spxextra{superneuromat.SNN attribute}, \hyperpage{12}
 
 \end{sphinxtheindex}

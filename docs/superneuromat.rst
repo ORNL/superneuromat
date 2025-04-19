@@ -1,8 +1,5 @@
-superneuromat package
-=====================
-
-Module contents
----------------
+SuperNeuroMAT
+=============
 
 .. automodule:: superneuromat
    :members:
