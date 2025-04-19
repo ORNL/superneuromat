@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.6.27)  19 APR 2025 01:28
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.6.27)  19 APR 2025 01:31
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -895,7 +895,7 @@ Chapter 3.
 ]
 Chapter 4.
 LaTeX Font Info:    Trying to load font information for TS1+qtm on input line 2
-10.
+04.
 (/usr/local/texlive/2024/texmf-dist/tex/latex/tex-gyre/ts1qtm.fd
 File: ts1qtm.fd 2009/09/25 v1.2 font definition file for TS1/qtm
 ) [9{/usr/local/texlive/2024/texmf-dist/fonts/enc/dvips/tex-gyre/q-ts1.enc}] [1
@@ -904,15 +904,15 @@ File: ts1qtm.fd 2009/09/25 v1.2 font definition file for TS1/qtm
 ]
 Chapter 5.
 LaTeX Font Info:    Font shape `T1/txtt/b/n' in size <10> not available
-(Font)              Font shape `T1/txtt/bx/n' tried instead on input line 238.
+(Font)              Font shape `T1/txtt/bx/n' tried instead on input line 230.
 [11] [12]
 LaTeX Font Info:    Trying to load font information for U+fontawesomefree2 on i
-nput line 674.
+nput line 666.
 
 (/usr/local/texlive/2024/texmf-dist/tex/latex/fontawesome5/ufontawesomefree2.fd
 )
 LaTeX Font Info:    Font shape `T1/txtt/m/it' in size <10> not available
-(Font)              Font shape `T1/txtt/m/sl' tried instead on input line 718.
+(Font)              Font shape `T1/txtt/m/sl' tried instead on input line 710.
  [13{/usr/local/texlive/2024/texmf-dist/fonts/enc/dvips/fontawesome5/fa5free2.e
 nc}] [14] [15] [16] [17
 
@@ -938,8 +938,8 @@ Package rerunfilecheck Info: File `superneuromat.out' has not changed.
 (rerunfilecheck)             Checksum: CBC5083133EE582FF5ECBE0AD1B8731E;729.
  ) 
 Here is how much of TeX's memory you used:
- 19982 strings out of 474116
- 356770 string characters out of 5743682
+ 19980 strings out of 474116
+ 356756 string characters out of 5743682
  1944187 words of memory out of 5000000
  41835 multiletter control sequences out of 15000+600000
  604217 words of font info for 77 fonts, out of 8000000 for 9000
@@ -958,10 +958,10 @@ ive/2024/texmf-dist/fonts/type1/public/tex-gyre/qtmri.pfb></usr/local/texlive/2
 024/texmf-dist/fonts/type1/public/txfonts/t1xbtt.pfb></usr/local/texlive/2024/t
 exmf-dist/fonts/type1/public/txfonts/t1xtt.pfb></usr/local/texlive/2024/texmf-d
 ist/fonts/type1/public/txfonts/t1xtt.pfb>
-Output written on superneuromat.pdf (23 pages, 243182 bytes).
+Output written on superneuromat.pdf (23 pages, 243137 bytes).
 PDF statistics:
- 346 PDF objects out of 1000 (max. 8388607)
- 297 compressed objects within 3 object streams
- 106 named destinations out of 1000 (max. 500000)
+ 344 PDF objects out of 1000 (max. 8388607)
+ 295 compressed objects within 3 object streams
+ 104 named destinations out of 1000 (max. 500000)
  77 words of extra memory for PDF output out of 10000 (max. 10000000)
 
