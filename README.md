@@ -22,7 +22,7 @@ Some salient features of SuperNeuroMAT are:
 
 ## Usage
 1. In a Python script or on a Python interpreter, do `import superneuromat as snm`
-2. The main class can be accessed by `model = snm.NeuromorphicModel()`
+2. The main class can be accessed by `snn = snm.SNN()`
 3. Refer to docstrings in the source code or on the [readthedocs](https://superneuromat.readthedocs.io/en/latest/) page for the API
 
 
