@@ -3,7 +3,6 @@ scipy
 pandas
 sphinx-rtd-theme
 unittest2
-os
 sys
 time
 superneuromat
