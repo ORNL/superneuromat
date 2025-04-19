@@ -1,7 +1,6 @@
-src
-===
+superneuromat
+=============
 
 .. toctree::
    :maxdepth: 4
 
-   superneuromat

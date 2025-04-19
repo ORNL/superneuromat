@@ -2,7 +2,7 @@ numpy
 scipy
 pandas
 sphinx-rtd-theme
-unittest
+unittest2
 os
 sys
 time
