@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.6.27)  18 APR 2025 21:55
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.6.27)  18 APR 2025 23:47
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -874,37 +874,78 @@ al/texlive/2024/texmf-dist/fonts/enc/dvips/tex-gyre/q-ec.enc}] [2
 
 ] [2
 
-]
-LaTeX Font Info:    Trying to load font information for T1+txtt on input line 8
-9.
+] [1] [2
 
+]
+Chapter 1.
+LaTeX Font Info:    Trying to load font information for T1+txtt on input line 1
+09.
 (/usr/local/texlive/2024/texmf-dist/tex/latex/txfonts/t1txtt.fd
 File: t1txtt.fd 2000/12/15 v3.1
 )
-(./superneuromat.ind) [1] (./superneuromat.aux)
+LaTeX Font Info:    Font shape `T1/txtt/b/n' in size <10> not available
+(Font)              Font shape `T1/txtt/bx/n' tried instead on input line 109.
+LaTeX Font Info:    Trying to load font information for TS1+qtm on input line 1
+09.
+
+(/usr/local/texlive/2024/texmf-dist/tex/latex/tex-gyre/ts1qtm.fd
+File: ts1qtm.fd 2009/09/25 v1.2 font definition file for TS1/qtm
+) [3{/usr/local/texlive/2024/texmf-dist/fonts/enc/dvips/tex-gyre/q-ts1.enc}] [4
+]
+LaTeX Font Info:    Trying to load font information for U+fontawesomefree2 on i
+nput line 545.
+
+(/usr/local/texlive/2024/texmf-dist/tex/latex/fontawesome5/ufontawesomefree2.fd
+)
+LaTeX Font Info:    Font shape `T1/txtt/m/it' in size <10> not available
+(Font)              Font shape `T1/txtt/m/sl' tried instead on input line 589.
+ [5{/usr/local/texlive/2024/texmf-dist/fonts/enc/dvips/fontawesome5/fa5free2.en
+c}] [6] [7] [8] [9
+
+
+
+] (./superneuromat.ind [10
+
+
+]
+Underfull \hbox (badness 10000) in paragraph at lines 32--33
+[]\T1/txtt/m/n/10 neuron_refractory_periods \T1/qtm/m/n/10 (\T1/qtm/m/it/10 su-
+perneu-ro-mat.SNN
+ []
+
+[11
+
+]) (./superneuromat.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-02-20>
  ***********
 Package rerunfilecheck Info: File `superneuromat.out' has not changed.
-(rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
+(rerunfilecheck)             Checksum: 2E5F0B711C73D028B93C0665A16D65E4;499.
  ) 
 Here is how much of TeX's memory you used:
- 19708 strings out of 474116
- 352006 string characters out of 5743682
- 1928187 words of memory out of 5000000
- 41694 multiletter control sequences out of 15000+600000
- 595126 words of font info for 63 fonts, out of 8000000 for 9000
+ 19935 strings out of 474116
+ 356226 string characters out of 5743682
+ 1943187 words of memory out of 5000000
+ 41820 multiletter control sequences out of 15000+600000
+ 603895 words of font info for 76 fonts, out of 8000000 for 9000
  1142 hyphenation exceptions out of 8191
- 72i,11n,83p,1202b,517s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</usr/local/texlive/2024/texmf-dist/fonts/type1/public/tex-gyre/qhvb.pfb></us
-r/local/texlive/2024/texmf-dist/fonts/type1/public/tex-gyre/qhvbi.pfb></usr/loc
-al/texlive/2024/texmf-dist/fonts/type1/public/tex-gyre/qtmr.pfb></usr/local/tex
-live/2024/texmf-dist/fonts/type1/public/txfonts/t1xtt.pfb>
-Output written on superneuromat.pdf (5 pages, 71285 bytes).
+ 72i,11n,83p,1202b,912s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</usr/local/texlive/2024/texmf-dist/fonts/type1/public/fontawesome5/FontAweso
+me5Free-Solid.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfon
+ts/cm/cmsy10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/tex-gyr
+e/qhvb.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/tex-gyre/qhvb
+i.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/tex-gyre/qhvr.pfb>
+</usr/local/texlive/2024/texmf-dist/fonts/type1/public/tex-gyre/qtmb.pfb></usr/
+local/texlive/2024/texmf-dist/fonts/type1/public/tex-gyre/qtmr.pfb></usr/local/
+texlive/2024/texmf-dist/fonts/type1/public/tex-gyre/qtmri.pfb></usr/local/texli
+ve/2024/texmf-dist/fonts/type1/public/txfonts/t1xbtt.pfb></usr/local/texlive/20
+24/texmf-dist/fonts/type1/public/txfonts/t1xtt.pfb></usr/local/texlive/2024/tex
+mf-dist/fonts/type1/public/txfonts/t1xtt.pfb>
+Output written on superneuromat.pdf (15 pages, 217288 bytes).
 PDF statistics:
- 52 PDF objects out of 1000 (max. 8388607)
- 35 compressed objects within 1 object stream
- 6 named destinations out of 1000 (max. 500000)
- 21 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 261 PDF objects out of 1000 (max. 8388607)
+ 222 compressed objects within 3 object streams
+ 75 named destinations out of 1000 (max. 500000)
+ 53 words of extra memory for PDF output out of 10000 (max. 10000000)
 

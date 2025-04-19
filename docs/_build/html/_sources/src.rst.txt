@@ -1,0 +1,22 @@
+superneuromat package
+=====================
+
+Submodules
+----------
+
+superneuromat module
+------------------------
+
+.. automodule:: src.superneuromat
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: src
+   :members:
+   :undoc-members:
+   :show-inheritance:
