@@ -172,7 +172,7 @@ class SNN:
 
 
 	def __repr__(self):
-		""" Display the neuromorphic class in a legible format
+		""" Display the SNN class in a legible format
 
 		"""
 
@@ -627,10 +627,10 @@ class SNN:
 
 
 	def simulate(self, time_steps: int=1000) -> None:
-		""" Simulate the neuromorphic spiking neural network 
+		""" Simulate the spiking neural network 
 
 		Args:
-			time_steps (int): Number of time steps for which the neuromorphic circuit is to be simulated
+			time_steps (int): Number of time steps for which the SNN is to be simulated
 			backend (string): Backend is either cpu or frontier
 
 		Raises: 
@@ -890,10 +890,10 @@ class SNN:
 
 
 	def _simulate_cpu(self, time_steps: int=1000):
-		""" Simulates the neuromorphic SNN on CPU backend
+		""" Simulates the SNN on CPU backend
 
 		Args:
-			time_steps (int): Number of time steps for which the neuromorphic circuit is to be simulated
+			time_steps (int): Number of time steps for which the SNN is to be simulated
 			backend (string): Backend is either cpu or frontier
 
 		"""
@@ -1214,10 +1214,10 @@ class SNN:
 
 
 	def _simulate_frontier(self, time_steps):
-		""" Simulates the neuromorphic SNN on the Frontier supercomputer
+		""" Simulates the SNN on the Frontier supercomputer
 		
 		Args:
-			time_steps (int): Number of time steps for which the neuromorphic circuit is to be simulated
+			time_steps (int): Number of time steps for which the SNN is to be simulated
 			backend (string): Backend is either cpu or frontier
 
 		"""

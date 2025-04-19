@@ -1,6 +1,9 @@
-# numpy
 numpy
-#pandas
+scipy
 pandas
-# sphinx-rtd-theme
 sphinx-rtd-theme
+unittest
+os
+sys
+time
+superneuromat
