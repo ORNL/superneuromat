@@ -68,7 +68,10 @@ class Neuron:
         self.m.neuron_refractory_periods[self.idx] = int(value)
 
     def spikes(self):
-        return self.m.ispikes[:, self.idx]
+        if self.m.spike_train:
+            return self.m.ispikes[:, self.idx]
+        else:
+            return []
 
     def add_spike(self, time: int, value: float = 1.0):
         self.m.add_spike(time, self.idx, value)
@@ -215,7 +218,7 @@ class Synapse:
             f"id: {self.idx:>5d}",
             f"pre: {self.pre:>5d}",
             f"post: {self.post:>5d}",
-            f"\tweight: {self.weight:f}\t",
+            f"\tweight: {self.weight:11.9g}\t",
             f"delay: {self.delay:>3d}",
             f"stdp {' en' if self.stdp_enabled else 'dis'}abled",
         ])
@@ -228,18 +231,18 @@ class Synapse:
             f"{self.idx:>5d}\t",
             f"{self.pre:>5d}  ",
             f"{self.post:>5d}\t",
-            f"{self.weight:>12f}\t",
+            f"{self.weight:>11.9g}\t",
             f"{self.delay:>5d}\t",
             f"{'X' if self.stdp_enabled else '-'}",
         ])
 
     @staticmethod
     def row_header():
-        return "  idx\t  pre   post\t      weight\tdelay\tstdp_enabled"
+        return "  idx\t  pre   post\t     weight\tdelay\tstdp_enabled"
 
     @staticmethod
     def row_cont():
-        return "  ...\t  ...    ...\t         ...\t  ...\t..."
+        return "  ...\t  ...    ...\t        ...\t  ...\t..."
 
 
 class SynapseList:

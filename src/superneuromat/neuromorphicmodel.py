@@ -15,11 +15,6 @@ try:
 except ImportError:
     numba = None
 
-try:
-    from scipy.sparse import csc_array
-except ImportError:
-    csc_array = None
-
 """
 
 FEATURE REQUESTS:
@@ -243,8 +238,26 @@ class NeuromorphicModel:
         else:
             return 0
 
-    @property
-    def neuron_df(self):
+    def get_weights_df(self):
+        """Returns a DataFrame containing information about synapse weights."""
+        # TODO: test this
+        import pandas as pd
+        return pd.DataFrame({
+            "Pre Neuron ID": self.pre_synaptic_neuron_ids,
+            "Post Neuron ID": self.post_synaptic_neuron_ids,
+            "Weight": self.synaptic_weights,
+        })
+
+    def get_stdp_enabled_df(self):
+        """Returns a DataFrame containing information about STDP enabled synapses."""
+        import pandas as pd
+        return pd.DataFrame({
+            "Pre Neuron ID": self.pre_synaptic_neuron_ids,
+            "Post Neuron ID": self.post_synaptic_neuron_ids,
+            "STDP Enabled": self.enable_stdp,
+        })
+
+    def get_neuron_df(self):
         """Returns a DataFrame containing information about neurons."""
         import pandas as pd
         return pd.DataFrame({
@@ -255,8 +268,7 @@ class NeuromorphicModel:
             "Refractory Period": self.neuron_refractory_periods,
         })
 
-    @property
-    def synapse_df(self):
+    def get_synapse_df(self):
         """Returns a DataFrame containing information about synapses."""
         import pandas as pd
         return pd.DataFrame({
@@ -266,6 +278,15 @@ class NeuromorphicModel:
             "Delay": self.synaptic_delays,
             "STDP Enabled": self.enable_stdp,
         })
+
+    def get_input_spikes_df(self):
+        """Returns a DataFrame containing information about input spikes."""
+        import pandas as pd
+        df = pd.DataFrame()
+        for time, spikes in self.input_spikes.items():
+            for neuron, value in zip(spikes["nids"], spikes["values"]):
+                df.loc[time, neuron] = value
+        return df.fillna(0.0)
 
     @property
     def ispikes(self) -> np.ndarray[(int, int), bool]:
@@ -322,34 +343,38 @@ class NeuromorphicModel:
             '\n'.join(rows),
         ])
 
+    def input_spikes_info(self, max_entries=None):
+
+        def row(time, nid, value):
+            return f"{time:>5d}: \t{value:>11.9g} -> {self.neurons[nid]!r}"
+
+        all_spikes = []
+        for time, spikes in self.input_spikes.items():
+            for neuron, value in zip(spikes["nids"], spikes["values"]):
+                all_spikes.append((time, neuron, value))
+        if max_entries is None or len(self.input_spikes) <= max_entries:
+            rows = (row(time, nid, value) for time, nid, value in all_spikes)
+        else:
+            fi = max_entries // 2
+            first = [row(time, nid, value) for time, nid, value in all_spikes[:fi]]
+            last = [row(time, nid, value) for time, nid, value in all_spikes[-fi:]]
+            rows = first + [f"  ...   {len(all_spikes) - (fi * 2)} rows hidden    ..."] + last
+        return '\n'.join([
+            "Input Spikes:",
+            f" Time:  {'Spike-value':>11s}    Destination",
+            '\n'.join(rows),
+        ])
+
     def pretty(self):
-        import pandas as pd
-
-        # Input Spikes
-        times = []
-        nids = []
-        values = []
-        for time in self.input_spikes:
-            for nid, value in zip(self.input_spikes[time]["nids"], self.input_spikes[time]["values"]):
-                times.append(time)
-                nids.append(nid)
-                values.append(value)
-
-        input_spikes_df = pd.DataFrame({
-            "Time": times,
-            "Neuron ID": nids,
-            "Value": values
-        })
-
         lines = [
             self.short(),
+            self.stdp_info(),
             '',
             self.neuron_info(30),
             '',
             self.synapse_info(40),
             '',
-            "Input Spikes:",
-            input_spikes_df.to_string(index=False),
+            self.input_spikes_info(30),
             '',
             "Spike Train:",
             self.pretty_spike_train(),
@@ -364,7 +389,7 @@ class NeuromorphicModel:
         reset_state: float = 0.0,
         refractory_period: int = 0,
         refractory_state: int = 0,
-        initial_state: float = 0.0,
+        initial_state: float | None = 0.0,
     ) -> Neuron:
         """
         Create a neuron in the neuromorphic model.
@@ -428,7 +453,7 @@ class NeuromorphicModel:
         self.neuron_reset_states.append(float(reset_state))
         self.neuron_refractory_periods.append(refractory_period)
         self.neuron_refractory_periods_state.append(refractory_state)
-        self.neuron_states.append(float(initial_state))
+        self.neuron_states.append(reset_state if initial_state is None else float(initial_state))
 
         # Return neuron ID
         return Neuron(self, self.num_neurons - 1)
@@ -665,7 +690,7 @@ class NeuromorphicModel:
         if not any(self.enable_stdp):
             raise warnings.warn("STDP is not enabled on any synapse.", RuntimeWarning, stacklevel=2)
         if time_steps is not None:
-            warnings.warn("time_steps is deprecated and has no effect. It will be removed in a future version.",
+            warnings.warn("time_steps on stdp_setup() is deprecated and has no effect. It will be removed in a future version.",
                           FutureWarning, stacklevel=2)
 
     def setup(self):

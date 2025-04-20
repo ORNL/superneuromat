@@ -2,9 +2,9 @@ import numpy as np
 import unittest
 
 import sys
-sys.path.insert(0,"../")
+sys.path.insert(0, "../src/")
 
-from src.superneuromat import NeuromorphicModel
+from superneuromat import NeuromorphicModel
 
 
 class DisplayTest(unittest.TestCase):
@@ -14,6 +14,8 @@ class DisplayTest(unittest.TestCase):
 
     def test_display(self):
         model = NeuromorphicModel()
+
+        print(model)
 
         n0 = model.create_neuron(threshold=-1.0, leak=2.0, refractory_period=3, reset_state=-2.0)
         n1 = model.create_neuron(threshold=0.0, leak=1.0, refractory_period=1, reset_state=-2.0)
@@ -30,14 +32,25 @@ class DisplayTest(unittest.TestCase):
         model.add_spike(0, n2, 4.0)
         model.add_spike(1, n1, 3.0)
         model.add_spike(0, n3, 2.0)
+        model.add_spike(15, n3, 7.1)
+        model.add_spike(16, n1, 2.1)
+        model.add_spike(20, n4, 2.1)
 
-        # model.stdp_setup()
-        # model.setup()
+        print(model.get_input_spikes_df().to_string())
+
+        print(model)
+
         model.simulate(20)
 
         print(model)
 
+        model.simulate(1)
+
+        print(model)
+
         model.print_spike_train()
+
+        print('   ', model.neuron_spike_totals())
 
 
 if __name__ == "__main__":
