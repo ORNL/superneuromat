@@ -106,12 +106,12 @@ class Neuron:
 
     def info(self):
         return ' | '.join([
-            f"id: {self.idx:>5d}",
+            f"id: {self.idx:d}",
             f"state: {self.state:f}",
-            f"thresh: {self.threshold:>f}",
-            f"leak: {self.leak:7f}",
-            f"ref_state: {self.refractory_state:>3d}",
-            f"ref_period: {self.refractory_period:>3d}",
+            f"thresh: {self.threshold:f}",
+            f"leak: {self.leak:f}",
+            f"ref_state: {self.refractory_state:d}",
+            f"ref_period: {self.refractory_period:d}",
         ])
 
     def __str__(self):
@@ -215,16 +215,16 @@ class Synapse:
 
     def info(self):
         return ' | '.join([
-            f"id: {self.idx:>5d}",
-            f"pre: {self.pre:>5d}",
-            f"post: {self.post:>5d}",
-            f"\tweight: {self.weight:11.9g}\t",
-            f"delay: {self.delay:>3d}",
-            f"stdp {' en' if self.stdp_enabled else 'dis'}abled",
+            f"id: {self.idx:d}",
+            f"pre: {self.pre:d}",
+            f"post: {self.post:d}",
+            f"weight: {self.weight:g}",
+            f"delay: {self.delay:d}",
+            f"stdp {'en' if self.stdp_enabled else 'dis'}abled",
         ])
 
     def __str__(self):
-        return self.info()
+        return f"<Synapse {self.info()}>"
 
     def info_row(self):
         return ''.join([

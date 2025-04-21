@@ -31,7 +31,7 @@ def pretty_spike_train(
         spike_train: list[list[bool]] | list[np.ndarray] | np.ndarray,
         max_steps: int | None = 11,
         max_neurons: int | None = 28,
-        use_unicode: bool | Any = True
+        use_unicode: bool | Any = True,
     ):
     """Prints the spike train."""
     lines = []
@@ -39,8 +39,8 @@ def pretty_spike_train(
     neurons = len(spike_train[0]) if steps else 0
     t_nchar = len(str(steps - 1))
     i_nchar = max(len(str(neurons - 1)), 2)  # should be at least 2 wide
-    c0 = f"{'│ ':>{i_nchar}}" if use_unicode else f"{' 0':>{i_nchar}}"
-    c1 = f"{'├─':>{i_nchar}}" if use_unicode else f"{' 1':>{i_nchar}}"
+    c0 = f"{'│ ':>{i_nchar}}" if use_unicode else f"{'0 ':>{i_nchar}}"
+    c1 = f"{'├─':>{i_nchar}}" if use_unicode else f"{'1 ':>{i_nchar}}"
     sep = '' if use_unicode else ''
     ellip = '…' if use_unicode else '.'
     vellip = '⋮' if use_unicode else '.'
@@ -65,7 +65,7 @@ def pretty_spike_train(
         first = [f"{i:>{i_nchar}d}" for i in range(fi)]
         last = [f"{i:>{i_nchar}d}" for i in range(neurons - fi, neurons)]
         ids = first + [ellip] + last
-    lines.append(f"{'t':>{t_nchar}s}:  {sep.join(ids)}")
+    lines.append(f"{'t':>{t_nchar}s}:  {sep.join(ids)} ")
 
     if max_steps is None or len(spike_train) <= max_steps:
         for time, spiked in enumerate(spike_train):
@@ -73,6 +73,8 @@ def pretty_spike_train(
     else:
         fi = max_steps // 2
         li = max_steps // 2
+        if max_neurons is None:
+            max_neurons = 0
         first = spike_train[:fi]
         last = spike_train[-li:]
         for time, spiked in enumerate(first):
