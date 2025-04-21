@@ -1,0 +1,90 @@
+import os
+
+import numpy as np
+
+# typing
+from typing import Any
+
+
+def getenvbool(key, default=None):
+    """Get the value of an environment variable or return a default."""
+    s = os.environ.get(key, default)
+    if isinstance(s, str):
+        s2 = s.lower().strip()
+        if s2 in ('false', '0'):
+            return False
+        elif s2 in ('true', '1'):
+            return True
+        if s == '':
+            return default
+    return s
+
+
+def is_intlike(x):
+    if isinstance(x, int):
+        return True
+    else:
+        return x == int(x)
+
+
+def pretty_spike_train(
+        spike_train: list[list[bool]] | list[np.ndarray] | np.ndarray,
+        max_steps: int | None = 11,
+        max_neurons: int | None = 28,
+        use_unicode: bool | Any = True,
+    ):
+    """Prints the spike train."""
+    lines = []
+    steps = len(spike_train)
+    neurons = len(spike_train[0]) if steps else 0
+    t_nchar = len(str(steps - 1))
+    i_nchar = max(len(str(neurons - 1)), 2)  # should be at least 2 wide
+    c0 = f"{'│ ':>{i_nchar}}" if use_unicode else f"{'0 ':>{i_nchar}}"
+    c1 = f"{'├─':>{i_nchar}}" if use_unicode else f"{'1 ':>{i_nchar}}"
+    sep = '' if use_unicode else ''
+    ellip = '…' if use_unicode else '.'
+    vellip = '⋮' if use_unicode else '.'
+
+    horizontally_continuous = max_neurons is None or neurons <= max_neurons
+
+    def spiked_str(spiked):
+        if horizontally_continuous:
+            return sep.join([c1 if x else c0 for x in spiked])
+        else:
+            fi = max_neurons // 2
+            li = max_neurons // 2
+            first = spiked[:fi]
+            last = spiked[-li:]
+            return sep.join([c1 if x else c0 for x in first] + [ellip] + [c1 if x else c0 for x in last])
+
+    # print header
+    if horizontally_continuous:
+        ids = [f"{i:<{i_nchar}d}" for i in range(neurons)]
+    else:
+        fi = max_neurons // 2
+        first = [f"{i:>{i_nchar}d}" for i in range(fi)]
+        last = [f"{i:>{i_nchar}d}" for i in range(neurons - fi, neurons)]
+        ids = first + [ellip] + last
+    lines.append(f"{'t':>{t_nchar}s}:  {sep.join(ids)} ")
+
+    if max_steps is None or len(spike_train) <= max_steps:
+        for time, spiked in enumerate(spike_train):
+            lines.append(f"{time:>{t_nchar}d}: [{spiked_str(spiked)}]")
+    else:
+        fi = max_steps // 2
+        li = max_steps // 2
+        if max_neurons is None:
+            max_neurons = 0
+        first = spike_train[:fi]
+        last = spike_train[-li:]
+        for time, spiked in enumerate(first):
+            lines.append(f"{time:>{t_nchar}d}: [{spiked_str(spiked)}]")
+        lines.append(f"{'.' * t_nchar}  [{vellip * max(len(spike_train[0]), max_neurons)}]")
+        for time, spiked in enumerate(last):
+            lines.append(f"{time + steps - fi:>{t_nchar}d}: [{spiked_str(spiked)}]")
+    return lines
+
+
+def print_spike_train(spike_train, max_steps=None, max_neurons=None, use_unicode=True):
+    """Prints the spike train."""
+    print('\n'.join(pretty_spike_train(spike_train, max_steps, max_neurons, use_unicode)))

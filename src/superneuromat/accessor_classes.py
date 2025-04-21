@@ -1,3 +1,4 @@
+from .util import is_intlike
 
 from typing import TYPE_CHECKING
 
@@ -18,7 +19,7 @@ class Neuron:
 
     @threshold.setter
     def threshold(self, value):
-        self.m.neuron_thresholds[self.idx] = value
+        self.m.neuron_thresholds[self.idx] = float(value)
 
     @property
     def leak(self):
@@ -30,25 +31,69 @@ class Neuron:
 
     @property
     def reset_state(self):
-        return self.m.neuron_reset_states[self.idx]
+        return int(self.m.neuron_reset_states[self.idx])
 
     @reset_state.setter
     def reset_state(self, value):
-        self.m.neuron_reset_states[self.idx] = value
+        if not is_intlike(value):
+            raise TypeError("reset_state must be int")
+        self.m.neuron_reset_states[self.idx] = int(value)
+
+    @property
+    def state(self):
+        return self.m.neuron_states[self.idx]
+
+    @state.setter
+    def state(self, value):
+        self.m.neuron_states[self.idx] = float(value)
+
+    @property
+    def refractory_state(self):
+        return int(self.m.neuron_refractory_periods_state[self.idx])
+
+    @refractory_state.setter
+    def refractory_state(self, value):
+        if not is_intlike(value):
+            raise TypeError("refractory_state must be int")
+        self.m.neuron_refractory_periods_state[self.idx] = int(value)
 
     @property
     def refractory_period(self):
-        return self.m.neuron_refractory_periods[self.idx]
+        return int(self.m.neuron_refractory_periods[self.idx])
 
     @refractory_period.setter
     def refractory_period(self, value):
-        self.m.neuron_refractory_periods[self.idx] = value
+        if not is_intlike(value):
+            raise TypeError("refractory_period must be int")
+        self.m.neuron_refractory_periods[self.idx] = int(value)
 
     def spikes(self):
-        return self.m.spike_train[:, self.idx]
+        if self.m.spike_train:
+            return self.m.ispikes[:, self.idx]
+        else:
+            return []
 
     def add_spike(self, time: int, value: float = 1.0):
         self.m.add_spike(time, self.idx, value)
+
+    def spikes_str(self, max_steps=10, use_unicode=True):
+        return self._spikes_str(self.spikes(), max_steps, use_unicode)
+
+    @classmethod
+    def _spikes_str(cls, spikes, max_steps=10, use_unicode=True):
+        c0 = '-' if use_unicode else '_'
+        c1 = '┴' if use_unicode else 'l'
+        sep = '' if use_unicode else ' '
+        ellip = '⋯' if use_unicode else '...'
+        if len(spikes) > max_steps:
+            fi = max_steps // 2 - 1
+            li = max_steps // 2 + 1
+            first = spikes[:4] if use_unicode else spikes[:fi - 1]
+            last = spikes[-li:] if use_unicode else spikes[-li - 1:]
+            s = sep.join([c1 if x else c0 for x in first] + [ellip] + [c1 if x else c0 for x in last])
+        else:
+            s = sep.join([c1 if x else c0 for x in spikes])
+        return f"[{s}]"
 
     def __eq__(self, x):
         if isinstance(x, Neuron):
@@ -57,7 +102,39 @@ class Neuron:
             return False
 
     def __repr__(self):
-        return f"<Neuron {self.idx}>"
+        return f"<Virtual Neuron {self.idx} on model at {hex(id(self.m))}>"
+
+    def info(self):
+        return ' | '.join([
+            f"id: {self.idx:d}",
+            f"state: {self.state:f}",
+            f"thresh: {self.threshold:f}",
+            f"leak: {self.leak:f}",
+            f"ref_state: {self.refractory_state:d}",
+            f"ref_period: {self.refractory_period:d}",
+        ])
+
+    def __str__(self):
+        return f"<Neuron {self.info()}>"
+
+    def info_row(self):
+        return ''.join([
+            f"{self.idx:>5d}\t",
+            f"{self.state:>11.9g}\t",
+            f"{self.threshold:>11.9g}\t",
+            f"{self.leak:>8.6g}  ",
+            f"{self.refractory_state:>3d} ",
+            f"{self.refractory_period:>3d}\t",
+            self.spikes_str(max_steps=10),
+        ])
+
+    @classmethod
+    def row_header(cls):
+        return "  idx         state          thresh         leak  ref per       spikes"
+
+    @classmethod
+    def row_cont(cls):
+        return "  ...           ...             ...          ...  ... ...       [...]"
 
 
 class NeuronList:
@@ -68,7 +145,8 @@ class NeuronList:
         if isinstance(idx, int):
             return Neuron(self.m, idx)
         elif isinstance(idx, slice):
-            return [Neuron(self.m, i) for i in range(idx.start, idx.stop, idx.step)]
+            indices = list(range(self.m.num_neurons))[idx]
+            return [Neuron(self.m, i) for i in indices]
         else:
             raise TypeError("Invalid index type")
 
@@ -133,7 +211,38 @@ class Synapse:
             return False
 
     def __repr__(self):
-        return f"<Synapse {self.idx}>"
+        return f"<Virtual Synapse {self.idx} on model at {hex(id(self.m))}>"
+
+    def info(self):
+        return ' | '.join([
+            f"id: {self.idx:d}",
+            f"pre: {self.pre:d}",
+            f"post: {self.post:d}",
+            f"weight: {self.weight:g}",
+            f"delay: {self.delay:d}",
+            f"stdp {'en' if self.stdp_enabled else 'dis'}abled",
+        ])
+
+    def __str__(self):
+        return f"<Synapse {self.info()}>"
+
+    def info_row(self):
+        return ''.join([
+            f"{self.idx:>5d}\t",
+            f"{self.pre:>5d}  ",
+            f"{self.post:>5d}\t",
+            f"{self.weight:>11.9g}\t",
+            f"{self.delay:>5d}\t",
+            f"{'X' if self.stdp_enabled else '-'}",
+        ])
+
+    @staticmethod
+    def row_header():
+        return "  idx\t  pre   post\t     weight\tdelay\tstdp_enabled"
+
+    @staticmethod
+    def row_cont():
+        return "  ...\t  ...    ...\t        ...\t  ...\t..."
 
 
 class SynapseList:
@@ -144,7 +253,8 @@ class SynapseList:
         if isinstance(idx, int):
             return Synapse(self.m, idx)
         elif isinstance(idx, slice):
-            return [Synapse(self.m, i) for i in range(idx.start, idx.stop, idx.step)]
+            indices = list(range(self.m.num_synapses))[idx]
+            return [Synapse(self.m, i) for i in indices]
         else:
             raise TypeError("Invalid index type")
 

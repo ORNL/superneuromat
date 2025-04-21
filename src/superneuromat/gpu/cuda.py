@@ -193,6 +193,7 @@ def lif(
         if states[i] > thresholds[i]:  # if neuron spiked, set refractory period
             refractory_periods[i] = refractory_periods_original[i]
             output_spikes[i] = 1  # and spike
+            states[i] = reset_states[i]
         else:
             output_spikes[i] = 0
     else:  # if in refractory period, decrement refractory period by one and this neuron should not spike
