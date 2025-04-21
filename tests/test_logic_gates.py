@@ -67,7 +67,7 @@ class LogicGatesTest(unittest.TestCase):
     def test_or(self):
         # OR GATE
         print("\nOR GATE")
-        or_gate = NeuromorphicModel()
+        or_gate = SNN()
 
         # Create neurons
         a = or_gate.create_neuron()

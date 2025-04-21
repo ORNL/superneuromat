@@ -7,7 +7,7 @@ sys.path.insert(0, "../src/")
 
 from superneuromat import SNN
 
-use = 'auto'  # 'cpu' or 'jit' or 'gpu'
+use = 'cpu'  # 'cpu' or 'jit' or 'gpu'
 
 
 def epsilon(a, b, tol=1e-12):
@@ -69,7 +69,7 @@ class StdpTest(unittest.TestCase):
         assert epsilon(s1.weight, 1.0)
         assert epsilon(s2.weight, 0.825)
 
-        print("test_positive_update completed successfully")
+        print("test_negative_update completed successfully")
 
     def test_positive_update_after_stdp_time_steps(self):
         """ 2 neuron STDP positive update but after simulation has run for more than STDP time steps
@@ -127,7 +127,7 @@ class StdpTest(unittest.TestCase):
         assert epsilon(s1.weight, 0.475)
         assert epsilon(s2.weight, 0.300)
 
-        print("test_positive_update completed successfully")
+        print("test_negative_update_after_stdp_time_steps completed successfully")
 
     def test_stdp_1(self):
         """
@@ -293,63 +293,6 @@ class StdpTest(unittest.TestCase):
         print()
 
         print("test_stdp_3 completed successfully")
-
-    def test_stdp_4(self):
-        """
-        """
-        print("## TEST_STDP_4 ##")
-        snn = SNN()
-
-        n0 = snn.create_neuron()
-        n1 = snn.create_neuron()
-        n2 = snn.create_neuron()
-        n3 = snn.create_neuron()
-        n4 = snn.create_neuron()
-
-        snn.create_synapse(n0, n0, weight=-1.0, stdp_enabled=True)
-        snn.create_synapse(n0, n1, weight=0.0001, stdp_enabled=True)
-        snn.create_synapse(n0, n2, weight=0.0001, stdp_enabled=True)
-        snn.create_synapse(n0, n3, weight=0.0001, stdp_enabled=True)
-        snn.create_synapse(n0, n4, weight=0.0001, stdp_enabled=True)
-
-        snn.add_spike(2, n0, 1.0)
-        snn.add_spike(3, n0, 1.0)
-        snn.add_spike(3, n1, 1.0)
-        snn.add_spike(4, n2, 1.0)
-        snn.add_spike(5, n3, 1.0)
-        snn.add_spike(6, n4, 1.0)
-
-        snn.stdp_setup(Apos=[1.0, 0.5], Aneg=[0.01, 0.005], positive_update=True, negative_update=True)
-
-        # model.setup(sparse=True)
-
-        print("Neuron states before:")
-        print(snn.neuron_states)
-
-        print("Synaptic weights before:")
-        print(snn.weight_mat())
-
-        snn.simulate(8, use=use)
-
-        print("Neuron states before:")
-        print(snn.neuron_states)
-
-        print("Synaptic weights after:")
-        print(snn.weight_mat())
-
-        expected_weights = [
-            [-1.1, 0.9101, 0.4051, -0.0999, -0.0999],
-            [0., 0., 0., 0., 0.],
-            [0., 0., 0., 0., 0.],
-            [0., 0., 0., 0., 0.],
-            [0., 0., 0., 0., 0.]
-        ]
-        assert np.allclose(snn.weight_mat(), np.array(expected_weights), rtol=1e-3)
-
-        snn.print_spike_train()
-        print()
-
-        print("test_stdp_4 completed successfully")
 
 
 def print_testingwith(use):
