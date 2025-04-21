@@ -61,13 +61,13 @@ def resize_vec(a, n, dtype=np.float64):  # TODO: unused, consider removing.
         return a
 
 
-class NeuromorphicModel:
-    """Defines a neuromorphic model with neurons and synapses
+class SNN:
+    """Defines a spiking neural network with neurons and synapses
 
     Parameters
     ----------
     num_neurons : int
-        Number of neurons in the neuromorphic model
+        Number of neurons in the SNN
     neuron_thresholds : list
         List of neuron thresholds
     neuron_leaks : list
@@ -78,7 +78,7 @@ class NeuromorphicModel:
     neuron_refractory_periods : list
         List of neuron refractory periods
     num_synapses : int
-        Number of synapses in the neuromorphic model
+        Number of synapses in the SNN
     pre_synaptic_neuron_ids : list
         List of pre-synaptic neuron IDs
     post_synaptic_neuron_ids : list
@@ -94,7 +94,7 @@ class NeuromorphicModel:
     spike_train : list
         List of spike trains for each time step
     stdp : bool
-        Boolean parameter that denotes whether STDP learning has been enabled in the neuromorphic model
+        Boolean parameter that denotes whether STDP learning has been enabled in the SNN
     stdp_time_steps : int
         Number of time steps over which STDP updates are made
     stdp_Apos : list
@@ -104,12 +104,12 @@ class NeuromorphicModel:
 
     Methods
     -------
-    create_neuron: Creates a neuron in the neuromorphic model
-    create_synapse: Creates a synapse in the neuromorphic model
+    create_neuron: Creates a neuron in the SNN
+    create_synapse: Creates a synapse in the SNN
     add_spike: Add an external spike at a particular time step for a given neuron with a given value
     stdp_setup: Setup the STDP parameters
-    setup: Setup the neuromorphic model and prepare for simulation
-    simulate: Simulate the neuromorphic model for a given number of time steps
+    setup: Setup the SNN and prepare for simulation
+    simulate: Simulate the SNN for a given number of time steps
     print_spike_train: Print the spike train
 
 
@@ -136,7 +136,7 @@ class NeuromorphicModel:
     disable_performance_warnings = True
 
     def __init__(self):
-        """Initialize the neuromorphic model"""
+        """Initialize the SNN"""
 
         self.default_dtype = np.float64
 
@@ -306,7 +306,7 @@ class NeuromorphicModel:
         print(self.pretty(), **kwargs)
 
     def short(self):
-        return f"Neuromorphic Model with {self.num_neurons} neurons and {self.num_synapses} synapses"
+        return f"SNN with {self.num_neurons} neurons and {self.num_synapses} synapses"
 
     def stdp_info(self):
         return '\n'.join([
@@ -392,7 +392,7 @@ class NeuromorphicModel:
         initial_state: float | None = 0.0,
     ) -> Neuron:
         """
-        Create a neuron in the neuromorphic model.
+        Create a neuron in the SNN.
 
         Parameters
         ----------
@@ -447,7 +447,7 @@ class NeuromorphicModel:
         if not isinstance(initial_state, (int, float)):
             raise TypeError("initial_state must be int or float")
 
-        # Add neurons to model
+        # Add neurons to SNN
         self.neuron_thresholds.append(float(threshold))
         self.neuron_leaks.append(float(leak))
         self.neuron_reset_states.append(float(reset_state))
@@ -466,7 +466,7 @@ class NeuromorphicModel:
         delay: int = 1,
         stdp_enabled: bool | Any = False
     ) -> Synapse:
-        """Creates a synapse in the neuromorphic model
+        """Creates a synapse in the SNN
 
         Creates synapse connecting a pre-synaptic neuron to a post-synaptic neuron
         with a given set of synaptic parameters (weight, delay and stdp_enabled)
@@ -559,7 +559,7 @@ class NeuromorphicModel:
         neuron_id: int | Neuron,
         value: float = 1.0
     ) -> None:
-        """Adds an external spike in the neuromorphic model
+        """Adds an external spike in the SNN
 
         Parameters
         ----------
@@ -695,7 +695,7 @@ class NeuromorphicModel:
 
     def setup(self):
         if not self.manual_setup:
-            warnings.warn("setup() called without model.manual_setup = True. setup() will be called again in simulate().",
+            warnings.warn("setup() called without snn.manual_setup = True. setup() will be called again in simulate().",
                           RuntimeWarning, stacklevel=2)
         self._setup()
 
@@ -721,7 +721,7 @@ class NeuromorphicModel:
         return mat
 
     def _setup(self):
-        """Setup the neuromorphic model for simulation"""
+        """Setup the SNN for simulation"""
 
         # Create numpy arrays for neuron state variables
         self._neuron_thresholds = np.asarray(self.neuron_thresholds, self.dd)
@@ -780,7 +780,7 @@ class NeuromorphicModel:
         self.spike_train = []
 
     def reset(self):
-        # Reset neuromorphic model
+        # Reset SNN
         self.zero_neuron_states()
         self.zero_refractory_periods()
         self.clear_spike_train()
@@ -829,7 +829,7 @@ class NeuromorphicModel:
             Function to be called after each time step, by default None
         use : str, default=None
             Which backend to use. Can be 'auto', 'cpu', 'jit', or 'gpu'.
-            If None, model.backend will be used, which is 'auto' by default.
+            If None, SNN.backend will be used, which is 'auto' by default.
             'auto' will choose a backend based on the network size and time steps.
 
         Raises
@@ -1002,7 +1002,7 @@ class NeuromorphicModel:
         time_steps : int, optional
         callback : _type_, optional
             WARNING: If using the GPU backend, this callback will
-            not be able to modify the neuromorphic model via ``self`` .
+            not be able to modify the SNN via ``self`` .
         """
         # print("Using CUDA GPU via Numba")
         self._last_used_backend = 'gpu'
@@ -1092,6 +1092,6 @@ class NeuromorphicModel:
         return '\n'.join(pretty_spike_train(self.spike_train, max_steps, max_neurons, use_unicode))
 
     def copy(self):
-        """Returns a copy of the neuromorphic model"""
+        """Returns a copy of the SNN"""
 
         return copy.deepcopy(self)

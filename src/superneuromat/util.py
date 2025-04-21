@@ -1,5 +1,10 @@
 import os
 
+import numpy as np
+
+# typing
+from typing import Any
+
 
 def getenvbool(key, default=None):
     """Get the value of an environment variable or return a default."""
@@ -22,7 +27,12 @@ def is_intlike(x):
         return x == int(x)
 
 
-def pretty_spike_train(spike_train, max_steps=11, max_neurons=28, use_unicode=True):
+def pretty_spike_train(
+        spike_train: list[list[bool]] | list[np.ndarray] | np.ndarray,
+        max_steps: int | None = 11,
+        max_neurons: int | None = 28,
+        use_unicode: bool | Any = True
+    ):
     """Prints the spike train."""
     lines = []
     steps = len(spike_train)
@@ -71,3 +81,8 @@ def pretty_spike_train(spike_train, max_steps=11, max_neurons=28, use_unicode=Tr
         for time, spiked in enumerate(last):
             lines.append(f"{time + steps - fi:>{t_nchar}d}: [{spiked_str(spiked)}]")
     return lines
+
+
+def print_spike_train(spike_train, max_steps=None, max_neurons=None, use_unicode=True):
+    """Prints the spike train."""
+    print('\n'.join(pretty_spike_train(spike_train, max_steps, max_neurons, use_unicode)))

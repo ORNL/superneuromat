@@ -1,6 +1,6 @@
-# SuperNeuroMAT v1.4
+# SuperNeuroMAT v2.0.0
 
-SuperNeuroMAT is a matrix-based simulator for simulating spiking neural networks to be used in neuromorphic computing. It is one of the fastest, if not the fastest, simlators for simulating spiking neural networks.
+SuperNeuroMAT is a matrix-based simulator for simulating spiking neural networks, which are used in neuromorphic computing. It is one of the fastest, if not the fastest, simlators for simulating spiking neural networks.
 
 Some salient features of SuperNeuroMAT are:
 1. Support for leaky integrate and fire neuron model with the following parameters: neuron threshold, neuron leak, and neuron refractory period
@@ -22,7 +22,7 @@ Some salient features of SuperNeuroMAT are:
 
 ## Usage
 1. In a Python script or on a Python interpreter, do `import superneuromat as snm`
-2. The main class can be accessed by `model = snm.NeuromorphicModel()`
+2. The main class can be accessed by `snn = snm.SNN()`
 3. Refer to docstrings in the source code or on the [readthedocs](https://superneuromat.readthedocs.io/en/latest/) page for the API
 
 

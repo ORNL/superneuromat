@@ -1,157 +1,279 @@
 import unittest
 import numpy as np
-import time
+from scipy.sparse import csc_array
+import time 
 
-import sys
-sys.path.insert(0, "../")
+import sys 
+sys.path.insert(0, "../src/")
 
-from src.superneuromat import NeuromorphicModel
+from superneuromat import SNN
 
 
 class SparseTest(unittest.TestCase):
-    """ Test sparse operations
+	""" Test sparse operations
 
-    """
+	"""
 
-    def test_sparse_1(self):
-        """ Less than 200 neurons, should default to model.sparse = False
-        """
+	def test_sparse_1(self):
+		""" Less than 200 neurons, should default to snn.sparse = False
 
-        start = time.time()
+		"""
 
-        num_neurons = 2
+		start = time.time()
 
-        model = NeuromorphicModel()
+		num_neurons = 2
 
-        a = model.create_neuron()
-        b = model.create_neuron()
+		snn = SNN()
 
-        s = model.create_synapse(a, b, stdp_enabled=True)
+		a = snn.create_neuron()
+		b = snn.create_neuron()
 
-        model.add_spike(0, a, 50.0)
-        model.add_spike(3, b, 23.5)
-        model.add_spike(1, a, 0.02)
-        model.add_spike(4, b, 0.6)
+		s = snn.create_synapse(a, b, stdp_enabled=True)
 
-        model.stdp_setup()
-        model.setup()
-        model.simulate(10)
+		snn.add_spike(0, a, 50.0)
+		snn.add_spike(3, b, 23.5)
+		snn.add_spike(1, a, 0.02)
+		snn.add_spike(4, b, 0.6)
 
-        print(f"model.sparse: {model.sparse}")
-        print(model)
+		snn.stdp_setup()
+		snn.setup()
+		snn.simulate(10)
 
-        end = time.time()
+		print(snn)
 
-        print(f"Test 1 completed in {end - start} sec")
+		end = time.time() 
 
-    def test_sparse_2(self):
-        """ Less than 200 neurons, explicitly making model.sparse = True
-        """
+		assert (snn.sparse == False)
 
-        start = time.time()
+		print(f"test_sparse_1 completed in {end - start} sec")
 
-        num_neurons = 2
 
-        model = NeuromorphicModel()
 
-        a = model.create_neuron()
-        b = model.create_neuron()
+	def test_sparse_2(self):
+		""" Less than 200 neurons, explicitly making snn.sparse = True
+		"""
 
-        s = model.create_synapse(a, b, stdp_enabled=True)
+		start = time.time()
 
-        model.add_spike(0, a, 50.0)
-        model.add_spike(3, b, 23.5)
-        model.add_spike(1, a, 0.02)
-        model.add_spike(4, b, 0.6)
+		num_neurons = 2
 
-        model.stdp_setup()
+		snn = SNN()
 
-        print(model)
+		a = snn.create_neuron()
+		b = snn.create_neuron()
 
-        model.setup(sparse=True)
-        model.simulate(10)
+		s = snn.create_synapse(a, b, stdp_enabled=True)
 
-        print(f"model.sparse: {model.sparse}")
-        print(model)
+		snn.add_spike(0, a, 50.0)
+		snn.add_spike(3, b, 23.5)
+		snn.add_spike(1, a, 0.02)
+		snn.add_spike(4, b, 0.6)
 
-        end = time.time()
+		snn.stdp_setup()
+		
+		print(snn)
 
-        print(f"Test 1 completed in {end - start} sec")
+		snn.setup(sparse = True)
+		snn.simulate(10)
 
-    def test_sparse_3(self):
-        """ More than 200 neurons, within sparsity threshold, explicitly making model.sparse = False
-        """
+		print(snn)
 
-        start = time.time()
+		end = time.time() 
 
-        num_neurons = 12000
-        sparsity = 0.005
-        num_spikes = 100
-        num_simulation_time_steps = 20
-        np.random.seed(42)
+		assert (snn.sparse == True)
 
-        model = NeuromorphicModel()
+		print(f"test_sparse_2 completed in {end - start} sec")
 
-        for i in range(num_neurons):
-            model.create_neuron(refractory_period=2)
 
-        for i in range(int(num_neurons * num_neurons * sparsity)):
-            model.create_synapse(np.random.randint(num_neurons), np.random.randint(num_neurons), stdp_enabled=True)
 
-        for i in range(num_spikes):
-            model.add_spike(np.random.randint(num_simulation_time_steps), np.random.randint(num_neurons), np.random.random() * 10)
 
-        model.stdp_setup()
+	def test_sparse_vs_dense(self):
+		""" More than 200 neurons, within sparsity threshold, explicitly making snn.sparse = False
+		"""
 
-        # print(model)
+		num_neurons, sparsity = 2715, 0.006347			# Cora
+		# num_neurons, sparsity = 3318, 0.004348		# Citeseer
+		# num_neurons, sparsity = 19720, 0.000532 		# Pubmed
+		
+		num_spikes = num_neurons // 10
+		num_simulation_time_steps = 10
+		
+		np.random.seed(42)
 
-        model.setup(sparse=False)
-        model.simulate(num_simulation_time_steps)
+		synapse_ids = set()
 
-        print(f"model.sparse: {model.sparse}")
-        # print(model)
+		sparse = True 
+		dense = True
 
-        end = time.time()
 
-        print(f"Test 1 completed in {end - start} sec")
+		# Create snn
+		snn_sparse = SNN()
+		snn_dense = SNN()
 
-    def test_sparse_4(self):
-        """ More than 200 neurons, within sparsity threshold, explicitly making model.sparse = True
-        """
 
-        start = time.time()
+		# Create neurons
+		for i in range(num_neurons):
+			if sparse:
+				snn_sparse.create_neuron(refractory_period=2)
 
-        num_neurons = 12000
-        sparsity = 0.005
-        num_spikes = 100
-        num_simulation_time_steps = 20
-        np.random.seed(42)
+			if dense:
+				snn_dense.create_neuron(refractory_period=2)
 
-        model = NeuromorphicModel()
+		print("Neurons created")
 
-        for i in range(num_neurons):
-            model.create_neuron(refractory_period=2)
 
-        for i in range(int(num_neurons * num_neurons * sparsity)):
-            model.create_synapse(np.random.randint(num_neurons), np.random.randint(num_neurons), stdp_enabled=True)
+		# Create synapses
+		for i in range(int(num_neurons * num_neurons * sparsity)):
+			pre = np.random.randint(num_neurons)
+			post = np.random.randint(num_neurons)
 
-        for i in range(num_spikes):
-            model.add_spike(np.random.randint(num_simulation_time_steps), np.random.randint(num_neurons), np.random.random() * 10)
+			if (pre, post) not in synapse_ids:
+				if sparse:
+					snn_sparse.create_synapse(pre, post, stdp_enabled=True)
 
-        model.stdp_setup()
+				if dense:
+					snn_dense.create_synapse(pre, post, stdp_enabled=True)
 
-        # print(model)
+				synapse_ids.add((pre, post))
 
-        model.setup(sparse=True)
-        model.simulate(num_simulation_time_steps)
+		print("Synapses created")
 
-        print(f"model.sparse: {model.sparse}")
-        # print(model)
 
-        end = time.time()
+		# Add spikes
+		for i in range(num_spikes):
+			t = np.random.randint(num_simulation_time_steps)
+			n = np.random.randint(num_neurons)
+	
+			if sparse:
+				snn_sparse.add_spike(t, n, 10)
 
-        print(f"Test 1 completed in {end - start} sec")
+			if dense:
+				snn_dense.add_spike(t, n, 10)
+
+		print("Spikes added")
+
+
+		# Setup
+		if sparse:
+			snn_sparse.stdp_setup(positive_update=True, negative_update=True)
+			snn_sparse.setup(sparse=True, dtype=64)
+
+		if dense:
+			snn_dense.stdp_setup(positive_update=True, negative_update=True)
+			snn_dense.setup(sparse=False, dtype=64)
+
+		print("Setup complete")
+
+
+		# Simulate
+		t1 = time.time()
+
+		if sparse:
+			snn_sparse.simulate(num_simulation_time_steps)
+		
+		t2 = time.time() 
+	
+		if dense:		
+			snn_dense.simulate(num_simulation_time_steps)
+
+		t3 = time.time()
+
+
+		# Print
+		if dense and sparse:
+			print(f"Sparse simulation time: {t2 - t1} sec")
+			print(f"Dense simulation time: {t3 - t2} sec")
+			print(f"Sparse speedup: {(t3-t2) / (t2-t1)}")
+			print(f"# neurons: {snn_dense.num_neurons}, #synapses: {snn_dense.num_synapses}")
+
+			assert (np.array_equal(snn_sparse._weights.todense(), snn_dense._weights))
+
+
+		elif dense:
+			print(f"Dense simulation time: {t3 - t2} sec")
+			print(f"# neurons: {snn_dense.num_neurons}, #synapses: {snn_dense.num_synapses}")
+
+		else:
+			print(f"Sparse simulation time: {t2 - t1} sec")
+			print(f"# neurons: {snn_sparse.num_neurons}, #synapses: {snn_sparse.num_synapses}")
+
+
+		print("test_sparse_vs_dense completed successfully")
+
+
+
+	
+	def test_sparse_stdp(self):
+		""" Test sparsity during STDP updates
+
+		"""
+
+		num_neurons = 4
+		sim_time = 10
+
+		stdp_enabled_synapses = np.array(	[	[0,1,1,0],
+												[1,0,1,0],
+												[0,1,0,0],
+												[0,0,1,1]
+											])
+
+		snn_dense = SNN()
+		snn_sparse = SNN()
+
+		for i in range(num_neurons):
+			snn_dense.create_neuron()
+			snn_sparse.create_neuron()
+
+		for i in range(num_neurons):
+			for j in range(num_neurons):
+
+				if stdp_enabled_synapses[i,j]:
+					snn_dense.create_synapse(i, j, weight=0.0, stdp_enabled=True)
+					snn_sparse.create_synapse(i, j, weight=0.0, stdp_enabled=True)
+
+				else:
+					snn_dense.create_synapse(i, j, weight=0.0, stdp_enabled=False)
+					snn_sparse.create_synapse(i, j, weight=0.0, stdp_enabled=False)
+
+		snn_dense.add_spike(0, 0, 1.0)
+		snn_dense.add_spike(0, 2, 1.0)
+		snn_dense.add_spike(1, 1, 1.0)
+		snn_dense.add_spike(1, 2, 1.0)
+		snn_dense.add_spike(2, 3, 1.0)
+		snn_dense.add_spike(3, 0, 1.0)
+		snn_dense.add_spike(4, 2, 1.0)
+
+		snn_sparse.add_spike(0, 0, 1.0)
+		snn_sparse.add_spike(0, 2, 1.0)
+		snn_sparse.add_spike(1, 1, 1.0)
+		snn_sparse.add_spike(1, 2, 1.0)
+		snn_sparse.add_spike(2, 3, 1.0)
+		snn_sparse.add_spike(3, 0, 1.0)
+		snn_sparse.add_spike(4, 2, 1.0)
+
+
+		snn_dense.stdp_setup(time_steps=3, Apos=[1.0, 0.5, 0.25], Aneg=[0.1, 0.05, 0.025], positive_update=True, negative_update=True)
+		snn_sparse.stdp_setup(time_steps=3, Apos=[1.0, 0.5, 0.25], Aneg=[0.1, 0.05, 0.025], positive_update=True, negative_update=True)
+
+		snn_dense.setup(sparse=False, dtype=32)
+		snn_sparse.setup(sparse=True, dtype=32)
+
+		snn_dense.simulate(sim_time)
+		snn_sparse.simulate(sim_time)
+
+		print()
+		print(f"Dense Weights: {snn_dense._weights.shape}, {type(snn_dense._weights)}, {type(snn_dense._weights[0,1])} \n{snn_dense._weights}\n")
+		print(f"Sparse Weights: {snn_sparse._weights.shape}, {type(snn_sparse._weights)}, {type(snn_sparse._weights[0,1])} \n{snn_sparse._weights.todense()}\n")
+
+		assert (np.array_equal(snn_dense._weights, snn_sparse._weights.todense()))
+
+		print("test_sparse_stdp completed successfully")
+
+
+
+
 
 
 if __name__ == "__main__":
-    unittest.main()
+	unittest.main()
+

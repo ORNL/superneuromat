@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "superneuromat"
-version = "0.1.4"
+version = "2.0.1"
 requires-python = ">=3.8"
 dependencies = [
     "numpy",
@@ -19,7 +19,7 @@ authors = [
 ]
 maintainers = [{name="Prasanna Date", email="datepa@ornl.gov"}]
 readme = {file = "README.md", content-type = "text/markdown"}
-description = "A matrix-based simulation framework for neuromorphic computing."
+description = "A fast and scalable matrix-based simulator for Spiking Neural Networks (SNNs)."
 keywords = [
     "Neuromorphic Computing",
     "Neuromorphic Simulator",

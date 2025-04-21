@@ -1,10 +1,11 @@
-import numpy as np
 import unittest
+
+import numpy as np
 
 import sys
 sys.path.insert(0, "../src/")
 
-from superneuromat import NeuromorphicModel
+from superneuromat import SNN
 
 use = 'cpu'  # 'cpu' or 'jit' or 'gpu'
 
@@ -17,7 +18,7 @@ class LogicGatesTest(unittest.TestCase):
     def test_and(self):
         # AND GATE
         print("\nAND GATE")
-        and_gate = NeuromorphicModel()
+        and_gate = SNN()
 
         # Create neurons
         a = and_gate.create_neuron(threshold=0.0)
@@ -81,7 +82,7 @@ class LogicGatesTest(unittest.TestCase):
         or_gate.add_spike(0, a, 0.0)
         or_gate.add_spike(0, b, 0.0)
 
-        # # Add spikes: [0,11]
+        # Add spikes: [0,1]
         or_gate.add_spike(2, a, 0.0)
         or_gate.add_spike(2, b, 1.0)
 
