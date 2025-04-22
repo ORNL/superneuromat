@@ -177,6 +177,7 @@ class SNN:
 
         self.neurons = NeuronList(self)
         self.synapses = SynapseList(self)
+        self.connection_ids = {}
 
         self.gpu = numba and cuda.is_available()
         # default backend setting. can be overridden at simulate time.
@@ -243,16 +244,17 @@ class SNN:
             post_id = post_id.idx
         return [idx for idx, post in enumerate(self.post_synaptic_neuron_ids) if post == post_id]
 
-    def get_synapse_by_connection(self, pre_id: int | Neuron, post_id: int | Neuron) -> int | None:
+    def get_synapse(self, pre_id: int | Neuron, post_id: int | Neuron) -> Synapse | None:
+        if (idx := self.get_synapse_id(pre_id, post_id)):
+            return self.synapses[idx]
+
+    def get_synapse_id(self, pre_id: int | Neuron, post_id: int | Neuron) -> int | None:
         """Returns the synapse with the given pre- and post-synaptic neurons."""
         if isinstance(pre_id, Neuron):
             pre_id = pre_id.idx
         if isinstance(post_id, Neuron):
             post_id = post_id.idx
-        pres = self.get_synapses_by_pre(pre_id)
-        for idx in pres:
-            if self.post_synaptic_neuron_ids[idx] == post_id:
-                return idx
+        return self.connection_ids.get((pre_id, post_id), None)
 
     @property
     def stdp_time_steps(self):
@@ -562,7 +564,7 @@ class SNN:
         if delay <= 0:
             raise ValueError("delay must be greater than or equal to 1")
 
-        if (idx := self.get_synapse_by_connection(pre_id, post_id)) is not None:
+        if (idx := self.get_synapse_id(pre_id, post_id)) is not None:
             msg = f"Synapse already exists: {self.synapses[idx]!s}"
             raise RuntimeError(msg)
 
@@ -573,7 +575,7 @@ class SNN:
             self.synaptic_weights.append(weight)
             self.synaptic_delays.append(delay)
             self.enable_stdp.append(stdp_enabled)
-
+            self.connection_ids[(pre_id, post_id)] = self.num_synapses - 1
         else:
             for _d in range(int(delay) - 1):
                 temp_id = self.create_neuron()
@@ -1197,3 +1199,35 @@ class SNN:
         """Returns a copy of the SNN"""
 
         return copy.deepcopy(self)
+
+    def __eq__(self, other):
+        if not isinstance(other, SNN):
+            return False
+        variables = [
+            'default_dtype',
+            'num_neurons',
+            'num_synapses',
+            'neuron_thresholds',
+            'neuron_leaks',
+            'neuron_reset_states',
+            'neuron_refractory_periods',
+            'neuron_refractory_periods_state',
+            'neuron_states',
+            'input_spikes',
+            'spike_train',
+            'synaptic_weights',
+            'synaptic_delays',
+            'enable_stdp',
+            'pre_synaptic_neuron_ids',
+            'post_synaptic_neuron_ids',
+        ]
+        for var in variables:
+            a = getattr(self, var)
+            b = getattr(other, var)
+            if isinstance(a, np.ndarray):
+                if not np.array_equal(a, b):
+                    return False
+            else:
+                if a != b:
+                    return False
+        return True

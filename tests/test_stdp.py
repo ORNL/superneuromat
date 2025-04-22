@@ -290,6 +290,8 @@ class StdpTest(unittest.TestCase):
         ]
 
         snn.print_spike_train()
+
+        assert np.allclose(snn.weight_mat(), expected_weights, rtol=1e-3)
         print()
 
         print("test_stdp_3 completed successfully")
