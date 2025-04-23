@@ -216,6 +216,10 @@ class SNN:
     def sparse(self):
         return self._sparse or self._is_sparse
 
+    @property
+    def is_sparse(self):
+        return self._is_sparse
+
     @staticmethod
     def _parse_sparsity(sparsity: bool | str | Any) -> bool | str:
         if isinstance(sparsity, str):
@@ -948,6 +952,7 @@ class SNN:
             del self._stdp_enabled_synapses
         if hasattr(self, "_output_spikes"):
             del self._output_spikes
+        self._is_sparse = False
 
     def recommend(self, time_steps: int):
         """Recommend a backend to use based on network size and continuous sim time steps."""
@@ -962,7 +967,7 @@ class SNN:
     def recommend_sparsity(self):
         return self.weight_sparsity() < self.sparsity_threshold and self.num_neurons > 100
 
-    def simulate(self, time_steps: int = 1, callback=None, use=None, **kwargs) -> None:
+    def simulate(self, time_steps: int = 1, callback=None, use=None, sparse=None, **kwargs) -> None:
         """Simulate the neuromorphic spiking neural network
 
         Parameters
@@ -1003,8 +1008,13 @@ class SNN:
         elif not use:
             use = 'cpu'
 
-        if use != 'cpu' and self._is_sparse:
-            raise ValueError("Sparse simulations are only supported on the CPU.")
+        if not self.manual_setup:
+            self._setup(sparse=sparse)
+            self.setup_input_spikes(time_steps)
+        elif sparse is not None:
+            msg = "simulate() received sparsity argument in manual_setup mode."
+            msg += " Pass sparse to setup() instead."
+            raise ValueError(msg)
 
         if use == 'jit':
             self.simulate_cpu_jit(time_steps, callback, **kwargs)
@@ -1020,9 +1030,8 @@ class SNN:
         # print("Using CPU with Numba JIT optimizations")
         self._last_used_backend = 'jit'
         check_numba()
-        if not self.manual_setup:
-            self._setup()
-            self.setup_input_spikes(time_steps)
+        if self._is_sparse:
+            raise ValueError("Sparse simulations are only supported on the CPU.")
 
         self._spikes = self._spikes.astype(self.dd)
 
@@ -1069,9 +1078,6 @@ class SNN:
 
     def simulate_cpu(self, time_steps: int = 1000, callback=None) -> None:
         self._last_used_backend = 'cpu'
-        if not self.manual_setup:
-            self._setup()
-            self.setup_input_spikes(time_steps)
 
         if self._do_stdp:
             if not self._do_positive_update:
@@ -1165,14 +1171,11 @@ class SNN:
         # print("Using CUDA GPU via Numba")
         self._last_used_backend = 'gpu'
         check_gpu()
+        if self._is_sparse:
+            raise ValueError("Sparse simulations are only supported on the CPU.")
         from .gpu import cuda as gpu
         if self.disable_performance_warnings:
             gpu.disable_numba_performance_warnings()
-        # print("Using CPU with Numba JIT optimizations")
-        self._output_spikes = np.zeros((time_steps, self.num_neurons), self.dd)
-        if not self.manual_setup:
-            self._setup()
-            self.setup_input_spikes(time_steps)
 
         if self._do_stdp:
             apos = self._stdp_Apos
