@@ -53,16 +53,6 @@ def check_gpu():
             raise ImportError(msg) from err
 
 
-def resize_vec(a, n, dtype=np.float64):  # TODO: unused, consider removing.
-    a = np.asarray(a, dtype=dtype)
-    if len(a) < n:
-        return a[:n].copy()
-    elif len(a) > n:
-        return np.pad(a, (0, n - len(a)), 'constant')
-    else:
-        return a
-
-
 class SNN:
     """Defines a spiking neural network with neurons and synapses
 
@@ -917,11 +907,24 @@ class SNN:
             self.clear_spike_train()
         if 'input_spikes' not in self.memoized:
             self.clear_input_spikes()
+        self.restore()
+
+    def restore(self, *args):
+        if args:
+            keys = [self._get_self_eqvar(arg) for arg in args]
         for key, value in self.memoized.items():
             if key not in self.eqvars:
                 msg = f"Invalid key: {key}"
                 raise ValueError(msg)
+            if args:
+                if key in keys:
+                    keys.remove(key)
+                else:
+                    continue
             setattr(self, key, value)
+        if args and keys:
+            msg = f"Invalid keys: {keys}"
+            raise ValueError(msg)
 
     def setup_input_spikes(self, time_steps: int):
         self._input_spikes = np.zeros((time_steps + 1, self.num_neurons), self.dd)

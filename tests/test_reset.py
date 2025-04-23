@@ -148,13 +148,15 @@ class ResetTest(unittest.TestCase):
         snn = self.snn
 
         snn.memoize(snn.synaptic_weights)
+        snn.memoize(snn.enable_stdp)
         snn.unmemoize(snn.synaptic_weights)
 
-        def bad():
-            snn.memoize(snn.weight_mat)
+        self.assertRaises(ValueError, snn.memoize, snn.weight_mat)
 
-        self.assertRaises(ValueError, bad)
-
+        snn.restore(snn.enable_stdp)
+        self.assertRaises(ValueError, snn.restore, snn.weight_mat)
+        self.assertRaises(ValueError, snn.restore, snn.synaptic_weights)
+        snn.unmemoize(snn.enable_stdp)
         assert snn.memoized == {}
 
 

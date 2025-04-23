@@ -3,13 +3,13 @@ from .util import is_intlike
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .neuromorphicmodel import NeuromorphicModel
+    from .neuromorphicmodel import SNN
 else:
-    NeuromorphicModel = object()
+    SNN = object()
 
 
 class Neuron:
-    def __init__(self, model: NeuromorphicModel, idx: int):
+    def __init__(self, model: SNN, idx: int):
         self.m = model
         self.idx = idx
 
@@ -148,10 +148,10 @@ class Neuron:
 
 
 class NeuronList:
-    def __init__(self, model: NeuromorphicModel):
+    def __init__(self, model: SNN):
         self.m = model
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx) -> Neuron | list[Neuron]:
         if isinstance(idx, int):
             return Neuron(self.m, idx)
         elif isinstance(idx, slice):
@@ -168,7 +168,7 @@ class NeuronList:
 
 
 class NeuronIterator:
-    def __init__(self, model: NeuromorphicModel):
+    def __init__(self, model: SNN):
         self.m = model
         self.iter = iter(range(len(self.m.neuron_thresholds)))
 
@@ -178,7 +178,7 @@ class NeuronIterator:
 
 
 class Synapse:
-    def __init__(self, model: NeuromorphicModel, idx: int):
+    def __init__(self, model: SNN, idx: int):
         self.m = model
         self.idx = idx
 
@@ -256,10 +256,10 @@ class Synapse:
 
 
 class SynapseList:
-    def __init__(self, model: NeuromorphicModel):
+    def __init__(self, model: SNN):
         self.m = model
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx) -> Synapse | list[Synapse]:
         if isinstance(idx, int):
             return Synapse(self.m, idx)
         elif isinstance(idx, slice):
@@ -276,7 +276,7 @@ class SynapseList:
 
 
 class SynapseIterator:
-    def __init__(self, model: NeuromorphicModel):
+    def __init__(self, model: SNN):
         self.m = model
         self.iter = iter(range(len(self.m.synaptic_weights)))
 
