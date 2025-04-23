@@ -76,6 +76,16 @@ class Neuron:
     def add_spike(self, time: int, value: float = 1.0):
         self.m.add_spike(time, self.idx, value)
 
+    def connect_child(self, child, weight: float = 1.0, delay: int = 1, stdp_enabled: bool = False):
+        if isinstance(child, Neuron):
+            child = child.idx
+        self.m.create_synapse(self.idx, child, weight=weight, delay=delay, stdp_enabled=stdp_enabled)
+
+    def connect_parent(self, parent, weight: float = 1.0, delay: int = 1, stdp_enabled: bool = False):
+        if isinstance(parent, Neuron):
+            parent = parent.idx
+        self.m.create_synapse(parent, self.idx, weight=weight, delay=delay, stdp_enabled=stdp_enabled)
+
     def spikes_str(self, max_steps=10, use_unicode=True):
         return self._spikes_str(self.spikes(), max_steps, use_unicode)
 

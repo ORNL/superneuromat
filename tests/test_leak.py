@@ -6,20 +6,25 @@ sys.path.insert(0, "../src/")
 
 from superneuromat import SNN, print_spike_train
 
-use = 'cpu'  # 'cpu' or 'jit' or 'gpu'
-
 
 class LeakTest(unittest.TestCase):
     """ Test leak
 
     """
 
+    use = 'cpu'
+    sparse = False
+
+    def setUp(self):
+        self.snn = SNN()
+        self.snn.backend = self.use
+        self.snn.sparse = self.sparse
+
     def test_int_state_greater_than_reset_state(self):
         """Test leak when internal state is greater than reset state"""
         print("Internal state greater than reset state")
 
-        snn = SNN()
-        snn.backend = use
+        snn = self.snn
 
         n1 = snn.create_neuron(threshold=10.0, leak=1.0, reset_state=-3.0)
 
@@ -44,8 +49,7 @@ class LeakTest(unittest.TestCase):
         """Test leak when internal state is less than reset state"""
         print("Internal state lesss than reset state")
 
-        snn = SNN()
-        snn.backend = use
+        snn = self.snn
 
         n1 = snn.create_neuron(threshold=10.0, leak=5.0, reset_state=-2.0)
 
@@ -72,8 +76,7 @@ class LeakTest(unittest.TestCase):
         """Test infinite leak"""
         print("Infinite leak")
 
-        snn = SNN()
-        snn.backend = use
+        snn = self.snn
 
         n1 = snn.create_neuron(threshold=0.0, leak=np.inf, reset_state=0.0)
         n2 = snn.create_neuron(threshold=10.0, leak=np.inf, reset_state=0.0)
@@ -105,7 +108,7 @@ class LeakTest(unittest.TestCase):
     def test_zero_leak(self):
         """Test zero leak"""
         print("Zero leak")
-        snn = SNN()
+        snn = self.snn
 
         n1 = snn.create_neuron(threshold=0.0, leak=0.0, reset_state=0.0)
         n2 = snn.create_neuron(threshold=10.0, leak=0.0, reset_state=0.0)
@@ -141,8 +144,7 @@ class LeakTest(unittest.TestCase):
         """Test leak before spike"""
         print("Leak before spike")
 
-        snn = SNN()
-        snn.backend = use
+        snn = self.snn
 
         n0 = snn.create_neuron(threshold=0.0, leak=2.0, refractory_period=5)
         n1 = snn.create_neuron(threshold=0.0, leak=2.0, refractory_period=5)
