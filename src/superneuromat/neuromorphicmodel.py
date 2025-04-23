@@ -132,10 +132,6 @@ class SNN:
 
     @property
     def backend(self):
-        return self._backend
-
-    @backend.setter
-    def backend(self, use):
         """Set the backend to be used for simulation.
 
         Parameters
@@ -147,6 +143,10 @@ class SNN:
         ValueError
             if ``use`` is not one of ``'auto'``, ``'cpu'``, ``'jit'``, or ``'gpu'``.
         """
+        return self._backend
+
+    @backend.setter
+    def backend(self, use):
         if not isinstance(use, str) or use.lower() not in ['auto', 'cpu', 'jit', 'gpu']:
             msg = f"Invalid backend: {use}"
             raise ValueError(msg)
@@ -172,6 +172,17 @@ class SNN:
         """Returns True if either user has requested sparse, or if SNN is sparse internally.
 
         To check the user-specified sparsity, see :py:attr:`_sparse`.
+
+        Parameters
+        ----------
+        sparse : bool | str | Any
+            If one of ``1``, ``'1'``, ``True``, ``'true'``, or ``'sparse'``,
+            the SNN will be internally represented using a sparse representation.
+
+            If one of ``0``, ``'0'``, ``False``, ``'false'``, or ``'dense'``,
+            the SNN will be internally represented using a dense representation.
+
+            If ``'auto'``, the sparsity will be determined at setup-time via :py:meth:`recommend_sparsity()`.
         """
         return self._sparse or self._is_sparse
 
@@ -198,19 +209,7 @@ class SNN:
 
     @sparse.setter
     def sparse(self, sparse: bool | str | Any):
-        """Sets the requested sparsity setting.
-
-        Parameters
-        ----------
-        sparse : bool | str | Any
-            If one of ``1``, ``'1'``, ``True``, ``'true'``, or ``'sparse'``,
-            the SNN will be internally represented using a sparse representation.
-
-            If one of ``0``, ``'0'``, ``False``, ``'false'``, or ``'dense'``,
-            the SNN will be internally represented using a dense representation.
-
-            If ``'auto'``, the sparsity will be determined at setup-time via :py:meth:`recommend_sparsity()`.
-        """
+        """Sets the requested sparsity setting."""
         self._sparse = self._parse_sparsity(sparse)
 
     @property

@@ -1,3 +1,16 @@
+"""Utility functions for SuperNeuroMAT.
+
+.. currentmodule:: superneuromat.util
+
+.. autosummary:: util
+
+.. autofunction:: getenvbool
+.. autofunction:: is_intlike
+.. autofunction:: pretty_spike_train
+.. autofunction:: print_spike_train
+
+"""
+
 import os
 
 import numpy as np
@@ -21,6 +34,7 @@ def getenvbool(key, default=None):
 
 
 def is_intlike(x):
+    """Returns ``True`` if ``x`` is equivalent to an integer."""
     if isinstance(x, int):
         return True
     else:
@@ -33,7 +47,22 @@ def pretty_spike_train(
         max_neurons: int | None = 28,
         use_unicode: bool | Any = True,
     ):
-    """Prints the spike train."""
+    """Prints the spike train.
+
+    Parameters
+    ----------
+    spike_train: list[list[bool]] | list[np.ndarray] | np.ndarray
+        The spike train to show.
+    max_steps : int | None, optional
+        Limits the number of steps which will be included.
+        If limited, only a total of ``max_steps`` first and last steps will be included.
+    max_neurons : int | None, optional
+        Limits the number of neurons which will be included.
+        If limited, only a total of ``max_neurons`` first and last neurons will be included.
+    use_unicode : bool, default=True
+        If ``True``, use unicode characters to represent spikes.
+        Otherwise fallback to ascii characters.
+    """
     lines = []
     steps = len(spike_train)
     neurons = len(spike_train[0]) if steps else 0
@@ -86,5 +115,20 @@ def pretty_spike_train(
 
 
 def print_spike_train(spike_train, max_steps=None, max_neurons=None, use_unicode=True):
-    """Prints the spike train."""
+    """Prints the spike train.
+
+    Parameters
+    ----------
+    spike_train: list[list[bool]] | list[np.ndarray] | np.ndarray
+        The spike train to print.
+    max_steps : int | None, optional
+        Limits the number of steps which will be printed.
+        If limited, only a total of ``max_steps`` first and last steps will be printed.
+    max_neurons : int | None, optional
+        Limits the number of neurons which will be printed.
+        If limited, only a total of ``max_neurons`` first and last neurons will be printed.
+    use_unicode : bool, default=True
+        If ``True``, use unicode characters to represent spikes.
+        Otherwise fallback to ascii characters.
+    """
     print('\n'.join(pretty_spike_train(spike_train, max_steps, max_neurons, use_unicode)))

@@ -69,7 +69,7 @@ html_context = {
     # "github_url": "https://github.com", # or your GitHub Enterprise site
     "github_user": "kenblu24",
     "github_repo": "superneuromat",
-    "github_version": "docs-live",
+    "github_version": "main",
     "doc_path": "doc/build/html/",
 }
 

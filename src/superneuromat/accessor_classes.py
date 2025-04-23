@@ -13,6 +13,16 @@ else:
 
 
 class Neuron:
+    """Accessor Class for Neurons in SNNs
+
+
+    .. warning::
+
+        Instances of Neurons are created at access time and are not unique.
+        Multiple instances of this class may be created for the same neuron on the SNN.
+        To test for equality, use ``==`` instead of ``is``.
+
+    """
     def __init__(self, model: SNN, idx: int):
         self.m = model
         #: The index of this neuron in the SNN.
@@ -159,6 +169,7 @@ class Neuron:
         return f"[{s}]"
 
     def __eq__(self, x):
+        """Check if two Neuron instances represent the same neuron in the SNN."""
         if isinstance(x, Neuron):
             return self.idx == x.idx and self.m is x.m
         else:
@@ -203,6 +214,17 @@ class Neuron:
 
 
 class NeuronList:
+    """Redirects indexing to the SNN's neurons.
+
+    Returns a :py:class:`Neuron` or a list of Neurons.
+
+    This is used to allow for the following syntax:
+
+    .. code-block:: python
+
+        snn.neurons[0]
+        snn.neurons[1:10]
+    """
     def __init__(self, model: SNN):
         self.m = model
 
@@ -239,6 +261,16 @@ class NeuronIterator:
 
 
 class Synapse:
+    """Synapse accessor class for synapses in an SNN
+
+
+    .. warning::
+
+        Instances of Synapse are created at access time and are not unique.
+        Multiple instances of this class may be created for the same synapse on the SNN.
+        To test for equality, use ``==`` instead of ``is``.
+
+    """
     def __init__(self, model: SNN, idx: int):
         self.m = model
         #: The index of this synapse in the SNN.
@@ -295,6 +327,7 @@ class Synapse:
         self.m.synaptic_weights[self.idx] = float(value)
 
     def __eq__(self, x):
+        """Check if two Synapse instances represent the same synapse in the SNN."""
         if isinstance(x, Synapse):
             return self.idx == x.idx and self.m is x.m
         else:
@@ -338,6 +371,17 @@ class Synapse:
 
 
 class SynapseList:
+    """Redirects indexing to the SNN's synapses.
+
+    Returns a :py:class:`Synapse` or a list of Synapses.
+
+    This is used to allow for the following syntax:
+
+    .. code-block:: python
+
+        snn.synapses[0]
+        snn.synapses[1:10]
+    """
     def __init__(self, model: SNN):
         self.m = model
 
