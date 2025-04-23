@@ -156,7 +156,7 @@ If the installation was successful, you should be able to open a ``python`` shel
 
    Python 3.11.0 (or newer)
    Type "help", "copyright", "credits" or "license" for more information.
-   >>> from superneuromat import NeuromorphicModel
+   >>> from superneuromat import SNN
    >>> 
 
 Development Installations

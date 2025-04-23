@@ -10,12 +10,11 @@
 project = 'SuperNeuroMAT'
 copyright = '2025, Prasanna Date, Chathika Gunaratne, Shruti Kulkarni, Robert Patton, Mark Coletti'
 author = 'Prasanna Date, Chathika Gunaratne, Shruti Kulkarni, Robert Patton, Mark Coletti'
-release = '1.5'
+release = '2.1.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.napoleon", ]
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
@@ -39,7 +38,22 @@ extensions = [
 templates_path = ['_templates']
 exclude_patterns = []
 
+graphviz_output_format = "svg"
 
+todo_include_todos = True
+copybutton_exclude = '.linenos, .gp, .go'
+copybutton_remove_prompts = True
+copybutton_only_copy_prompt_lines = True
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3/', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/', None),
+    'numba': ('https://numba.readthedocs.io/en/stable', None),
+    'cuquantum': ('https://docs.nvidia.com/cuda/cuquantum/latest', None),
+    # blocked by data-apis/array-api#428
+    # 'array-api': ('https://data-apis.org/array-api/2021.12/', None),
+}
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
@@ -71,7 +85,7 @@ def linkcode_resolve(domain, info):
     return f"{github_project_url}/blob/{github_version}/src/{filename}.py"
 
 
-numpydoc_class_members_toctree = False
+numpydoc_class_members_toctree = True
 
 html_last_updated_fmt = "%b %d, %Y"
 
@@ -101,4 +115,3 @@ html_theme_options = {
 html_css_files = [
     "css/custom.css",
 ]
-

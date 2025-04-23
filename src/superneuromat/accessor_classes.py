@@ -1,94 +1,146 @@
 from .util import is_intlike
 
 from typing import TYPE_CHECKING
+import numpy
 
 if TYPE_CHECKING:
     from .neuromorphicmodel import SNN
     from typing import overload
 else:
-    SNN = object()
+    class SNN:
+        def __repr__(self):
+            return "SNN"
 
 
 class Neuron:
     def __init__(self, model: SNN, idx: int):
         self.m = model
+        #: The index of this neuron in the SNN.
         self.idx = idx
 
     @property
-    def threshold(self):
+    def threshold(self) -> float:
+        """The > threshold value for this neuron to spike."""
         return self.m.neuron_thresholds[self.idx]
 
     @threshold.setter
-    def threshold(self, value):
+    def threshold(self, value: float):
         self.m.neuron_thresholds[self.idx] = float(value)
 
     @property
-    def leak(self):
+    def leak(self) -> float:
+        """The amount by which the internal state of this neuron is pushed towards its reset state."""
         return self.m.neuron_leaks[self.idx]
 
     @leak.setter
-    def leak(self, value):
+    def leak(self, value: float):
         self.m.neuron_leaks[self.idx] = value
 
     @property
-    def reset_state(self):
-        return int(self.m.neuron_reset_states[self.idx])
+    def reset_state(self) -> float:
+        """The charge state of this neuron immediately after spiking."""
+        return self.m.neuron_reset_states[self.idx]
 
     @reset_state.setter
-    def reset_state(self, value):
-        if not is_intlike(value):
-            raise TypeError("reset_state must be int")
-        self.m.neuron_reset_states[self.idx] = int(value)
+    def reset_state(self, value: float):
+        self.m.neuron_reset_states[self.idx] = float(value)
 
     @property
-    def state(self):
+    def state(self) -> float:
+        """The charge state of this neuron."""
         return self.m.neuron_states[self.idx]
 
     @state.setter
-    def state(self, value):
+    def state(self, value) -> float:
         self.m.neuron_states[self.idx] = float(value)
 
     @property
-    def refractory_state(self):
-        return int(self.m.neuron_refractory_periods_state[self.idx])
+    def refractory_state(self) -> float:
+        """The remaining number of time steps for which this neuron is in its refractory period."""
+        return self.m.neuron_refractory_periods_state[self.idx]
 
     @refractory_state.setter
-    def refractory_state(self, value):
-        if not is_intlike(value):
-            raise TypeError("refractory_state must be int")
-        self.m.neuron_refractory_periods_state[self.idx] = int(value)
+    def refractory_state(self, value: float):
+        self.m.neuron_refractory_periods_state[self.idx] = value
 
     @property
-    def refractory_period(self):
-        return int(self.m.neuron_refractory_periods[self.idx])
+    def refractory_period(self) -> float:
+        """The number of time steps for which this neuron should be in its refractory period."""
+        return self.m.neuron_refractory_periods[self.idx]
 
     @refractory_period.setter
-    def refractory_period(self, value):
-        if not is_intlike(value):
-            raise TypeError("refractory_period must be int")
-        self.m.neuron_refractory_periods[self.idx] = int(value)
+    def refractory_period(self, value: float):
+        self.m.neuron_refractory_periods[self.idx] = float(value)
 
-    def spikes(self):
+    @property
+    def spikes(self) -> numpy.ndarray[(int), bool] | list:
+        """A vector of the spikes that have been emitted by this neuron."""
         if self.m.spike_train:
             return self.m.ispikes[:, self.idx]
         else:
             return []
 
     def add_spike(self, time: int, value: float = 1.0):
+        """Queue a spike to be sent to this Neuron.
+
+        Parameters
+        ----------
+        time : int
+            The number of time_steps until the spike is sent.
+        value : float, default=1.0
+            The value of the spike.
+        """
         self.m.add_spike(time, self.idx, value)
 
     def connect_child(self, child, weight: float = 1.0, delay: int = 1, stdp_enabled: bool = False):
+        """Connect this neuron to a child neuron.
+
+        Parameters
+        ----------
+        child : Neuron | int
+            The child neuron that will receive the spikes from this neuron.
+        weight : float, default=1.0
+            The weight of the synapse connecting this neuron to the child.
+        delay : int, default=1
+            The delay of the synapse connecting this neuron to the child.
+        stdp_enabled : bool, default=False
+            If ``True``, enable STDP learning on the synapse connecting this neuron to the child.
+        """
         if isinstance(child, Neuron):
             child = child.idx
         self.m.create_synapse(self.idx, child, weight=weight, delay=delay, stdp_enabled=stdp_enabled)
 
     def connect_parent(self, parent, weight: float = 1.0, delay: int = 1, stdp_enabled: bool = False):
+        """Connect this neuron to a parent neuron.
+
+        Parameters
+        ----------
+        parent : Neuron | int
+            The parent neuron that will send spikes to this neuron.
+        weight : float, default=1.0
+            The weight of the synapse connecting the parent to this neuron.
+        delay : int, default=1
+            The delay of the synapse connecting the parent to this neuron.
+        stdp_enabled : bool, default=False
+            If ``True``, enable STDP learning on the synapse connecting the parent to this neuron.
+        """
         if isinstance(parent, Neuron):
             parent = parent.idx
         self.m.create_synapse(parent, self.idx, weight=weight, delay=delay, stdp_enabled=stdp_enabled)
 
     def spikes_str(self, max_steps=10, use_unicode=True):
-        return self._spikes_str(self.spikes(), max_steps, use_unicode)
+        """Returns a pretty string of the spikes that have been emitted by this neuron.
+
+        Parameters
+        ----------
+        max_steps : int | None, default=10
+            Limits the number of steps which will be included.
+            If limited, only a total of ``max_steps`` first and last steps will be included.
+        use_unicode : bool, default=True
+            If ``True``, use unicode characters to represent spikes.
+            Otherwise fallback to ascii characters.
+        """
+        return self._spikes_str(self.spikes, max_steps, use_unicode)
 
     @classmethod
     def _spikes_str(cls, spikes, max_steps=10, use_unicode=True):
@@ -116,6 +168,7 @@ class Neuron:
         return f"<Virtual Neuron {self.idx} on model at {hex(id(self.m))}>"
 
     def info(self):
+        """Returns a string containing information about this neuron."""
         return ' | '.join([
             f"id: {self.idx:d}",
             f"state: {self.state:f}",
@@ -129,6 +182,7 @@ class Neuron:
         return f"<Neuron {self.info()}>"
 
     def info_row(self):
+        """Returns a string containing information about this neuron for use in a table."""
         return ''.join([
             f"{self.idx:>5d}\t",
             f"{self.state:>11.9g}\t",
@@ -187,39 +241,58 @@ class NeuronIterator:
 class Synapse:
     def __init__(self, model: SNN, idx: int):
         self.m = model
+        #: The index of this synapse in the SNN.
         self.idx = idx
 
     @property
-    def pre(self):
+    def pre(self) -> Neuron:
+        """The pre-synaptic neuron of this synapse."""
+        pre = self.m.pre_synaptic_neuron_ids[self.idx]
+        return self.m.neurons[pre]
+
+    @property
+    def pre_idx(self) -> int:
+        """The index of the pre-synaptic neuron of this synapse."""
         return self.m.pre_synaptic_neuron_ids[self.idx]
 
     @property
-    def post(self):
+    def post(self) -> Neuron:
+        """The post-synaptic neuron of this synapse."""
+        post = self.m.post_synaptic_neuron_ids[self.idx]
+        return self.m.neurons[post]
+
+    @property
+    def post_idx(self) -> int:
+        """The index of the post-synaptic neuron of this synapse."""
         return self.m.post_synaptic_neuron_ids[self.idx]
 
     @property
-    def delay(self):
+    def delay(self) -> int:
+        """The delay of before a spike is sent to the post-synaptic neuron."""
         return self.m.synaptic_delays[self.idx]
 
     @delay.setter
     def delay(self, value):
-        self.m.synaptic_delays[self.idx] = value
+        if not is_intlike(value):
+            raise TypeError("delay must be an integer")
+        self.m.synaptic_delays[self.idx] = int(value)
 
     @property
-    def stdp_enabled(self):
+    def stdp_enabled(self) -> bool:
+        """If ``True``, STDP learning is enabled on this synapse."""
         return self.m.enable_stdp[self.idx]
 
     @stdp_enabled.setter
     def stdp_enabled(self, value):
-        self.m.enable_stdp[self.idx] = value
+        self.m.enable_stdp[self.idx] = bool(value)
 
     @property
-    def weight(self):
+    def weight(self) -> float:
         return self.m.synaptic_weights[self.idx]
 
     @weight.setter
-    def weight(self, value):
-        self.m.synaptic_weights[self.idx] = value
+    def weight(self, value: float):
+        self.m.synaptic_weights[self.idx] = float(value)
 
     def __eq__(self, x):
         if isinstance(x, Synapse):
@@ -231,6 +304,7 @@ class Synapse:
         return f"<Virtual Synapse {self.idx} on model at {hex(id(self.m))}>"
 
     def info(self):
+        """Returns a string containing information about this synapse."""
         return ' | '.join([
             f"id: {self.idx:d}",
             f"pre: {self.pre:d}",
@@ -244,6 +318,7 @@ class Synapse:
         return f"<Synapse {self.info()}>"
 
     def info_row(self):
+        """Returns a string containing information about this synapse for use in a table."""
         return ''.join([
             f"{self.idx:>5d}\t",
             f"{self.pre:>5d}  ",

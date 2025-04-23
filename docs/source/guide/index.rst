@@ -24,4 +24,5 @@ User Guide
 
    install
    firstrun
+   managing_state
    speed

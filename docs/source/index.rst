@@ -32,12 +32,6 @@ Get Started
 
          pip install https://github.com/kenblu24/superneuromat.git@main
 
-   .. tab-item:: uv
-
-      .. code-block:: bash
-
-         uv pip install https://github.com/kenblu24/superneuromat.git@main
-
    .. tab-item:: other
 
       .. rst-class:: section-toc
@@ -55,7 +49,7 @@ Then, you can import the :py:mod:`superneuromat` package:
 .. code-block:: python
    :caption: Python
 
-   from superneuromat import NeuromorphicModel
+   from superneuromat import SNN
 
 
 .. toctree::
