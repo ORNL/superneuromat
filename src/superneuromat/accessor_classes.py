@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .neuromorphicmodel import SNN
+    from typing import overload
 else:
     SNN = object()
 
@@ -151,7 +152,13 @@ class NeuronList:
     def __init__(self, model: SNN):
         self.m = model
 
-    def __getitem__(self, idx) -> Neuron | list[Neuron]:
+    if TYPE_CHECKING:
+        @overload
+        def __getitem__(self, idx: int) -> Neuron: ...
+        @overload
+        def __getitem__(self, idx: slice) -> list[Neuron]: ...
+
+    def __getitem__(self, idx):
         if isinstance(idx, int):
             return Neuron(self.m, idx)
         elif isinstance(idx, slice):
@@ -259,7 +266,13 @@ class SynapseList:
     def __init__(self, model: SNN):
         self.m = model
 
-    def __getitem__(self, idx) -> Synapse | list[Synapse]:
+    if TYPE_CHECKING:
+        @overload
+        def __getitem__(self, idx: int) -> Synapse: ...
+        @overload
+        def __getitem__(self, idx: slice) -> list[Synapse]: ...
+
+    def __getitem__(self, idx):
         if isinstance(idx, int):
             return Synapse(self.m, idx)
         elif isinstance(idx, slice):

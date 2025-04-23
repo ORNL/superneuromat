@@ -131,8 +131,8 @@ class SNN:
     def __init__(self):
         """Initialize the SNN"""
 
-        self.default_dtype = np.float64
-        self.default_bool_dtype = bool
+        self.default_dtype: type | np.dtype = np.float64
+        self.default_bool_dtype: type | np.dtype = bool
 
         # Neuron parameters
         self.neuron_leaks = []
