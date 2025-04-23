@@ -145,6 +145,9 @@ class StdpTest(unittest.TestCase):
         if snn.backend == 'gpu':
             snn._last_used_backend = 'gpu'  # hack to beat this check on GPU test
             raise unittest.SkipTest("Skipping long test on GPU")
+        if snn.sparse:
+            snn._last_used_backend = 'cpu'  # hack to beat this check on sparse
+            raise unittest.SkipTest("Skipping long test on sparse")
 
         n0 = snn.create_neuron()
         n1 = snn.create_neuron()

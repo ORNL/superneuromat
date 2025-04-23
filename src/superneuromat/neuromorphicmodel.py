@@ -1293,12 +1293,16 @@ class SNN:
         for var in self.eqvars:
             a = getattr(self, var)
             b = getattr(other, var)
-            if isinstance(a, np.ndarray):
+            if isinstance(a, (np.ndarray, csc_array)):
                 if not np.array_equal(a, b):
                     return False
             else:
-                if a != b:
-                    return False
+                try:
+                    if a != b:
+                        return False
+                except ValueError:
+                    if np.any(np.asarray(a) != np.asarray(b)):
+                        return False
         return True
 
     def memoize(self, *keys):

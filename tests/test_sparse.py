@@ -257,7 +257,12 @@ class SparseTest(unittest.TestCase):
         print(f"Dense Weights: {snn_dense._weights.shape}, {type(snn_dense._weights)}, {type(snn_dense._weights[0, 1])} \n{snn_dense._weights}\n")
         print(f"Sparse Weights: {snn_sparse._weights.shape}, {type(snn_sparse._weights)}, {type(snn_sparse._weights[0, 1])} \n{snn_sparse._weights.todense()}\n")
 
+        assert snn_dense != snn_sparse
+
+        snn_sparse.sparse = snn_sparse._is_sparse = False
+
         assert (np.array_equal(snn_dense._weights, snn_sparse._weights.todense()))
+        assert snn_dense == snn_sparse
 
         print("test_sparse_stdp completed successfully")
 
