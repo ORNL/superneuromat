@@ -20,10 +20,11 @@ except ImportError:
 
 FEATURE REQUESTS:
 
-1. Visualize spike raster
-2. Monitor STDP synapses
+1. Monitor STDP synapses
 
 """
+
+GPU_AVAILABLE = numba and cuda.is_available()
 
 
 def check_numba():
@@ -50,16 +51,6 @@ def check_gpu():
             from numba import cuda
         except ImportError as err:
             raise ImportError(msg) from err
-
-
-def resize_vec(a, n, dtype=np.float64):  # TODO: unused, consider removing.
-    a = np.asarray(a, dtype=dtype)
-    if len(a) < n:
-        return a[:n].copy()
-    elif len(a) > n:
-        return np.pad(a, (0, n - len(a)), 'constant')
-    else:
-        return a
 
 
 class SNN:
@@ -140,18 +131,18 @@ class SNN:
     def __init__(self):
         """Initialize the SNN"""
 
-        self.default_dtype = np.float64
+        self.default_dtype: type | np.dtype = np.float64
+        self.default_bool_dtype: type | np.dtype = bool
 
         # Neuron parameters
-        self.neuron_thresholds = []
         self.neuron_leaks = []
         self.neuron_states = []
+        self.neuron_thresholds = []
         self.neuron_reset_states = []
         self.neuron_refractory_periods = []
         self.neuron_refractory_periods_state = []
 
         # Synapse parameters
-        # self.num_synapses = 0
         self.pre_synaptic_neuron_ids = []
         self.post_synaptic_neuron_ids = []
         self.synaptic_weights = []
@@ -177,12 +168,13 @@ class SNN:
 
         self.neurons = NeuronList(self)
         self.synapses = SynapseList(self)
+        self.connection_ids = {}
 
-        self.gpu = numba and cuda.is_available()
+        self.gpu = GPU_AVAILABLE
         # default backend setting. can be overridden at simulate time.
         self._backend = getenvbool('SNMAT_BACKEND', default='auto')
         self._last_used_backend = None
-        self._sparse = False  # default sparsity setting.
+        self._sparse = 'auto'  # default sparsity setting.
         # self._return_sparse = False  # whether to return spikes sparsely
         self._is_sparse = False  # whether internal SNN representation is currently sparse
         self.manual_setup = False
@@ -190,7 +182,9 @@ class SNN:
         self.allow_incorrect_stdp_sign = getenvbool('SNMAT_ALLOW_INCORRECT_STDP_SIGN', default=False)
         self.allow_signed_leak = getenvbool('SNMAT_ALLOW_SIGNED_LEAK', default=False)
 
-    def last_used_backend_type(self):
+        self.memoized = {}
+
+    def last_used_backend(self):
         return self._last_used_backend
 
     @property
@@ -215,13 +209,36 @@ class SNN:
         return self.default_dtype
 
     @property
+    def dbin(self):
+        return self.default_bool_dtype
+
+    @property
     def sparse(self):
         return self._sparse or self._is_sparse
 
+    @property
+    def is_sparse(self):
+        return self._is_sparse
+
+    @staticmethod
+    def _parse_sparsity(sparsity: bool | str | Any) -> bool | str:
+        if isinstance(sparsity, str):
+            sparsity = sparsity.lower()
+            if sparsity in ('true', '1', 'sparse'):
+                return True
+            elif sparsity == ('false', '0', 'dense'):
+                return False
+            elif sparsity != 'auto':
+                msg = f"Invalid sparse value: {sparsity!r}"
+                raise ValueError(msg)
+            return 'auto'
+        else:
+            return bool(sparsity)
+        # returns True, False, or 'auto'
+
     @sparse.setter
-    def sparse(self, sparsity: bool | Any):
-        # TODO: validate if sparsity is available i.e. does user have scipy
-        self._sparse = sparsity
+    def sparse(self, sparse: bool | str | Any):
+        self._sparse = self._parse_sparsity(sparse)
 
     @property
     def num_neurons(self):
@@ -243,16 +260,17 @@ class SNN:
             post_id = post_id.idx
         return [idx for idx, post in enumerate(self.post_synaptic_neuron_ids) if post == post_id]
 
-    def get_synapse_by_connection(self, pre_id: int | Neuron, post_id: int | Neuron) -> int | None:
+    def get_synapse(self, pre_id: int | Neuron, post_id: int | Neuron) -> Synapse | None:
+        if (idx := self.get_synapse_id(pre_id, post_id)):
+            return self.synapses[idx]
+
+    def get_synapse_id(self, pre_id: int | Neuron, post_id: int | Neuron) -> int | None:
         """Returns the synapse with the given pre- and post-synaptic neurons."""
         if isinstance(pre_id, Neuron):
             pre_id = pre_id.idx
         if isinstance(post_id, Neuron):
             post_id = post_id.idx
-        pres = self.get_synapses_by_pre(pre_id)
-        for idx in pres:
-            if self.post_synaptic_neuron_ids[idx] == post_id:
-                return idx
+        return self.connection_ids.get((pre_id, post_id), None)
 
     @property
     def stdp_time_steps(self):
@@ -317,7 +335,7 @@ class SNN:
 
     @property
     def ispikes(self) -> np.ndarray[(int, int), bool]:
-        return np.asarray(self.spike_train, dtype=bool)
+        return np.asarray(self.spike_train, dtype=self.dbin)
 
     def neuron_spike_totals(self, time_index=None):
         # TODO: make time_index reference global/model time, not just ispikes index, which may have been cleared
@@ -562,7 +580,7 @@ class SNN:
         if delay <= 0:
             raise ValueError("delay must be greater than or equal to 1")
 
-        if (idx := self.get_synapse_by_connection(pre_id, post_id)) is not None:
+        if (idx := self.get_synapse_id(pre_id, post_id)) is not None:
             msg = f"Synapse already exists: {self.synapses[idx]!s}"
             raise RuntimeError(msg)
 
@@ -573,7 +591,7 @@ class SNN:
             self.synaptic_weights.append(weight)
             self.synaptic_delays.append(delay)
             self.enable_stdp.append(stdp_enabled)
-
+            self.connection_ids[(pre_id, post_id)] = self.num_synapses - 1
         else:
             for _d in range(int(delay) - 1):
                 temp_id = self.create_neuron()
@@ -647,8 +665,8 @@ class SNN:
         self,
         Apos: list | None = None,
         Aneg: list | None = None,
-        positive_update: bool | Any = True,
-        negative_update: bool | Any = True,
+        positive_update: bool | Any = None,
+        negative_update: bool | Any = None,
         time_steps=None,
     ) -> None:
         """Setup the Spike-Time-Dependent Plasticity (STDP) parameters
@@ -690,24 +708,29 @@ class SNN:
 
         # Collect STDP parameters
         self.stdp = True
-        self.stdp_positive_update = bool(positive_update)
-        self.stdp_negative_update = bool(negative_update)
 
-        if positive_update:
+        if positive_update or Apos is not None:
             if not isinstance(Apos, (list, np.ndarray)):
                 raise TypeError("Apos should be a list")
             Apos: list
             if isinstance(Apos, list) and not all([isinstance(x, (int, float)) for x in Apos]):
                 raise ValueError("All elements in Apos should be int or float")
+            if positive_update is None:
+                positive_update = True
             self.apos = np.asarray(Apos, self.dd)
 
-        if negative_update:
+        if negative_update or Aneg is not None:
             if not isinstance(Aneg, (list, np.ndarray)):
                 raise TypeError("Aneg should be a list")
             Aneg: list
             if isinstance(Aneg, list) and not all([isinstance(x, (int, float)) for x in Aneg]):
                 raise ValueError("All elements in Aneg should be int or float.")
+            if negative_update is None:
+                negative_update = True
             self.aneg = np.asarray(Aneg, self.dd)
+
+        self.stdp_positive_update = bool(positive_update)
+        self.stdp_negative_update = bool(negative_update)
 
         if positive_update and negative_update:
             if len(Apos) != len(Aneg):  # pyright: ignore[reportArgumentType]
@@ -729,9 +752,9 @@ class SNN:
         if not self.manual_setup:
             warnings.warn("setup() called without snn.manual_setup = True. setup() will be called again in simulate().",
                           RuntimeWarning, stacklevel=2)
-        self._setup()
+        self._setup(**kwargs)
 
-    def set_weights_from_mat(self, mat: np.ndarray[(int, int), float] | np.ndarray):
+    def set_weights_from_mat(self, mat: np.ndarray[(int, int), float] | np.ndarray | csc_array):
         self.synaptic_weights = list(mat[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
 
     def weight_mat(self, dtype=None):
@@ -753,7 +776,8 @@ class SNN:
         else:
             raise NotImplementedError("The include_zeros parameter is not implemented yet.")
 
-    def stdp_enabled_mat(self, dtype=np.int8):
+    def stdp_enabled_mat(self, dtype=None):
+        dtype = self.dbin if dtype is None else dtype
         mat = np.zeros((self.num_neurons, self.num_neurons), dtype)
         mat[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.enable_stdp
         return mat
@@ -761,11 +785,18 @@ class SNN:
     def set_stdp_enabled_from_mat(self, mat: np.ndarray[(int, int), bool] | np.ndarray):
         self.enable_stdp = list(mat[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
 
-    def stdp_enabled_sparse(self, dtype=np.int8):
+    def stdp_enabled_sparse(self, dtype=None):
+        dtype = self.dbin if dtype is None else dtype
         return csc_array(
             (self.enable_stdp, (self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids)),
-            shape=[self.num_neurons, self.num_neurons]
+            shape=[self.num_neurons, self.num_neurons], dtype=dtype
         )
+
+    def _set_sparse(self, sparse):
+        if sparse is not None:
+            self.sparse = sparse
+        else:
+            self._is_sparse = self._sparse
 
     def _setup(self, dtype=None, sparse=None):
         """Setup the SNN for simulation"""
@@ -773,20 +804,16 @@ class SNN:
         if dtype is not None:
             self.default_dtype = dtype
 
-        if sparse is not None:
-            if isinstance(sparse, str):
-                sparse = sparse.lower()
-                if sparse == 'auto':
-                    sparse = self.recommend_sparsity()
-                elif sparse == 'true':
-                    sparse = True
-                elif sparse == 'false':
-                    sparse = False
-                else:
-                    msg = f"Invalid sparse value: {sparse!r}"
-                    raise ValueError(msg)
-        self._sparse = bool(sparse)
-        self._is_sparse = self._sparse
+        if sparse is None:
+            sparse = self.sparse  # use instance sparsity setting
+        else:
+            sparse = self._parse_sparsity(sparse)  # canonicalize sparsity setting
+        # sparse is now either True, False, or 'auto'
+
+        if sparse == 'auto':
+            self._is_sparse = self.recommend_sparsity() if self.backend in ('cpu', 'auto') else False
+        else:
+            self._is_sparse = sparse
 
         # Create numpy arrays for neuron state variables
         self._neuron_thresholds = np.asarray(self.neuron_thresholds, self.dd)
@@ -800,8 +827,8 @@ class SNN:
         # Create numpy arrays for synapse state variables
         self._weights = self.weights_sparse() if self._is_sparse else self.weight_mat()
         anystdp = self.stdp and any(self.enable_stdp)
-        self._do_positive_update = anystdp and self.stdp_positive_update and any(self.apos)  # pyright: ignore[reportArgumentType]
-        self._do_negative_update = anystdp and self.stdp_negative_update and any(self.aneg)  # pyright: ignore[reportArgumentType]
+        self._do_positive_update = anystdp and self.stdp_positive_update and any(self.apos)
+        self._do_negative_update = anystdp and self.stdp_negative_update and any(self.aneg)
 
         self._do_stdp = self._do_positive_update or self._do_negative_update
 
@@ -822,9 +849,9 @@ class SNN:
 
         # Create numpy vector for spikes for each timestep
         if len(self.spike_train) > 0:
-            self._spikes = np.asarray(self.spike_train[-1], np.int8)
+            self._spikes = np.asarray(self.spike_train[-1], self.dbin)
         else:
-            self._spikes = np.zeros(self.num_neurons, np.int8)
+            self._spikes = np.zeros(self.num_neurons, self.dbin)
 
     def devec(self):
         # De-vectorize from numpy arrays to lists
@@ -833,7 +860,10 @@ class SNN:
 
         # Update weights if STDP was enabled
         if self._do_stdp:
-            self.synaptic_weights = list(self._weights[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
+            if self._is_sparse:  # for now doing the same thing seems to work
+                self.set_weights_from_mat(self._weights)
+            else:
+                self.set_weights_from_mat(self._weights)
 
     def zero_neuron_states(self):
         self.neuron_states = np.zeros(self.num_neurons, self.dd).tolist()
@@ -873,10 +903,32 @@ class SNN:
             See :ref:`reset-snn` for more information.
 
         """
-        self.reset_neuron_states()
-        self.reset_refractory_periods()
-        self.clear_spike_train()
-        self.clear_input_spikes()
+        if 'neuron_states' not in self.memoized:
+            self.reset_neuron_states()
+        if 'neuron_refractory_periods_state' not in self.memoized:
+            self.reset_refractory_periods()
+        if 'spike_train' not in self.memoized:
+            self.clear_spike_train()
+        if 'input_spikes' not in self.memoized:
+            self.clear_input_spikes()
+        self.restore()
+
+    def restore(self, *args):
+        if args:
+            keys = [self._get_self_eqvar(arg) for arg in args]
+        for key, value in self.memoized.items():
+            if key not in self.eqvars:
+                msg = f"Invalid key: {key}"
+                raise ValueError(msg)
+            if args:
+                if key in keys:
+                    keys.remove(key)
+                else:
+                    continue
+            setattr(self, key, value)
+        if args and keys:
+            msg = f"Invalid keys: {keys}"
+            raise ValueError(msg)
 
     def setup_input_spikes(self, time_steps: int):
         self._input_spikes = np.zeros((time_steps + 1, self.num_neurons), self.dd)
@@ -900,21 +952,22 @@ class SNN:
             del self._stdp_enabled_synapses
         if hasattr(self, "_output_spikes"):
             del self._output_spikes
+        self._is_sparse = False
 
     def recommend(self, time_steps: int):
         """Recommend a backend to use based on network size and continuous sim time steps."""
         score = self.num_neurons ** 2 * time_steps / 1e6
 
-        if self.gpu and score > self.gpu_threshold:
+        if self.gpu and score > self.gpu_threshold and not self.recommend_sparsity():
             return 'gpu'
-        elif numba and score > self.jit_threshold:
+        elif numba and score > self.jit_threshold and not self.recommend_sparsity():
             return 'jit'
         return 'cpu'
 
     def recommend_sparsity(self):
-        return self.weight_sparsity() < self.sparsity_threshold
+        return self.weight_sparsity() < self.sparsity_threshold and self.num_neurons > 100
 
-    def simulate(self, time_steps: int = 1, callback=None, use=None, **kwargs) -> None:
+    def simulate(self, time_steps: int = 1, callback=None, use=None, sparse=None, **kwargs) -> None:
         """Simulate the neuromorphic spiking neural network
 
         Parameters
@@ -952,6 +1005,17 @@ class SNN:
             use = use.lower()
         if use == 'auto':
             use = self.recommend(time_steps)
+        elif not use:
+            use = 'cpu'
+
+        if not self.manual_setup:
+            self._setup(sparse=sparse)
+            self.setup_input_spikes(time_steps)
+        elif sparse is not None:
+            msg = "simulate() received sparsity argument in manual_setup mode."
+            msg += " Pass sparse to setup() instead."
+            raise ValueError(msg)
+
         if use == 'jit':
             self.simulate_cpu_jit(time_steps, callback, **kwargs)
         elif use == 'gpu':
@@ -966,9 +1030,8 @@ class SNN:
         # print("Using CPU with Numba JIT optimizations")
         self._last_used_backend = 'jit'
         check_numba()
-        if not self.manual_setup:
-            self._setup()
-            self.setup_input_spikes(time_steps)
+        if self._is_sparse:
+            raise ValueError("Sparse simulations are only supported on the CPU.")
 
         self._spikes = self._spikes.astype(self.dd)
 
@@ -990,7 +1053,7 @@ class SNN:
                 self._weights,
             )
 
-            self.spike_train.append(self._spikes.astype(np.int8))  # COPY
+            self.spike_train.append(self._spikes.astype(self.dbin))  # COPY
             t = min(self.stdp_time_steps, len(self.spike_train) - 1)
             spikes = np.array(self.spike_train[~t - 1:], dtype=self.dd)
 
@@ -1015,9 +1078,6 @@ class SNN:
 
     def simulate_cpu(self, time_steps: int = 1000, callback=None) -> None:
         self._last_used_backend = 'cpu'
-        if not self.manual_setup:
-            self._setup()
-            self.setup_input_spikes(time_steps)
 
         if self._do_stdp:
             if not self._do_positive_update:
@@ -1054,10 +1114,10 @@ class SNN:
             #     self._input_spikes[self.input_spikes[tick]["nids"]] = self.input_spikes[tick]["values"]
 
             # Internal state
-            self._internal_states = self._internal_states + self._input_spikes[tick] + (self._weights.T @ self._spikes)
+            self._internal_states += self._input_spikes[tick] + (self._weights.T @ self._spikes)
 
             # Compute spikes
-            self._spikes = np.greater(self._internal_states, self._neuron_thresholds).astype(np.int8)
+            self._spikes = np.greater(self._internal_states, self._neuron_thresholds).astype(self.dbin)
 
             # Refractory period: Compute indices of neuron which are in their refractory period
             indices = np.greater(self._neuron_refractory_periods, 0)
@@ -1091,6 +1151,8 @@ class SNN:
 
                 self._weights += ((((self._Asum[-t:] * Sprev).T @ Scurr) * self._stdp_enabled_synapses)
                                 + (self._Aneg[-t:].sum() * self._stdp_enabled_synapses))
+                if self._is_sparse:
+                    self._weights = self._weights.astype(self.dd)
 
         if not self.manual_setup:
             self.devec()
@@ -1109,14 +1171,11 @@ class SNN:
         # print("Using CUDA GPU via Numba")
         self._last_used_backend = 'gpu'
         check_gpu()
+        if self._is_sparse:
+            raise ValueError("Sparse simulations are only supported on the CPU.")
         from .gpu import cuda as gpu
         if self.disable_performance_warnings:
             gpu.disable_numba_performance_warnings()
-        # print("Using CPU with Numba JIT optimizations")
-        self._output_spikes = np.zeros((time_steps, self.num_neurons), self.dd)
-        if not self.manual_setup:
-            self._setup()
-            self.setup_input_spikes(time_steps)
 
         if self._do_stdp:
             apos = self._stdp_Apos
@@ -1129,7 +1188,7 @@ class SNN:
             stdp_enabled = cuda.to_device(self._stdp_enabled_synapses)
 
         post_synapse = cuda.to_device(np.zeros(self.num_neurons, self.dd))
-        output_spikes = cuda.to_device(self._spikes.astype(np.int8))
+        output_spikes = cuda.to_device(self._spikes.astype(self.dbin))
         states = cuda.to_device(self._internal_states)
         thresholds = cuda.to_device(self._neuron_thresholds)
         leaks = cuda.to_device(self._neuron_leaks)
@@ -1169,15 +1228,14 @@ class SNN:
                 refractory_periods_original,
             )
 
-            self._output_spikes[tick] = output_spikes.copy_to_host()
+            self.spike_train.append(output_spikes.copy_to_host())
 
             if self._do_stdp:
-                for i in range(min(tick, self.stdp_time_steps)):
-                    old_spikes = cuda.to_device(self._output_spikes[tick - i - 1].astype(np.int8))
-                    gpu.stdp_update[m_blocks, m_tpb](weights, old_spikes, output_spikes,
+                for i in range(min(self.stdp_time_steps, len(self.spike_train) - 1)):
+                    prev_spikes = cuda.to_device(self.spike_train[~i - 1].astype(self.dbin))
+                    gpu.stdp_update[m_blocks, m_tpb](weights, prev_spikes, output_spikes,
                                     stdp_enabled, apos[i], aneg[i])
 
-        self.spike_train.extend(self._output_spikes)
         self._weights = weights.copy_to_host()
         self._neuron_refractory_periods = refractory_periods.copy_to_host()
         self._internal_states = states.copy_to_host()
@@ -1186,14 +1244,109 @@ class SNN:
             self.devec()
             self.consume_input_spikes(time_steps)
 
-    def print_spike_train(self, max_steps=None, max_neurons=None, use_unicode=True):
+    def print_spike_train(
+        self,
+        max_steps: int | None = None,
+        max_neurons: int | None = None,
+        use_unicode=True,
+    ):
         """Prints the spike train."""
         print(self.pretty_spike_train(max_steps, max_neurons, use_unicode))
 
-    def pretty_spike_train(self, max_steps=11, max_neurons=28, use_unicode=True):
+    def pretty_spike_train(
+        self,
+        max_steps: int | None = 11,
+        max_neurons: int | None = 28,
+        use_unicode=True,
+    ):
         return '\n'.join(pretty_spike_train(self.spike_train, max_steps, max_neurons, use_unicode))
 
     def copy(self):
         """Returns a copy of the SNN"""
 
         return copy.deepcopy(self)
+
+    eqvars = [
+        'default_dtype',
+        'num_neurons',
+        'num_synapses',
+        'neuron_leaks',
+        'neuron_states',
+        'neuron_thresholds',
+        'neuron_reset_states',
+        'neuron_refractory_periods',
+        'neuron_refractory_periods_state',
+        'pre_synaptic_neuron_ids',
+        'post_synaptic_neuron_ids',
+        'synaptic_weights',
+        'synaptic_delays',
+        'enable_stdp',
+        'input_spikes',
+        'spike_train',
+        'stdp', 'apos', 'aneg',
+        'stdp_positive_update', 'stdp_negative_update',
+        'sparse',
+        'backend',
+        'manual_setup',
+    ]
+
+    def __eq__(self, other):
+        if not isinstance(other, SNN):
+            return False
+        for var in self.eqvars:
+            a = getattr(self, var)
+            b = getattr(other, var)
+            if isinstance(a, (np.ndarray, csc_array)):
+                if not np.array_equal(a, b):
+                    return False
+            else:
+                try:
+                    if a != b:
+                        return False
+                except ValueError:
+                    if np.any(np.asarray(a) != np.asarray(b)):
+                        return False
+        return True
+
+    def memoize(self, *keys):
+        if not keys:
+            raise ValueError("No objects to memoize.")
+        for key in keys:
+            self._memoize(key)
+
+    def _memoize(self, key):
+        key = self._get_self_eqvar(key)
+        obj = getattr(self, key)
+        if isinstance(obj, np.ndarray):
+            self.memoized[key] = obj.copy()
+        else:
+            self.memoized[key] = copy.deepcopy(getattr(self, key))
+
+    def _get_self_eqvar(self, key):
+        msg = "Invalid key: {}"
+        if isinstance(key, str):
+            if key not in self.eqvars:
+                raise ValueError(msg.format(key))
+        else:
+            for name in self.eqvars:
+                if key is getattr(self, name):
+                    key = name
+                    break
+            else:
+                raise ValueError(msg.format(key))
+        return key
+
+    def unmemoize(self, *keys):
+        if not keys:
+            raise ValueError("No objects to unmemoize.")
+        for key in keys:
+            self._unmemoize(key)
+
+    def _unmemoize(self, key):
+        key = self._get_self_eqvar(key)
+        if key in self.memoized:
+            del self.memoized[key]
+
+    def clear_memos(self):
+        del self.memoized
+        self.memoized = {}

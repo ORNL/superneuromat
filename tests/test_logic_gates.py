@@ -7,18 +7,24 @@ sys.path.insert(0, "../src/")
 
 from superneuromat import SNN
 
-use = 'cpu'  # 'cpu' or 'jit' or 'gpu'
-
 
 class LogicGatesTest(unittest.TestCase):
     """ Test SNNs for AND and OR gate
 
     """
 
+    use = 'cpu'
+    sparse = False
+
+    def setUp(self):
+        self.snn = SNN()
+        self.snn.backend = self.use
+        self.snn.sparse = self.sparse
+
     def test_and(self):
         # AND GATE
         print("\nAND GATE")
-        and_gate = SNN()
+        and_gate = self.snn
 
         # Create neurons
         a = and_gate.create_neuron(threshold=0.0)
@@ -46,7 +52,7 @@ class LogicGatesTest(unittest.TestCase):
         and_gate.add_spike(6, b, 1.0)
 
         # Setup and simulate
-        and_gate.simulate(8, use=use)
+        and_gate.simulate(8)
 
         # Print spike train and neuromorphic model
         and_gate.print_spike_train()
@@ -67,7 +73,7 @@ class LogicGatesTest(unittest.TestCase):
     def test_or(self):
         # OR GATE
         print("\nOR GATE")
-        or_gate = SNN()
+        or_gate = self.snn
 
         # Create neurons
         a = or_gate.create_neuron()
@@ -96,7 +102,7 @@ class LogicGatesTest(unittest.TestCase):
 
         # Setup and simulate
         # or_gate.setup()
-        or_gate.simulate(8, use=use)
+        or_gate.simulate(8)
 
         # Print spike train and neuromorphic model
         or_gate.print_spike_train()
@@ -115,16 +121,5 @@ class LogicGatesTest(unittest.TestCase):
         assert or_gate.ispikes.astype(int).tolist() == expected_spike_train
 
 
-def print_testingwith(use):
-    print()
-    print('#' * 24)
-    print('#' * 24)
-    print(f"    TESTING WITH {use.upper()}   ")
-    print('#' * 24)
-    print('#' * 24)
-    print()
-
-
 if __name__ == "__main__":
-    print_testingwith(use)
     unittest.main()

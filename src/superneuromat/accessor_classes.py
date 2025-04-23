@@ -3,13 +3,14 @@ from .util import is_intlike
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .neuromorphicmodel import NeuromorphicModel
+    from .neuromorphicmodel import SNN
+    from typing import overload
 else:
-    NeuromorphicModel = object()
+    SNN = object()
 
 
 class Neuron:
-    def __init__(self, model: NeuromorphicModel, idx: int):
+    def __init__(self, model: SNN, idx: int):
         self.m = model
         self.idx = idx
 
@@ -76,6 +77,16 @@ class Neuron:
     def add_spike(self, time: int, value: float = 1.0):
         self.m.add_spike(time, self.idx, value)
 
+    def connect_child(self, child, weight: float = 1.0, delay: int = 1, stdp_enabled: bool = False):
+        if isinstance(child, Neuron):
+            child = child.idx
+        self.m.create_synapse(self.idx, child, weight=weight, delay=delay, stdp_enabled=stdp_enabled)
+
+    def connect_parent(self, parent, weight: float = 1.0, delay: int = 1, stdp_enabled: bool = False):
+        if isinstance(parent, Neuron):
+            parent = parent.idx
+        self.m.create_synapse(parent, self.idx, weight=weight, delay=delay, stdp_enabled=stdp_enabled)
+
     def spikes_str(self, max_steps=10, use_unicode=True):
         return self._spikes_str(self.spikes(), max_steps, use_unicode)
 
@@ -138,8 +149,14 @@ class Neuron:
 
 
 class NeuronList:
-    def __init__(self, model: NeuromorphicModel):
+    def __init__(self, model: SNN):
         self.m = model
+
+    if TYPE_CHECKING:
+        @overload
+        def __getitem__(self, idx: int) -> Neuron: ...
+        @overload
+        def __getitem__(self, idx: slice) -> list[Neuron]: ...
 
     def __getitem__(self, idx):
         if isinstance(idx, int):
@@ -158,7 +175,7 @@ class NeuronList:
 
 
 class NeuronIterator:
-    def __init__(self, model: NeuromorphicModel):
+    def __init__(self, model: SNN):
         self.m = model
         self.iter = iter(range(len(self.m.neuron_thresholds)))
 
@@ -168,7 +185,7 @@ class NeuronIterator:
 
 
 class Synapse:
-    def __init__(self, model: NeuromorphicModel, idx: int):
+    def __init__(self, model: SNN, idx: int):
         self.m = model
         self.idx = idx
 
@@ -246,8 +263,14 @@ class Synapse:
 
 
 class SynapseList:
-    def __init__(self, model: NeuromorphicModel):
+    def __init__(self, model: SNN):
         self.m = model
+
+    if TYPE_CHECKING:
+        @overload
+        def __getitem__(self, idx: int) -> Synapse: ...
+        @overload
+        def __getitem__(self, idx: slice) -> list[Synapse]: ...
 
     def __getitem__(self, idx):
         if isinstance(idx, int):
@@ -266,7 +289,7 @@ class SynapseList:
 
 
 class SynapseIterator:
-    def __init__(self, model: NeuromorphicModel):
+    def __init__(self, model: SNN):
         self.m = model
         self.iter = iter(range(len(self.m.synaptic_weights)))
 

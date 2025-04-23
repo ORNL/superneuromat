@@ -12,8 +12,16 @@ class DisplayTest(unittest.TestCase):
 
     """
 
+    use = 'cpu'
+    sparse = False
+
+    def setUp(self):
+        self.snn = SNN()
+        self.snn.backend = self.use
+        self.snn.sparse = self.sparse
+
     def test_display(self):
-        snn = SNN()
+        snn = self.snn
 
         print(snn)
 

@@ -1,7 +1,12 @@
 import unittest
-import numpy as np
-from scipy.sparse import csc_array
 import time
+
+import numpy as np
+
+import test_leak
+import test_stdp
+import test_refractory
+import test_logic_gates
 
 import sys
 sys.path.insert(0, "../src/")
@@ -14,14 +19,14 @@ class SparseTest(unittest.TestCase):
 
     """
 
-    def test_sparse_1(self):
-        """ Less than 200 neurons, should default to snn.sparse = False
+    use = 'cpu'
 
+    def test_sparse_1(self):
+        """Test for
+        Less than 200 neurons, should default to snn.sparse = False
         """
 
-        start = time.time()
-
-        num_neurons = 2
+        time_taken = time.time()
 
         snn = SNN()
 
@@ -35,25 +40,23 @@ class SparseTest(unittest.TestCase):
         snn.add_spike(1, a, 0.02)
         snn.add_spike(4, b, 0.6)
 
+        snn.backend = self.use
         snn.stdp_setup()
-        snn.setup()
         snn.simulate(10)
 
         print(snn)
 
-        end = time.time()
+        time_taken = time_taken - time.time()
 
-        assert (snn.sparse == False)
+        assert snn._is_sparse is False
 
-        print(f"test_sparse_1 completed in {end - start} sec")
+        print(f"test_sparse_1 completed in {time_taken} sec")
 
     def test_sparse_2(self):
         """ Less than 200 neurons, explicitly making snn.sparse = True
         """
 
-        start = time.time()
-
-        num_neurons = 2
+        time_taken = time.time()
 
         snn = SNN()
 
@@ -68,19 +71,20 @@ class SparseTest(unittest.TestCase):
         snn.add_spike(4, b, 0.6)
 
         snn.stdp_setup()
+        snn.sparse = True
+        snn.backend = self.use
 
         print(snn)
 
-        snn.setup(sparse=True)
         snn.simulate(10)
 
         print(snn)
 
-        end = time.time()
+        time_taken = time_taken - time.time()
 
-        assert (snn.sparse == True)
+        assert snn._is_sparse is True
 
-        print(f"test_sparse_2 completed in {end - start} sec")
+        print(f"test_sparse_2 completed in {time_taken} sec")
 
     def test_sparse_vs_dense(self):
         """ More than 200 neurons, within sparsity threshold, explicitly making snn.sparse = False
@@ -103,6 +107,9 @@ class SparseTest(unittest.TestCase):
         # Create snn
         snn_sparse = SNN()
         snn_dense = SNN()
+
+        snn_sparse.backend = self.use
+        snn_dense.backend = self.use
 
         # Create neurons
         for i in range(num_neurons):
@@ -137,20 +144,20 @@ class SparseTest(unittest.TestCase):
 
             if sparse:
                 snn_sparse.add_spike(t, n, 10)
+                snn_sparse.sparse = True
 
             if dense:
                 snn_dense.add_spike(t, n, 10)
+                snn_dense.sparse = False
 
         print("Spikes added")
 
         # Setup
         if sparse:
             snn_sparse.stdp_setup(positive_update=True, negative_update=True)
-            snn_sparse.setup(sparse=True, dtype=64)
 
         if dense:
             snn_dense.stdp_setup(positive_update=True, negative_update=True)
-            snn_dense.setup(sparse=False, dtype=64)
 
         print("Setup complete")
 
@@ -234,11 +241,14 @@ class SparseTest(unittest.TestCase):
         snn_sparse.add_spike(3, 0, 1.0)
         snn_sparse.add_spike(4, 2, 1.0)
 
-        snn_dense.stdp_setup(time_steps=3, Apos=[1.0, 0.5, 0.25], Aneg=[0.1, 0.05, 0.025], positive_update=True, negative_update=True)
-        snn_sparse.stdp_setup(time_steps=3, Apos=[1.0, 0.5, 0.25], Aneg=[0.1, 0.05, 0.025], positive_update=True, negative_update=True)
+        snn_dense.apos = snn_sparse.apos = [1.0, 0.5, 0.25]
+        snn_dense.aneg = snn_sparse.aneg = [-0.1, -0.05, -0.025]
 
-        snn_dense.setup(sparse=False, dtype=32)
-        snn_sparse.setup(sparse=True, dtype=32)
+        snn_dense.backend = self.use
+        snn_sparse.backend = self.use
+
+        snn_dense.sparse = False
+        snn_sparse.sparse = True
 
         snn_dense.simulate(sim_time)
         snn_sparse.simulate(sim_time)
@@ -247,66 +257,42 @@ class SparseTest(unittest.TestCase):
         print(f"Dense Weights: {snn_dense._weights.shape}, {type(snn_dense._weights)}, {type(snn_dense._weights[0, 1])} \n{snn_dense._weights}\n")
         print(f"Sparse Weights: {snn_sparse._weights.shape}, {type(snn_sparse._weights)}, {type(snn_sparse._weights[0, 1])} \n{snn_sparse._weights.todense()}\n")
 
+        assert snn_dense != snn_sparse
+
+        snn_sparse.sparse = snn_sparse._is_sparse = False
+
         assert (np.array_equal(snn_dense._weights, snn_sparse._weights.todense()))
+        assert snn_dense == snn_sparse
 
         print("test_sparse_stdp completed successfully")
 
-    def test_sparse_stdp_2(self):
-        """
-        """
-        print("## TEST_STDP_4 ##")
-        snn = SNN()
 
-        n0 = snn.create_neuron()
-        n1 = snn.create_neuron()
-        n2 = snn.create_neuron()
-        n3 = snn.create_neuron()
-        n4 = snn.create_neuron()
+class SparseBase(unittest.TestCase):
+    """Test JIT"""
 
-        snn.create_synapse(n0, n0, weight=-1.0, stdp_enabled=True)
-        snn.create_synapse(n0, n1, weight=0.0001, stdp_enabled=True)
-        snn.create_synapse(n0, n2, weight=0.0001, stdp_enabled=True)
-        snn.create_synapse(n0, n3, weight=0.0001, stdp_enabled=True)
-        snn.create_synapse(n0, n4, weight=0.0001, stdp_enabled=True)
+    use = 'cpu'
+    sparse = True
 
-        snn.add_spike(2, n0, 1.0)
-        snn.add_spike(3, n0, 1.0)
-        snn.add_spike(3, n1, 1.0)
-        snn.add_spike(4, n2, 1.0)
-        snn.add_spike(5, n3, 1.0)
-        snn.add_spike(6, n4, 1.0)
+    def tearDown(self):
+        assert self.snn.last_used_backend() == 'cpu'
+        assert self.snn.sparse is True
+        return super().tearDown()
 
-        snn.stdp_setup(Apos=[1.0, 0.5], Aneg=[0.01, 0.005], positive_update=True, negative_update=True)
 
-        # model.setup(sparse=True)
+class SparseLogicGatesTest(SparseBase, test_logic_gates.LogicGatesTest):
+    pass
 
-        print("Neuron states before:")
-        print(snn.neuron_states)
 
-        print("Synaptic weights before:")
-        print(snn.weight_mat())
+class SparseRefractoryTest(SparseBase, test_refractory.RefractoryTest):
+    pass
 
-        snn.simulate(8, use=use)
 
-        print("Neuron states before:")
-        print(snn.neuron_states)
+class SparseLeakTest(SparseBase, test_leak.LeakTest):
+    pass
 
-        print("Synaptic weights after:")
-        print(snn.weight_mat())
 
-        expected_weights = [
-            [-1.1, 0.9101, 0.4051, -0.0999, -0.0999],
-            [0., 0., 0., 0., 0.],
-            [0., 0., 0., 0., 0.],
-            [0., 0., 0., 0., 0.],
-            [0., 0., 0., 0., 0.]
-        ]
-        assert np.allclose(snn.weight_mat(), np.array(expected_weights), rtol=1e-3)
-
-        snn.print_spike_train()
-        print()
-
-        print("test_stdp_4 completed successfully")
+class SparseStdpTest(SparseBase, test_stdp.StdpTest):
+    pass
 
 
 if __name__ == "__main__":
