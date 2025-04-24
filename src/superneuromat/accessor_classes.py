@@ -67,20 +67,24 @@ class Neuron:
     @property
     def refractory_state(self) -> float:
         """The remaining number of time steps for which this neuron is in its refractory period."""
-        return self.m.neuron_refractory_periods_state[self.idx]
+        return int(self.m.neuron_refractory_periods_state[self.idx])
 
     @refractory_state.setter
-    def refractory_state(self, value: float):
-        self.m.neuron_refractory_periods_state[self.idx] = value
+    def refractory_state(self, value: int):
+        if not is_intlike(value):
+            raise TypeError("refractory_state must be int")
+        self.m.neuron_refractory_periods_state[self.idx] = int(value)
 
     @property
-    def refractory_period(self) -> float:
+    def refractory_period(self) -> int:
         """The number of time steps for which this neuron should be in its refractory period."""
-        return self.m.neuron_refractory_periods[self.idx]
+        return int(self.m.neuron_refractory_periods[self.idx])
 
     @refractory_period.setter
-    def refractory_period(self, value: float):
-        self.m.neuron_refractory_periods[self.idx] = float(value)
+    def refractory_period(self, value: int):
+        if not is_intlike(value):
+            raise TypeError("refractory_period must be int")
+        self.m.neuron_refractory_periods[self.idx] = int(value)
 
     @property
     def spikes(self) -> numpy.ndarray[(int), bool] | list:
@@ -283,9 +287,9 @@ class Synapse:
         return self.m.neurons[pre]
 
     @property
-    def pre_idx(self) -> int:
+    def pre_id(self) -> int:
         """The index of the pre-synaptic neuron of this synapse."""
-        return self.m.pre_synaptic_neuron_ids[self.idx]
+        return int(self.m.pre_synaptic_neuron_ids[self.idx])
 
     @property
     def post(self) -> Neuron:
@@ -294,9 +298,9 @@ class Synapse:
         return self.m.neurons[post]
 
     @property
-    def post_idx(self) -> int:
+    def post_id(self) -> int:
         """The index of the post-synaptic neuron of this synapse."""
-        return self.m.post_synaptic_neuron_ids[self.idx]
+        return int(self.m.post_synaptic_neuron_ids[self.idx])
 
     @property
     def delay(self) -> int:
@@ -340,8 +344,8 @@ class Synapse:
         """Returns a string containing information about this synapse."""
         return ' | '.join([
             f"id: {self.idx:d}",
-            f"pre: {self.pre:d}",
-            f"post: {self.post:d}",
+            f"pre: {self.pre_id:d}",
+            f"post: {self.post_id:d}",
             f"weight: {self.weight:g}",
             f"delay: {self.delay:d}",
             f"stdp {'en' if self.stdp_enabled else 'dis'}abled",
@@ -354,11 +358,11 @@ class Synapse:
         """Returns a string containing information about this synapse for use in a table."""
         return ''.join([
             f"{self.idx:>5d}\t",
-            f"{self.pre:>5d}  ",
-            f"{self.post:>5d}\t",
+            f"{self.pre_id:>5d}  ",
+            f"{self.post_id:>5d}\t",
             f"{self.weight:>11.9g}\t",
             f"{self.delay:>5d}\t",
-            f"{'X' if self.stdp_enabled else '-'}",
+            f"{'Y' if self.stdp_enabled else '-'}",
         ])
 
     @staticmethod

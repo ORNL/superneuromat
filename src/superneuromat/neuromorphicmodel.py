@@ -611,15 +611,15 @@ class SNN:
         delay = int(delay)
 
         # Value errors
-        if pre_id > 0:
+        if pre_id < 0:
             raise ValueError("pre_id must be greater than or equal to zero")
-        elif pre_id >= self.num_neurons:
+        elif not pre_id < self.num_neurons:
             msg = f"Added synapse to non-existent pre-synaptic Neuron {pre_id}."
             raise warnings.warn(msg, stacklevel=2)
 
-        if post_id > 0:
+        if post_id < 0:
             raise ValueError("post_id must be greater than or equal to zero")
-        if not 0 < post_id < self.num_neurons:
+        if not post_id < self.num_neurons:
             msg = f"Added synapse to non-existent post-synaptic Neuron {post_id}."
             raise warnings.warn(msg, stacklevel=2)
 

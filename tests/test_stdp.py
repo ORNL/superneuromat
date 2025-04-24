@@ -308,6 +308,48 @@ class StdpTest(unittest.TestCase):
 
         print("test_stdp_3 completed successfully")
 
+    def test_alt_stdp_setup(self):
+        """ 2 neuron STDP alt setup
+        """
+        print("## TEST_ALT_STDP_SETUP ##")
+        snns = [self.snn.copy() for _ in range(4)]
+
+        for i, snn in enumerate(snns):
+            a = snn.create_neuron()
+            b = snn.create_neuron()
+
+            snn.create_synapse(a, b, weight=1.0, stdp_enabled=False)
+            snn.create_synapse(b, a, weight=1.0, stdp_enabled=False)
+
+            snn.synapses[0].stdp_enabled = 1
+            snn.synapses[1].stdp_enabled = 1
+
+            snn.add_spike(0, a, 10.0)
+            snn.add_spike(1, a, 10.0)
+            snn.add_spike(2, a, 10.0)
+
+            if i & 1:
+                if i == 1:
+                    snn.stdp_setup()
+                    snn.stdp_negative_update = False
+                    print("Checking stdp_setup() works correctly")
+                snn.apos = [1.0, 0.5, 0.25]
+            if i & 2:
+                snn.aneg = [-0.1, -0.05, -0.025]
+            snn.simulate(4)
+
+        assert epsilon(snns[0].synapses[0].weight, 1.0)
+        assert epsilon(snns[0].synapses[1].weight, 1.0)
+
+        assert epsilon(snns[1].synapses[0].weight, 5.25)
+        assert epsilon(snns[1].synapses[1].weight, 3.5)
+
+        assert epsilon(snns[2].synapses[0].weight, 1.0)
+        assert epsilon(snns[2].synapses[1].weight, 0.825)
+
+        assert epsilon(snns[3].synapses[0].weight, 5.25)
+        assert epsilon(snns[3].synapses[1].weight, 3.325)
+
 
 if __name__ == "__main__":
     unittest.main()
