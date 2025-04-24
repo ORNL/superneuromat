@@ -547,7 +547,8 @@ class SNN:
         post_id: int | Neuron,
         weight: float = 1.0,
         delay: int = 1,
-        stdp_enabled: bool | Any = False
+        stdp_enabled: bool | Any = False,
+        # exist: str = "error"
     ) -> Synapse:
         """Creates a synapse in the SNN
 
@@ -1107,7 +1108,7 @@ class SNN:
         """Recommend a backend to use based on network size and continuous sim time steps."""
         score = self.num_neurons ** 2 * time_steps / 1e6
 
-        if self.gpu and score > self.gpu_threshold and not self.recommend_sparsity():
+        if self.gpu and score > self.gpu_threshold and self.weight_sparsity() > 0.0005:
             return 'gpu'
         elif numba and score > self.jit_threshold and not self.recommend_sparsity():
             return 'jit'
@@ -1147,23 +1148,39 @@ class SNN:
         if time_steps <= 0:
             raise ValueError("time_steps must be greater than zero")
 
+        explicit_use = use = use.lower() if isinstance(use, str) else use
         if use is None:
             use = self.backend
 
-        if isinstance(use, str):
-            use = use.lower()
-        if use == 'auto':
-            use = self.recommend(time_steps)
-        elif not use:
-            use = 'cpu'
+        # is the user asking for sparsity explicitly?
+        # first, canonicalize sparse arg
+        sparse = self._parse_sparsity(sparse) if sparse is not None else None
+        # sparse may be None, 'auto', True, or False, with None meaning unset
+        # self.sparse may be 'auto', True, or False
+        explicitly_sparse = (sparse is True
+                             or self.sparse is True and sparse is not False)
 
         if not self.manual_setup:
+            if use == 'auto':
+                use = self.recommend(time_steps)
+                if explicitly_sparse:
+                    use = 'cpu'
+            elif (explicitly_sparse and use != 'cpu'):
+                msg = "simulate() received explicit request to use sparsity with a "
+                msg += "non-cpu backend. Sparsity is not supported on 'jit' or 'gpu' yet."
+                raise ValueError(msg)
+            if use == 'gpu':
+                sparse = False
+
             self._setup(sparse=sparse)
             self.setup_input_spikes(time_steps)
         elif sparse is not None:
             msg = "simulate() received sparsity argument in manual_setup mode."
             msg += " Pass sparse to setup() instead."
             raise ValueError(msg)
+
+        if not use:
+            use = 'cpu'
 
         if use == 'jit':
             self.simulate_cpu_jit(time_steps, callback, **kwargs)
