@@ -259,6 +259,9 @@ class NeuronIterator:
         self.m = model
         self.iter = iter(range(len(self.m.neuron_thresholds)))
 
+    def __iter__(self):
+        return NeuronIterator(self.m)
+
     def __next__(self):
         next_idx = next(self.iter)
         return Neuron(self.m, next_idx)
@@ -415,6 +418,9 @@ class SynapseIterator:
     def __init__(self, model: SNN):
         self.m = model
         self.iter = iter(range(len(self.m.synaptic_weights)))
+
+    def __iter__(self):
+        return SynapseIterator(self.m)
 
     def __next__(self):
         next_idx = next(self.iter)

@@ -281,12 +281,18 @@ class SNN:
 
         If STDP is not enabled, returns ``0``.
         """
+        apos, aneg = len(self.apos), len(self.aneg)
+
         if self.stdp_positive_update and self.stdp_negative_update:
-            assert len(self._stdp_Apos) == len(self._stdp_Aneg)
+            if not apos or not aneg:
+                return max(apos, aneg)
+            else:
+                assert apos == aneg
+                return apos
         if self.stdp_positive_update:
-            return len(self._stdp_Apos)
+            return apos
         elif self.stdp_negative_update:
-            return len(self._stdp_Aneg)
+            return aneg
         else:
             return 0
 
@@ -1485,8 +1491,8 @@ class SNN:
         'spike_train',
         'stdp', 'apos', 'aneg',
         'stdp_positive_update', 'stdp_negative_update',
-        'sparse',
-        'backend',
+        '_sparse',
+        '_backend',
         'manual_setup',
     ]
 

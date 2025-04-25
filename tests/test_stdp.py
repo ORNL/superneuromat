@@ -350,6 +350,10 @@ class StdpTest(unittest.TestCase):
         assert epsilon(snns[3].synapses[0].weight, 5.25)
         assert epsilon(snns[3].synapses[1].weight, 3.325)
 
+        for snn in snns:
+            assert snn.last_used_backend() == self.snn.backend
+        self.snn._last_used_backend = snns[0].backend
+
 
 if __name__ == "__main__":
     unittest.main()

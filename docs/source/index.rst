@@ -11,7 +11,7 @@ SuperNeuroMAT is a Python package for simulating and analyzing spiking neural ne
 Unlike its sister package, `SuperNeuroABM <https://github.com/ORNL/superneuroabm>`_, SuperNeuroMAT uses a matrix-based representation
 of the network, which allows for more efficient simulation and GPU acceleration.
 
-SuperNeuroMAT focuses on super-fast computation of **LIF** spiking neuron models.
+SuperNeuroMAT focuses on super-fast computation of Leaky Integrate and Fire **(LIF)** spiking neuron models with STDP.
 
 This documentation currently covers the https://github.com/kenblu24/superneuromat fork, but this
 will be upstreamed to the main SuperNeuroMAT repository in the future.

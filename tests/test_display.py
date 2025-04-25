@@ -44,7 +44,7 @@ class DisplayTest(unittest.TestCase):
         snn.add_spike(16, n1, 2.1)
         snn.add_spike(20, n4, 2.1)
 
-        print(snn.get_input_spikes_df().to_string())
+        print(snn.input_spikes_info())
 
         print(snn)
 
