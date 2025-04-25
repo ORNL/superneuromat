@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Variables
+SPHINXOPTS=${SPHINXOPTS:-""}
+SPHINXBUILD=${SPHINXBUILD:-"sphinx-build"}
+SOURCEDIR="./source"
+BUILDDIR="./superneuromat-docs/build"
+
+# Main script logic
+if [[ $# -eq 0 ]] ; then
+    target=help
+else
+    target=$1
+    shift 1
+fi
+
+$SPHINXBUILD -M $target "$SOURCEDIR" "$BUILDDIR" $SPHINXOPTS $@

@@ -4,12 +4,6 @@ pushd %~dp0
 
 REM Command file for Sphinx documentation
 
-SETLOCAL
-SET allargs=%*
-IF NOT DEFINED allargs echo no args provided&GOTO :EOF
-SET arg1=%1
-CALL SET rargs=%%allargs:*%1=%%
-
 if "%SPHINXBUILD%" == "" (
 	set SPHINXBUILD=sphinx-build
 )
@@ -31,7 +25,7 @@ if errorlevel 9009 (
 
 if "%1" == "" goto help
 
-%SPHINXBUILD% -M %arg1% %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O% %rargs%
+%SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
 goto end
 
 :help
