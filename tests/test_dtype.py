@@ -76,8 +76,8 @@ class DtypeTest(unittest.TestCase):
         # Assertions
         assert snn._do_stdp is True
         assert snn.default_dtype == snn.dd == np.float64
-        assert snn.default_bool_dtype in [bool, np.bool, np.int8]
-        verify_dtypes(snn, [np.float64], [bool, np.bool, np.int8])
+        assert snn.default_bool_dtype in [bool, np.bool_, np.int8]
+        verify_dtypes(snn, [np.float64], [bool, np.bool_, np.int8])
 
         print("test_dtype64 completed successfully")
 

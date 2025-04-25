@@ -7,7 +7,7 @@ name = "superneuromat"
 version = "2.1.0"
 requires-python = ">=3.10"
 dependencies = [
-    "numpy",
+    "numpy>=1.26.0",
     "scipy"
 ]
 authors = [
@@ -65,8 +65,12 @@ docs = [
     "myst-parser",
 ]
 
+#
+# Environment Testing
+#
+
 [tool.tox]
-env_list = ['py310', 'py313', 'pandas', 'jit']
+env_list = ['py310', 'py313', 'pandas', 'jit', 'numpy126', 'numpy20']
 
 [tool.tox.env_run_base]
 description = "Run tests under {base_python}"
@@ -110,4 +114,32 @@ commands = [
     ["python", "test_cpu.py",],
     ["python", "test_display.py",],
     ["python", "test_df.py",],
+]
+
+[tool.tox.env.numpy126]
+description = "Run tests for numpy 1.26.0"
+change_dir = "tests"
+deps = ["numpy<2.0.0"]
+commands = [
+    ["python", "test_synapse.py",],
+    ["python", "test_cpu.py",],
+    ["python", "test_sparse.py",],
+    ["python", "test_display.py",],
+    ["python", "test_reset.py",],
+    ["python", "test_dtype.py",],
+    ["python", "test_count_spikes.py",],
+]
+
+[tool.tox.env.numpy20]
+description = "Run tests for numpy 2.0 for np.bool check"
+change_dir = "tests"
+deps = ["numpy~=2.0.0"]
+commands = [
+    ["python", "test_synapse.py",],
+    ["python", "test_cpu.py",],
+    ["python", "test_sparse.py",],
+    ["python", "test_display.py",],
+    ["python", "test_reset.py",],
+    ["python", "test_dtype.py",],
+    ["python", "test_count_spikes.py",],
 ]

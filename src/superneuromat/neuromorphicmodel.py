@@ -61,7 +61,7 @@ class SNN:
         """Initialize the SNN"""
 
         self.default_dtype: type | np.dtype = np.float64
-        self.default_bool_dtype: type | np.dtype = bool
+        self.default_bool_dtype: type | np.dtype = np.bool_
 
         # Neuron parameters
         self.neuron_leaks = []
@@ -1473,7 +1473,6 @@ class SNN:
 
     #: The list of public variables which define the SNN model.
     eqvars = [
-        'default_dtype',
         'num_neurons',
         'num_synapses',
         'neuron_leaks',
@@ -1486,9 +1485,10 @@ class SNN:
         'post_synaptic_neuron_ids',
         'synaptic_weights',
         'synaptic_delays',
+        'default_dtype',
         'enable_stdp',
-        'input_spikes',
         'spike_train',
+        'input_spikes',
         'stdp', 'apos', 'aneg',
         'stdp_positive_update', 'stdp_negative_update',
         '_sparse',
@@ -1504,15 +1504,21 @@ class SNN:
             a = getattr(self, var)
             b = getattr(other, var)
             if isinstance(a, (np.ndarray, csc_array)):
-                if not np.array_equal(a, b):
+                if not np.array_equal(a, b):  # pyright: ignore[reportArgumentType]
                     return False
             else:
                 try:
                     if a != b:
                         return False
-                except ValueError:
-                    if np.any(np.asarray(a) != np.asarray(b)):
-                        return False
+                except ValueError as err:
+                    try:
+                        if np.any(np.asarray(a) != np.asarray(b)):
+                            return False
+                    except Exception:
+                        msg = f"Failed to compare {var}"
+                        raise RuntimeError(msg) from err
+        # must ensure all other code paths are covered by return False.
+        # this way we can return False early if any of the above comparisons fail.
         return True
 
     def memoize(self, *keys):
