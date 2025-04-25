@@ -1,8 +1,0 @@
-# No need to install default Python modules such as:
-# os, sys, time etc.
-numpy
-scipy
-pandas
-sphinx-rtd-theme
-unittest2
-superneuromat

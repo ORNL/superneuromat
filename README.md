@@ -1,18 +1,24 @@
-# SuperNeuroMAT v2.0.0
+# SuperNeuroMAT
 
-SuperNeuroMAT is a matrix-based simulator for simulating spiking neural networks, which are used in neuromorphic computing. It is one of the fastest, if not the fastest, simlators for simulating spiking neural networks.
+SuperNeuroMAT is a Python package for simulating and analyzing spiking neural networks.
 
-Some salient features of SuperNeuroMAT are:
+Documentation available: https://kenblu24.github.io/superneuromat-docs/
+[<img src="https://gist.githubusercontent.com/cxmeel/0dbc95191f239b631c3874f4ccf114e2/raw/documentation.svg" alt="Documentation" height="40" />](https://kenblu24.github.io/superneuromat-docs/)
+
+Unlike its sister package, [SuperNeuroABM](https://github.com/kenblu24/superneuroabm), SuperNeuroMAT uses a matrix-based representation
+of the network, which allows for more efficient simulation and GPU acceleration.
+
+SuperNeuroMAT focuses on super-fast computation of Leaky Integrate and Fire **(LIF)** spiking neuron models with STDP.
+
+It provides:
 1. Support for leaky integrate and fire neuron model with the following parameters: neuron threshold, neuron leak, and neuron refractory period
-2. Support for Spiking-Time-Dependent Plasticity (STDP) synapses with weights and delays
-3. No restrictions on connectivity of the neurons, all-to-all connections as well as self connections possible
-4. Constant leak supported
-5. STDP learning can be configured to turn on/off positive updates and negative updates
-6. Excessive synaptic delay can slow down the execution of the simulation, so try to avoid as much as possible
-7. Leak refers to the constant amount by which the internal state (membrane potential) of a neuron changes in each time step of the simulation; therefore, zero leak means the neuron fully retains the value in its internal state, and infinite leak means the neuron never retains the value in its internal state
-8. STDP implementation is extremely fast
-9. The model of neuromorphic computing supported in SuperNeuroMAT is Turing-complete
-10. All underlying computational operations are matrix-based and currently supported on CPUs
+2. Support for Spiking-Time-Dependent Plasticity (STDP) on synapses with weights and delays
+3. Support for all-to-all connections as well as self connections
+4. A turing-complete model of neuromorphic computing
+5. Optional GPU acceleration or Optional Sparse computation
+
+* Note that long delays may impact performance. Consider using an agent-based simulator
+such as [SuperNeuroABM](https://github.com/ORNL/superneuroabm) for longer delays.
 
 
 ## Installation
@@ -21,14 +27,11 @@ Some salient features of SuperNeuroMAT are:
 
 
 ## Usage
-1. In a Python script or on a Python interpreter, do `import superneuromat as snm`
-2. The main class can be accessed by `snn = snm.SNN()`
-3. Refer to docstrings in the source code or on the [readthedocs](https://superneuromat.readthedocs.io/en/latest/) page for the API
+Import the spiking neural network class: 
 
-
-## Documentation
-Documentation available at: https://superneuromat.readthedocs.io/en/latest/
-
+```python
+from superneuromat import SNN
+```
 
 ## Citation
 1. Please cite SuperNeuroMAT using:
@@ -45,18 +48,3 @@ Documentation available at: https://superneuromat.readthedocs.io/en/latest/
 	- [SuperNeuro: A Fast and Scalable Simulator for Neuromorphic Computing](https://dl.acm.org/doi/abs/10.1145/3589737.3606000)
 	- [Neuromorphic Computing is Turing-Complete](https://dl.acm.org/doi/abs/10.1145/3546790.3546806)
 	- [Computational Complexity of Neuromorphic Algorithms](https://dl.acm.org/doi/abs/10.1145/3477145.3477154)
-
-
-
-## For Development
-1. Clone the `superneuromat` repo: `git clone https://github.com/ORNL/superneuromat.git`
-2. Install the package as editable inside your virtual environment: `pip install -e superneuromat/`
-
-**Warning:** importing as a relative module (i.e. not installed in your environment) has been deprecated.
-
-
-## Directory Info
-1. `superneuromat`: This contains the source code for `superneuromat`
-2. `tests`: This contains unittests for development purposes. Please ignore!
-
-
