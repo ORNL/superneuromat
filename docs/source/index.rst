@@ -40,9 +40,8 @@ Get Started
 
          guide/install
 
-For more detailed instructions, see the
-:doc:`installation guide <guide/install>`
-, which covers virtual environments, faster installation with uv, and more.
+For more detailed instructions, see the :doc:`installation guide <guide/install>`, which covers
+virtual environments, faster installation with uv, installing support for CUDA GPU acceleration, and more.
 
 Then, you can import the :py:mod:`superneuromat` package:
 

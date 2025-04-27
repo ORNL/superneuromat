@@ -85,7 +85,7 @@ def linkcode_resolve(domain, info):
     return f"{github_project_url}/blob/{github_version}/src/{filename}.py"
 
 
-numpydoc_class_members_toctree = True
+numpydoc_class_members_toctree = False
 
 html_last_updated_fmt = "%b %d, %Y"
 

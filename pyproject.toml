@@ -49,7 +49,7 @@ file = "LICENSE"
 jit = [
     "numba~=0.61.0"
 ]
-gpu = [
+cuda = [
     "numba-cuda",
     "numba~=0.61.0",
     "numpy<2.2.0"
@@ -99,7 +99,7 @@ commands = [
 description = "Run cuda test"
 base_python = ["python3.13"]
 change_dir = "tests"
-extras = ["gpu"]
+extras = ["cuda"]
 commands = [
     ["python", "test_cpu.py",],
     ["python", "test_jit.py",],

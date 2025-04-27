@@ -6,4 +6,3 @@
 .. autoclass:: Synapse
    :members:
    
-   

@@ -23,11 +23,11 @@
    .. rubric:: STDP Parameters
 
    :param stdp: if ``stdp`` is ``False``, STDP will be disabled globally.
-   :type stdp: bool
+   :type stdp: bool, default=True
    :param apos: List of STDP parameters per time step for excitatory update of weights.
-   :type apos: list
+   :type apos: list, default=[]
    :param aneg: List of STDP parameters per time step for inhibitory update of weights.
-   :type aneg: list
+   :type aneg: list, default=[]
    :param stdp_positive_update: If ``False``, disable excitatory STDP update globally.
    :type stdp_positive_update: bool | ~typing.Any, default=True
    :param stdp_negative_update: If ``False``, disable inhibitory STDP update globally.

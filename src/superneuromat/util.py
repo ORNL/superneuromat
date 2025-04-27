@@ -2,8 +2,6 @@
 
 .. currentmodule:: superneuromat.util
 
-.. autosummary:: util
-
 .. autofunction:: getenvbool
 .. autofunction:: is_intlike
 .. autofunction:: pretty_spike_train

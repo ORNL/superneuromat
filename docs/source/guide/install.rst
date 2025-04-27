@@ -139,14 +139,14 @@ You can preface most ``pip install`` commands with ``uv`` for *much* faster inst
       .. code-block:: bash
 
          pip install uv
-         uv pip install https://github.com/kenblu24/superneuromat.git@main[gpu]
+         uv pip install https://github.com/kenblu24/superneuromat.git@main
 
    .. tab-item:: pip
       :sync: pip
 
       .. code-block:: bash
 
-         pip install https://github.com/kenblu24/superneuromat.git@main[gpu]
+         pip install https://github.com/kenblu24/superneuromat.git@main
 
 
 If the installation was successful, you should be able to open a ``python`` shell and import the package:
@@ -158,6 +158,57 @@ If the installation was successful, you should be able to open a ``python`` shel
    Type "help", "copyright", "credits" or "license" for more information.
    >>> from superneuromat import SNN
    >>> 
+
+.. _snm-install-numba:
+
+Installing with Numba support
+=============================
+
+If you want to use SuperNeuroMAT with the ``'jit'`` backend or with the CUDA ``'gpu'`` backend, you'll need to install
+`Numba <https://numba.readthedocs.io/en/stable/>`_.
+
+.. tab-set::
+   :class: sd-width-content-min
+   :sync-group: uv
+
+   .. tab-item:: uv
+      :sync: uv
+
+      For just the ``'jit'`` backend:
+
+      .. code-block:: bash
+
+         uv pip install https://github.com/kenblu24/superneuromat.git@main[jit]
+
+      For both the ``'jit'`` and ``'gpu'`` backends:
+
+      .. code-block:: bash
+
+         uv pip install https://github.com/kenblu24/superneuromat.git@main[cuda]
+
+   .. tab-item:: pip
+      :sync: pip
+
+      For just the ``'jit'`` backend:
+
+      .. code-block:: bash
+
+         pip install https://github.com/kenblu24/superneuromat.git@main[jit]
+
+      For both the ``'jit'`` and ``'gpu'`` backends:
+
+      .. code-block:: bash
+
+         pip install https://github.com/kenblu24/superneuromat.git@main[cuda]
+
+To use CUDA with Numba installed this way, you'll also need to install the `CUDA SDK <https://developer.nvidia.com/cuda-downloads>`_ from NVIDIA.
+See `Installing using pip on x86/x86_64 Platforms <https://numba.pydata.org/numba-doc/0.42.0/user/installing.html#installing-using-pip-on-x86-x86-64-platforms>`_.
+
+Once you have ``numba.cuda.is_available()``, SuperNeuroMAT will be able to use the CUDA ``'gpu'`` backend.
+
+.. code-block:: bash
+
+   python -c "import numba.cuda; assert numba.cuda.is_available()"
 
 Development Installations
 =========================

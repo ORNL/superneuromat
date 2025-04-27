@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from .neuromorphicmodel import SNN
     from typing import overload
 else:
+    # for docgen type in signatures
     class SNN:
         def __repr__(self):
             return "SNN"
@@ -247,11 +248,20 @@ class NeuronList:
         else:
             raise TypeError("Invalid index type")
 
+    def info(self, max_neurons=None):
+        return self.m.neuron_info(max_neurons)
+
     def __len__(self):
         return len(self.m.neuron_thresholds)
 
     def __iter__(self):
         return NeuronIterator(self.m)
+
+    def __str__(self):
+        return self.info(30)
+
+    def __repr__(self):
+        return f"<NeuronList on model at {hex(id(self.m))} with {len(self)} neurons>"
 
 
 class NeuronIterator:
@@ -340,9 +350,6 @@ class Synapse:
         else:
             return False
 
-    def __repr__(self):
-        return f"<Virtual Synapse {self.idx} on model at {hex(id(self.m))}>"
-
     def info(self):
         """Returns a string containing information about this synapse."""
         return ' | '.join([
@@ -407,11 +414,20 @@ class SynapseList:
         else:
             raise TypeError("Invalid index type")
 
+    def info(self, max_synapses=None):
+        return self.m.synapse_info(max_synapses)
+
+    def __repr__(self):
+        return f"<SynapseList on model at {hex(id(self.m))} with {len(self)} synapses>"
+
     def __len__(self):
         return len(self.m.synaptic_weights)
 
     def __iter__(self):
         return SynapseIterator(self.m)
+
+    def __str__(self):
+        return self.info(30)
 
 
 class SynapseIterator:

@@ -64,21 +64,25 @@ def stdp_update_jit(tsteps, spike_train, weights_pointer, apos, aneg, stdp_enabl
     # STDP Operations
     for i in range(tsteps):
         update_synapses = np.outer(spike_train[~i - 1], spike_train[-1])
-        weights_pointer += apos[i] * update_synapses * stdp_enabled
-        weights_pointer += aneg[i] * (1 - update_synapses) * stdp_enabled
+        if apos[i]:
+            weights_pointer += apos[i] * update_synapses * stdp_enabled
+        if aneg[i]:
+            weights_pointer += aneg[i] * (1 - update_synapses) * stdp_enabled
 
 
 @jit(nopython=True)
 def stdp_update_jit_apos(tsteps, spike_train, weights_pointer, apos, stdp_enabled):
     # STDP Operations
     for i in range(tsteps):
-        update_synapses = np.outer(spike_train[~i - 1], spike_train[-1])
-        weights_pointer += apos[i] * update_synapses * stdp_enabled
+        if apos[i]:
+            update_synapses = np.outer(spike_train[~i - 1], spike_train[-1])
+            weights_pointer += apos[i] * update_synapses * stdp_enabled
 
 
 @jit(nopython=True)
 def stdp_update_jit_aneg(tsteps, spike_train, weights_pointer, aneg, stdp_enabled):
     # STDP Operations
     for i in range(tsteps):
-        update_synapses = np.outer(spike_train[~i - 1], spike_train[-1])
-        weights_pointer += aneg[i] * (1 - update_synapses) * stdp_enabled
+        if aneg[i]:
+            update_synapses = np.outer(spike_train[~i - 1], spike_train[-1])
+            weights_pointer += aneg[i] * (1 - update_synapses) * stdp_enabled

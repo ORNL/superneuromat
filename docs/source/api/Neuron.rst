@@ -5,5 +5,3 @@
 
 .. autoclass:: Neuron
    :members:
-   
-   

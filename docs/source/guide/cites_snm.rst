@@ -1,5 +1,6 @@
-
 .. rubric:: References
+
+See the literature [#]_ [#]_ [#]_ for SuperNeuroMAT.
 
 .. [#]  `SuperNeuro: A Fast and Scalable Simulator for Neuromorphic Computing <https://doi.org/10.1145/3589737.3606000>`_
 

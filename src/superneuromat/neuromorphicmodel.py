@@ -2,6 +2,7 @@ import math
 import copy
 import warnings
 import numpy as np
+from textwrap import dedent
 from scipy.sparse import csc_array  # scipy is also used for BLAS + numpy (dense matrix)
 from .util import getenvbool, is_intlike, pretty_spike_train
 from .accessor_classes import Neuron, Synapse, NeuronList, SynapseList
@@ -24,10 +25,12 @@ GPU_AVAILABLE = numba and cuda.is_available()
 
 
 def check_numba():
-    msg = """Numba is not installed. Please install Numba to use this feature.
-    You can install JIT support for SuperNeuroMAT with `pip install superneuromat[jit]`,
-    or install Numba manually with `pip install numba`.
-    """
+    msg = dedent("""\
+        Numba is not installed. Please install Numba to use this feature.
+        You can install JIT support for SuperNeuroMAT with `pip install superneuromat[jit]`,
+        or install Numba manually with `pip install numba`.
+        See https://kenblu24.github.io/superneuromat-docs/guide/install.html#snm-install-numba for more information.
+    """)
     global numba
     if numba is None:
         try:
@@ -37,10 +40,11 @@ def check_numba():
 
 
 def check_gpu():
-    msg = """GPU support is not installed. Please install Numba to use this feature.
-    You can install JIT support for SuperNeuroMAT with `pip install superneuromat[gpu]`,
-    or see the install instructions for GPU support at https://ornl.github.io/superneuromat/guide/install.html#gpu-support.
-    """
+    msg = dedent("""\
+        GPU support is not installed. Please install Numba to use this feature.
+        You can install JIT support for SuperNeuroMAT with `pip install superneuromat[cuda]`,
+        or see the install instructions for GPU support at https://kenblu24.github.io/superneuromat-docs/guide/install.html#snm-install-numba.
+    """)
     global numba
     if numba is None:
         try:
@@ -390,11 +394,13 @@ class SNN:
         print(self.pretty(), **kwargs)
 
     def short(self):
-        return f"<SNN with {self.num_neurons} neurons and {self.num_synapses} synapses @ {hex(id(self))}>"
+        """Return a 1-line summary of the SNN."""
+        # this will be grammatically incorrect for n=1, but this makes it easier to parse
+        return f"SNN with {self.num_neurons} neurons and {self.num_synapses} synapses @ {hex(id(self))}"
 
     def stdp_info(self):
         return '\n'.join([
-            f"STDP is globally {' en' if self.stdp else 'dis'}abled" + f" with {self.stdp_time_steps} time steps",
+            f"STDP is globally {'en' if self.stdp else 'dis'}abled" + f" over {self.stdp_time_steps} time steps",
             f"apos: {self.apos}",
             f"aneg: {self.aneg}",
         ])
@@ -408,7 +414,7 @@ class SNN:
             last = [neuron.info_row() for neuron in self.neurons[-fi:]]
             rows = first + [Neuron.row_cont()] + last
         return '\n'.join([
-            "Neuron Info:",
+            f"Neuron Info ({self.num_neurons}):",
             Neuron.row_header(),
             '\n'.join(rows),
         ])
@@ -422,7 +428,7 @@ class SNN:
             last = [synapse.info_row() for synapse in self.synapses[-fi:]]
             rows = first + [Synapse.row_cont()] + last
         return '\n'.join([
-            "Synapse Info:",
+            f"Synapse Info ({self.num_synapses}):",
             Synapse.row_header(),
             '\n'.join(rows),
         ])
@@ -444,7 +450,7 @@ class SNN:
             last = [row(time, nid, value) for time, nid, value in all_spikes[-fi:]]
             rows = first + [f"  ...   {len(all_spikes) - (fi * 2)} rows hidden    ..."] + last
         return '\n'.join([
-            "Input Spikes:",
+            f"Input Spikes ({len(self.input_spikes)}):",
             f" Time:  {'Spike-value':>11s}    Destination",
             '\n'.join(rows),
         ])
@@ -454,11 +460,11 @@ class SNN:
             self.short(),
             self.stdp_info(),
             '',
-            self.neuron_info(30),
+            self.neuron_info(20),
             '',
-            self.synapse_info(40),
+            self.synapse_info(20),
             '',
-            self.input_spikes_info(30),
+            self.input_spikes_info(20),
             '',
             "Spike Train:",
             self.pretty_spike_train(),
@@ -779,7 +785,7 @@ class SNN:
                 raise ValueError("All elements in Apos should be int or float")
             if positive_update is None:
                 positive_update = True
-            self.apos = np.asarray(Apos, self.dd)
+            self.apos = Apos
 
         if negative_update or Aneg is not None:
             if not isinstance(Aneg, (list, np.ndarray)):
@@ -789,7 +795,7 @@ class SNN:
                 raise ValueError("All elements in Aneg should be int or float.")
             if negative_update is None:
                 negative_update = True
-            self.aneg = np.asarray(Aneg, self.dd)
+            self.aneg = Aneg
 
         self.stdp_positive_update = bool(positive_update)
         self.stdp_negative_update = bool(negative_update)
@@ -800,9 +806,9 @@ class SNN:
 
         if not self.allow_incorrect_stdp_sign:
             if positive_update and not all([x >= 0.0 for x in Apos]):
-                raise ValueError("All elements in Apos should be positive")
+                raise ValueError("All elements in Apos should be positive. To ignore this, set snn.allow_incorrect_stdp_sign=True .")  # noqa
             if negative_update and not all([x <= 0.0 for x in Aneg]):
-                raise ValueError("All elements in Aneg should be negative")
+                raise ValueError("All elements in Aneg should be negative. To ignore this, set snn.allow_incorrect_stdp_sign=True .")  # noqa
 
         if not any(self.enable_stdp):
             raise warnings.warn("STDP is not enabled on any synapse.", RuntimeWarning, stacklevel=2)
@@ -955,10 +961,15 @@ class SNN:
             if self._do_positive_update and self._do_negative_update:
                 if len(self.apos) != len(self.aneg):
                     raise ValueError("apos and aneg must be the same length")
+
             if self._do_positive_update:
                 self._stdp_Apos = np.asarray(self.apos, self.dd)
+                if np.any(self._stdp_Apos < 0.0):
+                    raise ValueError("All elements in Apos should be positive. To ignore this, set snn.allow_incorrect_stdp_sign=True .")  # noqa
             if self._do_negative_update:
                 self._stdp_Aneg = np.asarray(self.aneg, self.dd)
+                if np.any(self._stdp_Aneg > 0.0):
+                    raise ValueError("All elements in Aneg should be negative. To ignore this, set snn.allow_incorrect_stdp_sign=True .")  # noqa
 
         # Create numpy array for input spikes for each timestep
         self._input_spikes = np.zeros((1, self.num_neurons), self.dd)
@@ -1277,13 +1288,6 @@ class SNN:
             self._internal_states[indices] = np.minimum(
                 self._internal_states[indices] + self._neuron_leaks[indices], self._neuron_reset_states[indices]
             )
-
-            # # Zero out _input_spikes
-            # self._input_spikes -= self._input_spikes
-
-            # # Include input spikes for current tick
-            # if tick in self.input_spikes:
-            #     self._input_spikes[self.input_spikes[tick]["nids"]] = self.input_spikes[tick]["values"]
 
             # Internal state
             self._internal_states += self._input_spikes[tick] + (self._weights.T @ self._spikes)

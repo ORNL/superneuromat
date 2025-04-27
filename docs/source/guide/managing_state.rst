@@ -93,6 +93,8 @@ This will return a :py:func:`~copy.deepcopy` of the SNN, which you can then use 
 
     snn = original.copy()
 
+The full list of SNN variables which can be memoized is available in the :py:attr:`~superneuromat.SNN.eqvars` attribute.
+
 
 .. low-level-control:
 
@@ -144,6 +146,6 @@ the internal representations will be out of sync.
 
 .. admonition:: Spike Train
 
-   For the 'cpu' and 'jit' backends, the output spike train is always in a
+   For the ``'cpu'`` and ``'jit'`` backends, the output spike train is always in a
    user-facing representation, so no finalization of the spike train is necessary if
    you want to read or modify the spike train after simulation.
