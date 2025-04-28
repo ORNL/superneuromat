@@ -311,7 +311,7 @@ Or perhaps we only care about the last 3 timesteps:
 
    snn.ispikes[-3:, -5:].sum(0)
 
-While we're here, :py:meth:`SNN.ispikes` is a :py:class:`numpy.ndarray` of the number of spikes,
+While we're here, :py:attr:`SNN.ispikes` is a :py:class:`numpy.ndarray` of the number of spikes,
 so it's useful for other things:
 
 Get the index of the neuron that emitted the most spikes in the SNN:
