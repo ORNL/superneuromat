@@ -145,6 +145,8 @@ Methods
    ~SNN.set_weights_from_mat
 
 
+.. _inspecting-the-snn:
+
 .. rubric:: Inspecting the SNN
 
 .. autosummary::

@@ -666,7 +666,8 @@ class SNN:
         self,
         time: int,
         neuron_id: int | Neuron,
-        value: float = 1.0
+        value: float = 1.0,
+        duplicate: str = "error",
     ) -> None:
         """Adds an external spike in the SNN
 
@@ -678,6 +679,11 @@ class SNN:
             The neuron for which the external spike is added
         value : float
             The value of the external spike (default: 1.0)
+        duplicate : str
+            action for existing spikes on a neuron at a given time step.
+            Should be one of ['error', 'overwrite', 'add', 'dontadd'].
+
+            if duplicate='add', the existing spike value is added to the new value.
 
         Raises
         ------
@@ -687,6 +693,10 @@ class SNN:
             * time cannot be precisely cast to int
             * neuron_id is not a Neuron or neuron ID (int)
             * value is not an int or float
+
+        ValueError
+            if spike already exists at that neuron and timestep and duplicate='error',
+            or if duplicate is an invalid setting.
 
 
         .. seealso::
@@ -719,14 +729,31 @@ class SNN:
             raise warnings.warn(msg, stacklevel=2)
 
         # Add spikes
-        if time in self.input_spikes:
-            self.input_spikes[time]["nids"].append(neuron_id)
-            self.input_spikes[time]["values"].append(value)
+        if time not in self.input_spikes:
+            self.input_spikes[time] = {"nids": [], "values": []}
 
-        else:
-            self.input_spikes[time] = {}
-            self.input_spikes[time]["nids"] = [neuron_id]
-            self.input_spikes[time]["values"] = [value]
+        if neuron_id in self.input_spikes[time]["nids"]:
+            if not isinstance(duplicate, str):
+                raise TypeError("duplicate must be a string")
+            duplicate = duplicate.lower()
+            if duplicate == "error":
+                msg = f"add_spike() encountered existing spike at time {time} for Neuron {neuron_id}. "
+                msg += "If this was intentional, pass arg duplicate='add', 'dontadd', 'overwrite'."
+                raise ValueError(msg)
+            elif duplicate == "overwrite":
+                idx = self.input_spikes[time]["nids"].index(neuron_id)
+                self.input_spikes[time]["values"][idx] = value
+            elif duplicate == "add":
+                idx = self.input_spikes[time]["nids"].index(neuron_id)
+                self.input_spikes[time]["values"][idx] += value
+            elif duplicate == "dontadd":
+                return
+            else:
+                msg = f"Invalid value for duplicate: {duplicate}. Expected 'error', 'overwrite', or 'dontadd'."
+                raise ValueError(msg)
+
+        self.input_spikes[time]["nids"].append(neuron_id)
+        self.input_spikes[time]["values"].append(value)
 
     def stdp_setup(
         self,
@@ -1097,6 +1124,22 @@ class SNN:
         """Consumes/deletes input spikes for the given number of time steps."""
         self.input_spikes = {t - time_steps: v for t, v in self.input_spikes.items()
                              if t >= time_steps}
+
+    def shorten_spike_train(self, time_steps: int | None = None):
+        """Remove the oldest spikes from the spike train.
+
+        If no arguments are provided, only keep what is necessary to resume the simulation.
+        This will either be :py:attr:`stdp_time_steps` or 1 spike, whichever is larger.
+
+        Parameters
+        ----------
+        time_steps : int, optional
+            The number of time steps to keep at the end of the spike train.
+            If ``None``, only keep what is necessary to resume the simulation.
+        """
+        if time_steps is None:
+            time_steps = max(bool(self.spike_train), self.stdp_time_steps)
+        self.spike_train = self.spike_train[-time_steps:]
 
     def release_mem(self):
         """Delete internal variables created during computation. Doesn't delete model.

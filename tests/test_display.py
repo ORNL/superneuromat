@@ -87,6 +87,10 @@ class DisplayTest(unittest.TestCase):
         assert np.array_equal(snn.ispikes, expected_spikes)
         assert (snn.ispikes.sum() == np.sum(expected_spikes))
 
+        # TODO: test slicing and printing of neurons and synapses lists
+        # print(snn.neurons[-3:].info())
+        # print(snn.synapses[-3:].info())
+
 
 if __name__ == "__main__":
     unittest.main()

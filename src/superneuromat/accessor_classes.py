@@ -1,7 +1,8 @@
 from .util import is_intlike
 
 from typing import TYPE_CHECKING
-import numpy
+import numpy as np
+from numpy import dtype
 
 if TYPE_CHECKING:
     from .neuromorphicmodel import SNN
@@ -88,14 +89,14 @@ class Neuron:
         self.m.neuron_refractory_periods[self.idx] = int(value)
 
     @property
-    def spikes(self) -> numpy.ndarray[(int), bool] | list:
+    def spikes(self) -> np.ndarray[(int), bool] | list:
         """A vector of the spikes that have been emitted by this neuron."""
         if self.m.spike_train:
             return self.m.ispikes[:, self.idx]
         else:
             return []
 
-    def add_spike(self, time: int, value: float = 1.0):
+    def add_spike(self, time: int, value: float = 1.0, **kwargs):
         """Queue a spike to be sent to this Neuron.
 
         Parameters
@@ -104,8 +105,68 @@ class Neuron:
             The number of time_steps until the spike is sent.
         value : float, default=1.0
             The value of the spike.
+        overwrite : str, default='error'
+            Action if a queued spike already exists at the given time step.
+            Should be one of ['error', 'overwrite', 'add', 'dontadd'].
         """
-        self.m.add_spike(time, self.idx, value)
+        self.m.add_spike(time, self.idx, value, **kwargs)
+
+    def add_spikes(
+        self,
+        spikes: list[float] | list[tuple[int, float]] | np.ndarray[(int), dtype] | np.ndarray[(int, 2), dtype],
+        time_offset: int = 0,
+        duplicate: str = 'error',
+    ):
+        """Add a time-series of spikes to this neuron.
+
+        Parameters
+        ----------
+        spikes : numpy.typing.ArrayLike
+        time_offset : int, default=0
+            The number of time steps to offset the spikes by.
+        overwrite : str, default='error'
+            Action if a queued spike already exists at the given time step.
+            Should be one of ['error', 'overwrite', 'add', 'dontadd'].
+
+        Examples
+        --------
+        If the input is a list of floats, it will be interpreted as a time-series of
+        spikes to be fed in, one after the other.
+
+        .. code-block:: python
+
+           neuron.add_spikes([0.0, 1.0, 2.0, 3.0])
+           # is equivalent to
+           for i in range(4):
+               neuron.add_spike(i, i)
+
+        However, ``0.0``-valued spikes are not added unless ``duplicate='overwrite'``.
+
+        If you would like to send a set of spikes at particular times, you can use a list of tuples:
+
+        .. code-block:: python
+
+           neuron.add_spikes([
+               (1, 1.0),
+               (3, 3.0),
+           ])
+
+
+        .. note::
+
+           The times and values will be cast to :py:attr:`SNN.default_dtype`.
+
+        """
+        if not isinstance(duplicate, str):
+            raise TypeError("duplicate must be a string")
+        duplicate = duplicate.lower()
+        arr = np.asarray(spikes, dtype=self.m.default_dtype)
+        if arr.ndim == 1:
+            times = range(len(arr))
+            arr = np.stack([times, arr], axis=1)
+        for time, value in arr:
+            if value != 0.0 or duplicate == 'overwrite':
+                self.add_spike(time + time_offset, value, duplicate=duplicate)
 
     def connect_child(self, child, weight: float = 1.0, delay: int = 1, stdp_enabled: bool = False):
         """Connect this neuron to a child neuron.
@@ -230,6 +291,7 @@ class NeuronList:
         snn.neurons[0]
         snn.neurons[1:10]
     """
+    # TODO: make this subclass of list and have it return itself when slicing
     def __init__(self, model: SNN):
         self.m = model
 

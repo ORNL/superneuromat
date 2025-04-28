@@ -117,6 +117,12 @@ You should see something like this:
       Because neuron ``a`` is connected to neuron ``b``, the spike travels through
       the synapse and is sent to neuron ``b``, and ``b.state`` increased from `0.0` to `1.0`.
 
+.. note::
+
+   It is possible to send a spike to a neuron with any floating-point value, but
+   when a neuron spikes, the value of the spike is always `1.0` before it gets multiplied
+   by the synaptic weight.
+
 This is the Integrate-and-Fire part of the Leaky Integrate and Fire (**LIF**) model, which is a heavily simplified model of how biological neurons
 operate. We'll talk about Leak, Refractory period, and Reset states later. For now, let's move on to the STDP part of the model.
 
@@ -218,3 +224,163 @@ You can also temporarily disable STDP without setting ``apos`` or ``aneg`` to be
    # you can also do this when creating the synapse
    snn.create_synapse(0, 1, stdp_enabled=False)  # False is the default
 
+
+Encoding Recipes
+================
+
+Rate Encoding
+-------------
+
+One method of encoding a non-binary value is to use a rate-coded spike train.
+
+For example, if you want to encode a value of ``5``, you can send a spike
+train of ``[1.0, 1.0, 1.0, 1.0, 1.0]``.
+
+.. code-block:: python
+
+   neuron.add_spikes(np.ones(5) * 2)
+
+This is equivalent to:
+
+.. code-block:: python
+
+   for i in range(5):
+       neuron.add_spike(i, 2.0)
+
+.. note::
+
+   The ``add_spikes()`` (plural) method is only available on neurons.
+
+   Additionally, both the :py:meth:`Neuron.add_spike()` and :py:meth:`SNN.add_spike()` methods
+   will happily send a ``0.0`` valued spike, :py:meth:`Neuron.add_spikes()` will ignore them.
+
+One modification is to use randomly-distributed spikes instead of a sending all the spikes at the start
+of the encoding period. Here's how this might be implemented to send a value between `0.0` and `1.0`
+over a period of `10` time steps using :py:meth:`numpy.random.Generator.geometric()`:
+
+.. code-block:: python
+
+   rng = np.random.default_rng(seed=None)  # use system time as seed
+   vec = rng.geometric(p=0.5, size=10)
+   neuron.add_spikes(vec)
+
+The ``Neuron.add_spikes()`` method also allows you to send spikes after a specific number of time_steps:
+
+.. code-block:: python
+
+   neuron.add_spikes(np.ones(5), time_offset=10)
+
+First-to-spike
+--------------
+
+Let's say the first three neurons in our network are the input neurons.
+
+In the first-to-spike encoding scheme, we want to spike each input neuron at least once,
+but we want them to fire in a specific order.
+
+.. todo::
+   
+   Add an example of first-to-spike encoding.
+
+Decoding Recipes
+================
+
+Rate Decoding
+-------------
+
+One method of decoding a non-binary value is to simply
+count the number of spikes that arrive at each neuron.
+
+You can use the :py:meth:`numpy.ndarray.sum()` to get the number of spikes that have been
+emitted by each neuron as a vector:
+
+.. code-block:: python
+
+   snn.ispikes.sum(0)
+
+So if your last 5 neurons are your output neurons, you can sum the spikes
+emitted by each of them to get the decoded value:
+
+.. code-block:: python
+
+   snn.ispikes.sum(0)[-5:]
+
+Or perhaps we only care about the last 3 timesteps:
+
+.. code-block:: python
+
+   snn.ispikes[-3:, -5:].sum(0)
+
+While we're here, :py:meth:`SNN.ispikes` is a :py:class:`numpy.ndarray` of the number of spikes,
+so it's useful for other things:
+
+Get the index of the neuron that emitted the most spikes in the SNN:
+
+.. code-block:: python
+
+   snn.ispikes.sum(0).argmax()
+
+Get the number of spikes emitted per timestep:
+
+.. code-block:: python
+
+   snn.ispikes.sum(1)
+
+Get the total number of spikes emitted:
+
+.. code-block:: python
+
+   snn.ispikes.sum()
+
+First-to-spike Decoding
+-----------------------
+
+Another method of decoding a non-binary value is to use the first-to-spike decoding scheme.
+
+This is a population coding scheme, where each neuron is associated with a value. The
+first neuron to spike in the population is the output of the network.
+
+Let's say the last three neurons in our network are the output neurons.
+
+.. code-block:: python
+
+   order = []
+   for time in range(decoding_start, decoding_end):
+       for neuron in snn.neurons[-3:]:
+           if neuron.spikes[time]:
+               order.append(neuron.idx)
+   
+The first element, ``order[0]``, is the index of the neuron that emitted the first spike.
+
+.. caution::
+
+   In this encoding scheme, multiple neurons might have spiked at the same time.
+   The above code will return the lowest-indexed neuron of them.
+
+   It is also possible that no neuron has spiked and ``order`` will be empty.
+
+   You need to decide for yourself how you want to handle these possibilities.
+
+Reading out other information
+-----------------------------
+
+You can also read out other information on a neuron-by-neuron basis
+to see what they are after the simulation:
+
+.. code-block:: python
+
+   for neuron in snn.neurons:
+       neuron.idx  # the index of the neuron
+       neuron.state  # the charge level of the neuron
+       neuron.weight  # the weight of the synapse connecting the neuron to the output neuron
+
+You can see what is available by looking at the :py:class:`Neuron` class.
+
+If you'd like to print out information about the network, there are many methods
+to help you visualize things.
+
+If you're interested in just a single neuron or synapse, the classes :py:class:`Neuron` and :py:class:`Synapse`
+have methods to print out information about them.
+
+If you're looking for information about the entire network, 
+see the many methods of the :py:class:`SNN` class in :ref:`Inspecting the SNN <inspecting-the-snn>`.

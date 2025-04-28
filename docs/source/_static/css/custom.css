@@ -53,3 +53,7 @@
 .font-size-_8em {
     font-size: .8em;
 }
+
+#superneuromat-snn-eqvars .sig-object>.property>span.pre {
+    display: block;
+}
