@@ -151,14 +151,15 @@ It's finally time to install SuperNeuroMAT into our virtual environment:
 
       .. code-block:: bash
 
-         uv pip install -e .[dev, docs]
+         uv tool install tox
+         uv pip install -e .[docs, jit]
 
    .. tab-item:: pip
       :sync: pip
 
       .. code-block:: bash
 
-         pip install -e .[dev, docs]
+         pip install -e .[docs]
 
 If the installation was successful, you should be able to open a ``python`` shell and import the package:
 

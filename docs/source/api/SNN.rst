@@ -225,6 +225,7 @@ Attributes
    ~SNN.backend
    ~SNN.disable_performance_warnings
    ~SNN.eqvars
+   ~SNN._internal_vars
    ~SNN.is_sparse
    ~SNN.sparse
    ~SNN.stdp_time_steps

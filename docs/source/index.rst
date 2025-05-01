@@ -30,7 +30,7 @@ Get Started
 
       .. code-block:: bash
 
-         pip install https://github.com/kenblu24/superneuromat.git@main
+         pip install git+https://github.com/kenblu24/superneuromat.git@main
 
    .. tab-item:: other
 

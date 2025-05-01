@@ -178,13 +178,13 @@ If you want to use SuperNeuroMAT with the ``'jit'`` backend or with the CUDA ``'
 
       .. code-block:: bash
 
-         uv pip install https://github.com/kenblu24/superneuromat.git@main[jit]
+         uv pip install git+https://github.com/kenblu24/superneuromat.git@main[jit]
 
       For both the ``'jit'`` and ``'gpu'`` backends:
 
       .. code-block:: bash
 
-         uv pip install https://github.com/kenblu24/superneuromat.git@main[cuda]
+         uv pip install git+https://github.com/kenblu24/superneuromat.git@main[cuda]
 
    .. tab-item:: pip
       :sync: pip
@@ -193,13 +193,13 @@ If you want to use SuperNeuroMAT with the ``'jit'`` backend or with the CUDA ``'
 
       .. code-block:: bash
 
-         pip install https://github.com/kenblu24/superneuromat.git@main[jit]
+         pip install git+https://github.com/kenblu24/superneuromat.git@main[jit]
 
       For both the ``'jit'`` and ``'gpu'`` backends:
 
       .. code-block:: bash
 
-         pip install https://github.com/kenblu24/superneuromat.git@main[cuda]
+         pip install git+https://github.com/kenblu24/superneuromat.git@main[cuda]
 
 To use CUDA with Numba installed this way, you'll also need to install the `CUDA SDK <https://developer.nvidia.com/cuda-downloads>`_ from NVIDIA.
 See `Installing using pip on x86/x86_64 Platforms <https://numba.pydata.org/numba-doc/0.42.0/user/installing.html#installing-using-pip-on-x86-x86-64-platforms>`_.

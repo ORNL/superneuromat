@@ -1,3 +1,5 @@
+"""Spiking Neural Network model implementing LIF and STDP using matrix representations."""
+
 import math
 import copy
 import warnings
@@ -17,11 +19,11 @@ try:
 except ImportError:
     numba = None
 
-"""Spiking Neural Network model implementing LIF and STDP using matrix representations.
-
-"""
-
-GPU_AVAILABLE = numba and cuda.is_available()
+try:
+    # cuda.is_available() may give TypeError on Win64 w/ no CUDA. @ numba-cuda 0.9.0
+    GPU_AVAILABLE = numba and cuda.is_available()
+except Exception:
+    GPU_AVAILABLE = False
 
 
 def check_numba():
@@ -48,6 +50,7 @@ def check_gpu():
     global numba
     if numba is None:
         try:
+            import numba
             from numba import cuda
         except ImportError as err:
             raise ImportError(msg) from err
@@ -1141,11 +1144,22 @@ class SNN:
             time_steps = max(bool(self.spike_train), self.stdp_time_steps)
         self.spike_train = self.spike_train[-time_steps:]
 
+    _internal_vars = [
+        "_neuron_thresholds", "_neuron_leaks", "_neuron_reset_states", "_internal_states",
+        "_neuron_refractory_periods", "_neuron_refractory_periods_original", "_weights",
+        "_stdp_enabled_synapses", "_stdp_Apos", "_stdp_Aneg",
+        "_spikes", "_input_spikes",
+    ]
+    """NumPy representation of the internal state variables used during simulation.
+
+    When :py:meth:`SNN.release_mem()` is called, these variables are dereferenced.
+    """
+
     def release_mem(self):
         """Delete internal variables created during computation. Doesn't delete model.
 
         This is a low-level function and has few safeguards. Use with caution.
-        It will call :ref:`del` on all numpy internal state variables.
+        It will call :ref:`del` on all numpy internal state variables in :py:attr:`_internal_vars`.
 
         .. warning::
 
@@ -1154,14 +1168,12 @@ class SNN:
 
         This function may alleviate memory leaks in some cases.
         """
-        del self._neuron_thresholds, self._neuron_leaks, self._neuron_reset_states, self._internal_states
-        del self._neuron_refractory_periods, self._neuron_refractory_periods_original, self._weights
-        del self._input_spikes, self._spikes
-        del self._stdp_Apos, self._stdp_Aneg
-        if hasattr(self, "_stdp_enabled_synapses"):
-            del self._stdp_enabled_synapses
-        if hasattr(self, "_output_spikes"):
-            del self._output_spikes
+        for var in self._internal_vars:
+            if hasattr(self, var):
+                delattr(self, var)
+        self._stdp_Apos = np.array([])
+        self._stdp_Aneg = np.array([])
+        self._do_stdp = False
         self._is_sparse = False
 
     def recommend(self, time_steps: int):
@@ -1208,7 +1220,7 @@ class SNN:
         if time_steps <= 0:
             raise ValueError("time_steps must be greater than zero")
 
-        explicit_use = use = use.lower() if isinstance(use, str) else use
+        # explicit_use = use = use.lower() if isinstance(use, str) else use
         if use is None:
             use = self.backend
 
@@ -1518,7 +1530,6 @@ class SNN:
 
         return copy.deepcopy(self)
 
-    #: The list of public variables which define the SNN model.
     eqvars = [
         'num_neurons',
         'num_synapses',
@@ -1542,6 +1553,15 @@ class SNN:
         '_backend',
         'manual_setup',
     ]
+    """The list of public variables which define the SNN model.
+
+
+    For equality comparisons (:py:meth:`SNN.__eq__()`) between two SNNs,
+    this list is used to check that variables within the SNN are equal.
+
+    For memoization (:py:meth:`SNN.memoize()`), this list gives the
+    names of variables which can be memoized.
+    """
 
     def __eq__(self, other):
         """Checks if two SNNs are equal."""

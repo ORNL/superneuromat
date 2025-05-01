@@ -54,6 +54,7 @@
     font-size: .8em;
 }
 
-#superneuromat-snn-eqvars .sig-object>.property>span.pre {
+#superneuromat\.SNN\.eqvars>.property>span.pre,
+#superneuromat\.SNN\._internal_vars>.property>span.pre {
     display: block;
 }
