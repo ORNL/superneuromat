@@ -24,6 +24,8 @@ jobs:
     - name: Install dependencies
       run: |
         python3 -m pip install uv
+        uv venv .
+        source ./bin/activate
         uv pip install .[docs]
     - name: List src directory for debugging
       run: |
