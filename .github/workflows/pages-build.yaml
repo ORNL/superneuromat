@@ -26,7 +26,8 @@ jobs:
       run: |
         python3 -m pip install uv
         uv venv venv
-        source venv/bin/activate
+        . venv/bin/activate
+        echo PATH=$PATH >> $GITHUB_ENV
         uv pip install .[docs]
     - name: List src directory for debugging
       run: |
