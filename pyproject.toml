@@ -73,8 +73,8 @@ docs = [
 env_list = ['py310', 'py313', 'pandas', 'jit', 'numpy126', 'numpy20']
 
 [tool.tox.gh.python]
-"3.10" = ['py310', 'numpy126']
-"3.13" = ['py313', 'pandas', 'jit', 'numpy20']
+"3.10" = ['py310', 'numpy126', 'numpy20']
+"3.13" = ['py313', 'pandas', 'jit']
 
 [tool.tox.env_run_base]
 description = "Run tests under {base_python}"

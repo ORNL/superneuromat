@@ -21,12 +21,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        env:
+        env:  # see entries in [tool.tox.gh.python] in pyproject.toml
           - "3.13"
           - "3.10"
         os:
           - ubuntu-latest
           - macos-latest
+          - windows-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install the latest version of uv
