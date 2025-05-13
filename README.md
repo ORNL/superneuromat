@@ -2,6 +2,9 @@
 
 SuperNeuroMAT is a Python package for simulating and analyzing spiking neural networks.
 
+[![Tox: Selected Tests](https://github.com/kenblu24/superneuromat/actions/workflows/test.yaml/badge.svg)](https://github.com/kenblu24/superneuromat/actions/workflows/test.yaml)
+[![Sphinx: Build HTML](https://github.com/kenblu24/superneuromat/actions/workflows/pages-build.yaml/badge.svg)](https://github.com/kenblu24/superneuromat/actions/workflows/pages-build.yaml)
+
 Documentation available: https://kenblu24.github.io/superneuromat/
 
 [<img src="https://gist.githubusercontent.com/cxmeel/0dbc95191f239b631c3874f4ccf114e2/raw/documentation.svg" alt="Documentation" height="40" />](https://kenblu24.github.io/superneuromat/)

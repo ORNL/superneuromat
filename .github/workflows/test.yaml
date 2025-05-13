@@ -1,4 +1,4 @@
-name: "Tox run tests"
+name: "Tox Tests (partial)"
 
 # run tests via tox
 
