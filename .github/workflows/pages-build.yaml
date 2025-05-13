@@ -29,9 +29,11 @@ jobs:
         . venv/bin/activate
         echo PATH=$PATH >> $GITHUB_ENV
         uv pip install .[docs]
+        echo $PATH
     - name: List src directory for debugging
       run: |
          ls -R src
+         echo $PATH
     - name: Verify installation
       run: |
         pip show superneuromat
