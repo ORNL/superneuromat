@@ -9,10 +9,10 @@ pip install -e .[docs]
 cd docs
 ```
 
-If you plan to upload the documentation to https://github.com/kenblu24/superneuromat-docs, you will need to clone the repository:
+To build the documentation, clone this repository:
 
-* ssh: `git clone git@github.com:kenblu24/superneuromat-docs.git`
-* https: `git clone https://github.com/kenblu24/superneuromat-docs.git`
+* ssh: `git clone git@github.com:kenblu24/superneuromat.git`
+* https: `git clone https://github.com/kenblu24/superneuromat.git`
 
 Then, from the `docs/` directory, run the following command to build the documentation:
 

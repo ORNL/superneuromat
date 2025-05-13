@@ -31,7 +31,7 @@ def check_numba():
         Numba is not installed. Please install Numba to use this feature.
         You can install JIT support for SuperNeuroMAT with `pip install superneuromat[jit]`,
         or install Numba manually with `pip install numba`.
-        See https://kenblu24.github.io/superneuromat-docs/guide/install.html#snm-install-numba for more information.
+        See https://kenblu24.github.io/superneuromat/guide/install.html#snm-install-numba for more information.
     """)
     global numba
     if numba is None:
@@ -45,7 +45,7 @@ def check_gpu():
     msg = dedent("""\
         GPU support is not installed. Please install Numba to use this feature.
         You can install JIT support for SuperNeuroMAT with `pip install superneuromat[cuda]`,
-        or see the install instructions for GPU support at https://kenblu24.github.io/superneuromat-docs/guide/install.html#snm-install-numba.
+        or see the install instructions for GPU support at https://kenblu24.github.io/superneuromat/guide/install.html#snm-install-numba.
     """)
     global numba
     if numba is None:

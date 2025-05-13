@@ -2,9 +2,9 @@
 
 SuperNeuroMAT is a Python package for simulating and analyzing spiking neural networks.
 
-Documentation available: https://kenblu24.github.io/superneuromat-docs/
+Documentation available: https://kenblu24.github.io/superneuromat/
 
-[<img src="https://gist.githubusercontent.com/cxmeel/0dbc95191f239b631c3874f4ccf114e2/raw/documentation.svg" alt="Documentation" height="40" />](https://kenblu24.github.io/superneuromat-docs/)
+[<img src="https://gist.githubusercontent.com/cxmeel/0dbc95191f239b631c3874f4ccf114e2/raw/documentation.svg" alt="Documentation" height="40" />](https://kenblu24.github.io/superneuromat/)
 
 Unlike its sister package, [SuperNeuroABM](https://github.com/kenblu24/superneuroabm), SuperNeuroMAT uses a matrix-based representation
 of the network, which allows for more efficient simulation and GPU acceleration.
@@ -32,7 +32,7 @@ such as [SuperNeuroABM](https://github.com/ORNL/superneuroabm) for longer delays
 1. Install using `pip install superneuromat`
 2. Update/upgrade using `pip install superneuromat --upgrade`
 
-The [installation guide](https://kenblu24.github.io/superneuromat-docs/guide/install.html)
+The [installation guide](https://kenblu24.github.io/superneuromat/guide/install.html)
 covers virtual environments, faster installation with uv, installing support for CUDA GPU acceleration, and more.
 
 ## Usage
@@ -42,7 +42,7 @@ Import the spiking neural network class:
 from superneuromat import SNN
 ```
 
-See the [tutorial](https://kenblu24.github.io/superneuromat-docs/guide/firstrun.html) for more.
+See the [tutorial](https://kenblu24.github.io/superneuromat/guide/firstrun.html) for more.
 
 ## Citation
 1. Please cite SuperNeuroMAT using:
