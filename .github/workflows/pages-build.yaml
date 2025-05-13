@@ -19,12 +19,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
+      id: python3
       with:
         python-version: '3.12'
+        update-environment: false
     - name: Install dependencies
       run: |
-        python3 -m pip install uv
+        ${{ steps.python3.outputs.python-path }} -m pip install uv
         uv venv venv
         . venv/bin/activate
         echo PATH=$PATH >> $GITHUB_ENV
@@ -36,11 +38,13 @@ jobs:
          echo $PATH
     - name: Verify installation
       run: |
+        . venv/bin/activate
         pip show superneuromat
     - name: Build HTML
       run: |
+        . venv/bin/activate
         cd docs
-        make html
+        ./single html
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       id: deployment
