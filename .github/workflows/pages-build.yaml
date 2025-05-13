@@ -44,7 +44,7 @@ jobs:
         cd docs
         ./single html
     - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-pages-artifact@v3
       id: deployment
       with:
         name: github-pages
