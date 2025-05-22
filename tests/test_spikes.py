@@ -10,7 +10,7 @@ from superneuromat import SNN
 use = 'cpu'
 
 
-class CountSpikeTest(unittest.TestCase):
+class SpikeTest(unittest.TestCase):
     """ Test the count_spike function
 
     """
@@ -37,6 +37,32 @@ class CountSpikeTest(unittest.TestCase):
         print(snn)
 
         print("test_count_spike completed successfully")
+
+    def test_add_spike_errors(self):
+        """ Test input validation for snn.add_spike()
+
+        """
+
+        snn = SNN()
+        n0 = snn.create_neuron()
+
+        with self.assertRaises(TypeError):
+            snn.add_spike(0, float(n0), 1.0)  # pyright: ignore[reportArgumentType]
+
+        with self.assertRaises(ValueError):
+            snn.add_spike(0, n0, "one")  # pyright: ignore[reportArgumentType]
+
+        with self.assertRaises(ValueError):
+            snn.add_spike(1, n0, 'heck')  # pyright: ignore[reportArgumentType]
+
+        with self.assertRaises(ValueError):
+            snn.add_spike("zero", n0, 1.0)  # pyright: ignore[reportArgumentType]
+
+        with self.assertRaises(ValueError):
+            snn.add_spike(-1, n0)
+
+        with self.assertRaises(ValueError):
+            snn.add_spike(1, -1)
 
     def test_send_spikes_vec(self):
         """Test the add_spikes function with a time-series of spikes"""

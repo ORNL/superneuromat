@@ -7,6 +7,7 @@ import test_leak
 import test_stdp
 import test_refractory
 import test_logic_gates
+import base
 
 import sys
 sys.path.insert(0, "../src/")
@@ -33,7 +34,7 @@ class SparseTest(unittest.TestCase):
         a = snn.create_neuron()
         b = snn.create_neuron()
 
-        s = snn.create_synapse(a, b, stdp_enabled=True)
+        snn.create_synapse(a, b, stdp_enabled=True)
 
         snn.add_spike(0, a, 50.0)
         snn.add_spike(3, b, 23.5)
@@ -63,7 +64,7 @@ class SparseTest(unittest.TestCase):
         a = snn.create_neuron()
         b = snn.create_neuron()
 
-        s = snn.create_synapse(a, b, stdp_enabled=True)
+        snn.create_synapse(a, b, stdp_enabled=True)
 
         snn.add_spike(0, a, 50.0)
         snn.add_spike(3, b, 23.5)
@@ -112,7 +113,7 @@ class SparseTest(unittest.TestCase):
         snn_dense.backend = self.use
 
         # Create neurons
-        for i in range(num_neurons):
+        for _i in range(num_neurons):
             if sparse:
                 snn_sparse.create_neuron(refractory_period=2)
 
@@ -122,7 +123,7 @@ class SparseTest(unittest.TestCase):
         print("Neurons created")
 
         # Create synapses
-        for i in range(int(num_neurons * num_neurons * sparsity)):
+        for _i in range(int(num_neurons * num_neurons * sparsity)):
             pre = np.random.randint(num_neurons)
             post = np.random.randint(num_neurons)
 
@@ -138,7 +139,7 @@ class SparseTest(unittest.TestCase):
         print("Synapses created")
 
         # Add spikes
-        for i in range(num_spikes):
+        for _i in range(num_spikes):
             t = np.random.randint(num_simulation_time_steps)
             n = np.random.randint(num_neurons)
 
@@ -210,7 +211,7 @@ class SparseTest(unittest.TestCase):
         snn_dense = SNN()
         snn_sparse = SNN()
 
-        for i in range(num_neurons):
+        for _i in range(num_neurons):
             snn_dense.create_neuron()
             snn_sparse.create_neuron()
 
@@ -267,16 +268,11 @@ class SparseTest(unittest.TestCase):
         print("test_sparse_stdp completed successfully")
 
 
-class SparseBase(unittest.TestCase):
+class SparseBase(base.BaseTest):
     """Test JIT"""
 
     use = 'cpu'
     sparse = True
-
-    def tearDown(self):
-        assert self.snn.last_used_backend() == 'cpu'
-        assert self.snn.sparse is True
-        return super().tearDown()
 
 
 class SparseLogicGatesTest(SparseBase, test_logic_gates.LogicGatesTest):

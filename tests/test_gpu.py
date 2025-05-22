@@ -4,6 +4,7 @@ import test_leak
 import test_stdp
 import test_refractory
 import test_logic_gates
+import base
 
 import sys
 sys.path.insert(0, "../src/")
@@ -11,15 +12,11 @@ sys.path.insert(0, "../src/")
 from superneuromat import SNN
 
 
-class GPUTest(unittest.TestCase):
+class GPUTest(base.BaseTest):
     """Test GPU"""
 
     use = 'gpu'
     sparse = False
-
-    def tearDown(self):
-        assert self.snn.last_used_backend() == 'gpu'
-        return super().tearDown()
 
 
 class GPULogicGatesTest(GPUTest, test_logic_gates.LogicGatesTest):

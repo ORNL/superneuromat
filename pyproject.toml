@@ -80,13 +80,14 @@ env_list = ['py310', 'py313', 'pandas', 'jit', 'numpy126', 'numpy20']
 description = "Run tests under {base_python}"
 change_dir = "tests"
 commands = [
-    ["python", "test_synapse.py",],
     ["python", "test_cpu.py",],
+    ["python", "test_neuron.py",],
+    ["python", "test_synapse.py",],
+    ["python", "test_spikes.py",],
     ["python", "test_sparse.py",],
     ["python", "test_display.py",],
     ["python", "test_reset.py",],
     ["python", "test_dtype.py",],
-    ["python", "test_count_spikes.py",],
 ]
 
 [tool.tox.env.jit]
@@ -125,13 +126,14 @@ description = "Run tests for numpy 1.26.0"
 change_dir = "tests"
 deps = ["numpy<2.0.0"]
 commands = [
-    ["python", "test_synapse.py",],
     ["python", "test_cpu.py",],
+    ["python", "test_neuron.py"],
+    ["python", "test_synapse.py",],
     ["python", "test_sparse.py",],
     ["python", "test_display.py",],
     ["python", "test_reset.py",],
     ["python", "test_dtype.py",],
-    ["python", "test_count_spikes.py",],
+    ["python", "test_spikes.py",],
 ]
 
 [tool.tox.env.numpy20]
@@ -139,11 +141,12 @@ description = "Run tests for numpy 2.0 for np.bool check"
 change_dir = "tests"
 deps = ["numpy~=2.0.0"]
 commands = [
-    ["python", "test_synapse.py",],
     ["python", "test_cpu.py",],
+    ["python", "test_neuron.py"],
+    ["python", "test_synapse.py",],
     ["python", "test_sparse.py",],
     ["python", "test_display.py",],
     ["python", "test_reset.py",],
     ["python", "test_dtype.py",],
-    ["python", "test_count_spikes.py",],
+    ["python", "test_spikes.py",],
 ]

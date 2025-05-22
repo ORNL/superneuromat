@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 import time
+import base
 
 import sys
 sys.path.insert(0, "../src/")
@@ -12,7 +13,7 @@ def epsilon(a, b, tol=1e-12):
     return np.abs(a - b) < tol
 
 
-class StdpTest(unittest.TestCase):
+class StdpTest(base.BaseTest):
     """ Test refractory period
 
     """
@@ -143,10 +144,12 @@ class StdpTest(unittest.TestCase):
 
         snn = self.snn
         if snn.backend == 'gpu':
-            snn._last_used_backend = 'gpu'  # hack to beat this check on GPU test
+            # snn._last_used_backend = 'gpu'  # hack to beat this check on GPU test
+            self.cheat_teardown(snn)
             raise unittest.SkipTest("Skipping long test on GPU")
         if snn.sparse:
-            snn._last_used_backend = 'cpu'  # hack to beat this check on sparse
+            # snn._last_used_backend = 'cpu'  # hack to beat this check on sparse
+            self.cheat_teardown(snn)
             raise unittest.SkipTest("Skipping long test on sparse")
 
         n0 = snn.create_neuron()
@@ -352,7 +355,78 @@ class StdpTest(unittest.TestCase):
 
         for snn in snns:
             assert snn.last_used_backend() == self.snn.backend
+            assert snn._is_sparse == self.snn.sparse
         self.snn._last_used_backend = snns[0].backend
+        self.snn._is_sparse = snns[0]._is_sparse
+
+    def test_stdp_setup_errors(self):
+        """ Test input validation for stdp_setup()
+
+        """
+
+        snn = self.snn
+        n0 = snn.create_neuron()
+        n1 = snn.create_neuron()
+        snn.create_synapse(n0, n1, delay=2, stdp_enabled=True)
+        snn.add_spike(1, n0)
+
+        with self.assertRaises(TypeError):
+            snn.stdp_setup(-1)  # pyright: ignore[reportArgumentType]
+
+        with self.assertRaises(ValueError):
+            snn.stdp_setup([1.0, 0.5], [1.0, 0.5, 0.25])
+
+        with self.assertRaises(ValueError):
+            snn.stdp_setup(Apos=["a", "b", "c"])
+
+        with self.assertRaises(ValueError):
+            snn.stdp_setup(Aneg=["a", "b", "c"])
+
+        with self.assertRaises(ValueError):
+            snn.stdp_setup(Apos=[-1, -1], negative_update=False)
+
+        with self.assertRaises(ValueError):
+            snn.stdp_setup(Apos=[1.0], Aneg=[5.0])
+
+        with self.assertRaises(TypeError):
+            snn.stdp_setup(Apos=1.0)  # pyright: ignore[reportArgumentType]
+
+        with self.assertRaises(TypeError):
+            snn.stdp_setup(Aneg=1.0)  # pyright: ignore[reportArgumentType]
+
+        with self.assertWarns(UserWarning):
+            snn.stdp_setup(positive_update="False")
+
+        with self.assertWarns(UserWarning):
+            snn.stdp_setup(negative_update="False")
+
+        self.cheat_teardown(snn)
+
+    def test_stdp_no_synapses_enabled(self):
+        """ Test runtime error for STDP runtime
+
+        """
+
+        snn = self.snn
+
+        n0 = snn.create_neuron()
+        n1 = snn.create_neuron()
+        n2 = snn.create_neuron()
+        n3 = snn.create_neuron()
+
+        snn.create_synapse(n0, n1)
+        snn.create_synapse(n0, n2)
+        snn.create_synapse(n2, n3)
+
+        snn.add_spike(0, n0)
+        snn.add_spike(1, n1)
+        snn.add_spike(2, n1)
+        snn.add_spike(0, n2)
+
+        with self.assertWarns(RuntimeWarning):
+            snn.stdp_setup()
+
+        self.cheat_teardown(snn)
 
 
 if __name__ == "__main__":
