@@ -63,7 +63,7 @@ html_theme = 'pydata_sphinx_theme'
 html_static_path = ['_static']
 html_title = "SuperNeuroMAT"
 
-github_version = "docs-live"
+github_version = "main"
 
 html_context = {
     # "github_url": "https://github.com", # or your GitHub Enterprise site

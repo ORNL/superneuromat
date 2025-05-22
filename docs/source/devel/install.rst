@@ -152,7 +152,7 @@ It's finally time to install SuperNeuroMAT into our virtual environment:
       .. code-block:: bash
 
          uv tool install tox
-         uv pip install -e .[docs, jit]
+         uv pip install -e .[docs,jit]
 
    .. tab-item:: pip
       :sync: pip
