@@ -63,7 +63,7 @@ class Neuron:
         return self.m.neuron_states[self.idx]
 
     @state.setter
-    def state(self, value) -> float:
+    def state(self, value):
         self.m.neuron_states[self.idx] = float(value)
 
     @property
@@ -89,7 +89,7 @@ class Neuron:
         self.m.neuron_refractory_periods[self.idx] = int(value)
 
     @property
-    def spikes(self) -> np.ndarray[(int), bool] | list:
+    def spikes(self) -> np.ndarray[(int,), np.dtype[np.bool_]] | list:
         """A vector of the spikes that have been emitted by this neuron."""
         if self.m.spike_train:
             return self.m.ispikes[:, self.idx]
@@ -113,7 +113,7 @@ class Neuron:
 
     def add_spikes(
         self,
-        spikes: list[float] | list[tuple[int, float]] | np.ndarray[(int), dtype] | np.ndarray[(int, 2), dtype],
+        spikes: list[float] | list[tuple[int, float]] | np.ndarray[(int,), dtype] | np.ndarray[(int, 2), dtype],
         time_offset: int = 0,
         duplicate: str = 'error',
     ):

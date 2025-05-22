@@ -7,7 +7,7 @@ import numpy as np
 from numpy import typing as npt
 from textwrap import dedent
 from scipy.sparse import csc_array  # scipy is also used for BLAS + numpy (dense matrix)
-from .util import getenvbool, is_intlike, pretty_spike_train
+from .util import getenv, getenvbool, is_intlike_catch, pretty_spike_train, int_err, float_err
 from .accessor_classes import Neuron, Synapse, NeuronList, SynapseList
 
 from typing import Any, TYPE_CHECKING
@@ -121,7 +121,7 @@ class SNN:
 
         self.gpu = GPU_AVAILABLE
         # default backend setting. can be overridden at simulate time.
-        self._backend = getenvbool('SNMAT_BACKEND', default='auto')
+        self._backend = getenv('SNMAT_BACKEND', default='auto')
         self._last_used_backend = None
         self._sparse = 'auto'  # default sparsity setting.
         # self._return_sparse = False  # whether to return spikes sparsely
@@ -164,7 +164,7 @@ class SNN:
             If ``use`` is not one of ``'auto'``, ``'cpu'``, ``'jit'``, or ``'gpu'``.
 
 
-        `'auto'` is the default value. This will choose a backend at :py:meth:`simulate()` time
+        ``'auto'`` is the default value. This will choose a backend at :py:meth:`simulate()` time
         based on the network size and time steps, as chosen by :py:meth:`recommend()`.
 
         """
@@ -196,7 +196,7 @@ class SNN:
     def sparse(self):
         """Returns True if either user has requested sparse, or if SNN is sparse internally.
 
-        To check the user-specified sparsity, see :py:attr:`_sparse`.
+        When creating an :py:class:`SNN`\\ , the ``sparse`` parameter is ``'auto'`` by default.
 
         Parameters
         ----------
@@ -208,6 +208,12 @@ class SNN:
             the SNN will be internally represented using a dense representation.
 
             If ``'auto'``, the sparsity will be determined at setup-time via :py:meth:`recommend_sparsity()`.
+
+
+        .. seealso::
+
+            To check the user-specified sparsity, see :py:attr:`_sparse`.
+
         """
         return self._sparse or self._is_sparse
 
@@ -276,29 +282,93 @@ class SNN:
         """
         return len(self.pre_synaptic_neuron_ids)
 
-    def get_synapses_by_pre(self, pre_id: int | Neuron):
+    def get_synaptic_ids_by_pre(self, pre_id: int | Neuron) -> list[int]:
+        """Returns a list of synapse ids with the given pre-synaptic neuron.
+
+        Parameters
+        ----------
+        pre_id : int | Neuron, required
+            The ID of the pre-synaptic neuron.
+
+        Raises
+        ------
+        TypeError
+            If ``pre_id`` is not an int or Neuron.
+
+        Returns
+        -------
+        list
+            A list of synapse ids with the given pre-synaptic neuron. May be empty.
+        """
+        if isinstance(pre_id, Neuron):
+            pre_id = pre_id.idx
+        if not is_intlike_catch(pre_id):
+            raise TypeError("pre_id must be int or Neuron.")
+        return [idx for idx, pre in enumerate(self.pre_synaptic_neuron_ids) if pre == pre_id]
+
+    def get_synapses_by_pre(self, pre_id: int | Neuron) -> list[Synapse]:
         """Returns a list of synapses with the given pre-synaptic neuron.
 
         Parameters
         ----------
         pre_id : int | Neuron, required
             The ID of the pre-synaptic neuron.
-        """
-        if isinstance(pre_id, Neuron):
-            pre_id = pre_id.idx
-        return [idx for idx, pre in enumerate(self.pre_synaptic_neuron_ids) if pre == pre_id]
 
-    def get_synapses_by_post(self, post_id: int | Neuron):
-        """Returns a list of synapses with the given post-synaptic neuron.
+        Raises
+        ------
+        TypeError
+            If ``pre_id`` is not an int or Neuron.
+
+        Returns
+        -------
+        list
+            A list of :py:class:`Synapse`\\ s with the given pre-synaptic neuron. May be empty.
+        """
+        return [self.synapses[i] for i in self.get_synaptic_ids_by_pre(pre_id)]
+
+    def get_synaptic_ids_by_post(self, post_id: int | Neuron) -> list[int]:
+        """Returns a list of synapse ids with the given post-synaptic neuron.
 
         Parameters
         ----------
         post_id : int | Neuron, required
             The ID of the post-synaptic neuron.
+
+        Raises
+        ------
+        TypeError
+            If ``post_id`` is not an int or Neuron.
+
+        Returns
+        -------
+        list
+            A list of synapse ids with the given post-synaptic neuron. May be empty.
         """
         if isinstance(post_id, Neuron):
             post_id = post_id.idx
+        if not is_intlike_catch(post_id):
+            raise TypeError("post_id must be int or Neuron.")
         return [idx for idx, post in enumerate(self.post_synaptic_neuron_ids) if post == post_id]
+
+    def get_synapses_by_post(self, post_id: int | Neuron) -> list[Synapse]:
+        """Returns the synapses that connect the given post-synaptic neuron.
+
+        Parameters
+        ----------
+        post_id : int | Neuron, required
+            The ID of the post-synaptic neuron.
+
+        Raises
+        ------
+        TypeError
+            If ``post_id`` is not an int or Neuron.
+
+        Returns
+        -------
+        list
+            A list of :py:class:`Synapse`\\ s with the given post-synaptic neuron. May be empty.
+        """
+        return [self.synapses[i] for i in self.get_synaptic_ids_by_post(post_id)]
 
     def get_synapse(self, pre_id: int | Neuron, post_id: int | Neuron) -> Synapse:
         """Returns the synapse that connects the given pre- and post-synaptic neurons.
@@ -319,7 +389,7 @@ class SNN:
         TypeError
             When `pre_id` or `post_id` is not a Neuron or neuron ID (int).
         """
-        if (idx := self.get_synapse_id(pre_id, post_id)):
+        if (idx := self.get_synapse_id(pre_id, post_id)) is not None:
             return self.synapses[idx]
 
         # synapse not found, raise error.
@@ -352,8 +422,8 @@ class SNN:
             pre_id = pre_id.idx
         if isinstance(post_id, Neuron):
             post_id = post_id.idx
-        if not (is_intlike(pre_id) and is_intlike(post_id)):
-            raise TypeError("get_synapse_id() requires pre_id and post_id to be int or Neuron.")
+        if not (is_intlike_catch(pre_id) and is_intlike_catch(post_id)):
+            raise TypeError("pre_id and post_id must be int or Neuron.")
         return self.connection_ids.get((pre_id, post_id), None)
 
     @property
@@ -604,37 +674,28 @@ class SNN:
            :py:attr:`Neuron.idx` is the ID of the created neuron.
 
         """
-        # Type errors
-        if not isinstance(threshold, (int, float)):
-            raise TypeError("threshold must be int or float")
+        # Input validation
+        fname = 'create_neuron()'
 
-        if not isinstance(leak, (int, float)):
-            raise TypeError("leak must be int or float")
+        leak = float_err(leak, 'leak', fname)
         if not self.allow_signed_leak and leak < 0.0:
-            raise ValueError("leak must be grater than or equal to zero")
+            raise ValueError("leak must be grater than or equal to zero.")
 
-        if not is_intlike(refractory_period):
-            raise TypeError("refractory_period must be int")
-        refractory_period = int(refractory_period)
+        refractory_period = int_err(refractory_period, 'refractory_period', fname)
         if refractory_period < 0:
-            raise ValueError("refractory_period must be greater than or equal to zero")
+            raise ValueError("refractory_period must be greater than or equal to zero.")
 
-        if not is_intlike(refractory_state):
-            raise TypeError("refractory_state must be int")
-        refractory_state = int(refractory_state)
+        refractory_state = int_err(refractory_state, 'refractory_state', fname)
         if refractory_state < 0:
-            raise ValueError("refractory_state must be greater than or equal to zero")
-
-        if not isinstance(initial_state, (int, float)):
-            raise TypeError("initial_state must be int or float")
+            raise ValueError("refractory_state must be greater than or equal to zero.")
 
         # Add neurons to SNN
-        self.neuron_thresholds.append(float(threshold))
-        self.neuron_leaks.append(float(leak))
-        self.neuron_reset_states.append(float(reset_state))
+        self.neuron_thresholds.append(float_err(threshold, 'threshold', fname))
+        self.neuron_leaks.append(leak)
+        self.neuron_reset_states.append(float_err(reset_state, 'reset_state', fname))
         self.neuron_refractory_periods.append(refractory_period)
         self.neuron_refractory_periods_state.append(refractory_state)
-        self.neuron_states.append(reset_state if initial_state is None else float(initial_state))
+        self.neuron_states.append(reset_state if initial_state is None else float_err(initial_state, 'initial_state', fname))
 
         # Return neuron ID
         return Neuron(self, self.num_neurons - 1)
@@ -688,26 +749,25 @@ class SNN:
            :py:meth:`Neuron.connect_child`, :py:meth:`Neuron.connect_parent`
         """
 
-        # Type errors
+        # Ensure we work with neuron ids
         if isinstance(pre_id, Neuron):
             pre_id = pre_id.idx
         if isinstance(post_id, Neuron):
             post_id = post_id.idx
 
-        if not isinstance(pre_id, (int, float)) or not is_intlike(pre_id):
-            raise TypeError("pre_id must be int")
+        # input validation
+        fname = 'create_synapse()'
+
+        if not is_intlike_catch(pre_id):
+            raise TypeError("pre_id must be int or Neuron.")
         pre_id = int(pre_id)
 
-        if not isinstance(post_id, (int, float)) or not is_intlike(post_id):
-            raise TypeError("post_id must be int")
+        if not is_intlike_catch(post_id):
+            raise TypeError("post_id must be int or Neuron.")
         post_id = int(post_id)
 
-        if not isinstance(weight, (int, float)):
-            raise TypeError("weight must be a float")
-
-        if not isinstance(delay, (int, float)) or not is_intlike(delay):
-            raise TypeError("delay must be an integer")
-        delay = int(delay)
+        weight = float_err(weight, 'weight', fname)
+        delay = int_err(delay, 'delay', fname)
 
         # Value errors
         if pre_id < 0:
@@ -721,6 +781,12 @@ class SNN:
         if not post_id < self.num_neurons:
             msg = f"Added synapse to non-existent post-synaptic Neuron {post_id}."
             raise warnings.warn(msg, stacklevel=2)
+
+        ambiguous = ('true', '1', 'y', 'yes', 'on', 'f', 'false', '0', 'n', 'no', 'off')
+        if isinstance(stdp_enabled, str) and stdp_enabled.lower() in ambiguous:
+            msg = f"{fname} argument stdp_enabled received {stdp_enabled!r}"
+            msg += " which has ambiguous truthiness. Consider using an explicit boolean value instead."
+            warnings.warn(msg, stacklevel=2)
 
         if delay <= 0:
             raise ValueError("delay must be greater than or equal to 1")
@@ -790,23 +856,19 @@ class SNN:
            :py:meth:`Neuron.add_spike`
         """
 
-        # Type errors
-        if not is_intlike(time):
-            raise TypeError("time must be int")
-        time = int(time)
+        # input validation
+        fname = 'add_spike()'
+        time = int_err(time, 'time', fname)
+        value = float_err(value, 'value', fname)
 
         if isinstance(neuron_id, Neuron):
             neuron_id = neuron_id.idx
-        if not is_intlike(neuron_id):
-            raise TypeError("neuron_id must be int")
+        if not is_intlike_catch(neuron_id):
+            raise TypeError("neuron_id must be int or Neuron.")
         neuron_id = int(neuron_id)
 
-        if not isinstance(value, (int, float)):
-            raise TypeError("value must be int or float")
-
-        # Value errors
         if time < 0:
-            raise ValueError("time must be greater than or equal to zero")
+            raise ValueError("time must be greater than or equal to zero.")
 
         if neuron_id < 0:
             raise ValueError("neuron_id must be greater than or equal to zero")
@@ -890,6 +952,12 @@ class SNN:
         # Collect STDP parameters
         self.stdp = True
 
+        msg = "{} received a string which has ambiguous truthiness. Use an explicit boolean value instead."
+        if isinstance(positive_update, str):
+            warnings.warn(msg.format("positive_update"), stacklevel=2)
+        if isinstance(negative_update, str):
+            warnings.warn(msg.format("negative_update"), stacklevel=2)
+
         if positive_update or Apos is not None:
             if not isinstance(Apos, (list, np.ndarray)):
                 raise TypeError("Apos should be a list")
@@ -924,7 +992,7 @@ class SNN:
                 raise ValueError("All elements in Aneg should be negative. To ignore this, set snn.allow_incorrect_stdp_sign=True .")  # noqa
 
         if not any(self.enable_stdp):
-            raise warnings.warn("STDP is not enabled on any synapse.", RuntimeWarning, stacklevel=2)
+            warnings.warn("STDP is not enabled on any synapse.", RuntimeWarning, stacklevel=2)
         if time_steps is not None:
             warnings.warn("time_steps on stdp_setup() is deprecated and has no effect. It will be removed in a future version.",
                           FutureWarning, stacklevel=2)
@@ -1294,13 +1362,13 @@ class SNN:
         """
 
         # Type errors
-        if not is_intlike(time_steps):
-            raise TypeError("time_steps must be int")
+        if not is_intlike_catch(time_steps):
+            raise TypeError("time_steps must be int.")
         time_steps = int(time_steps)
 
         # Value errors
         if time_steps <= 0:
-            raise ValueError("time_steps must be greater than zero")
+            raise ValueError("time_steps must be greater than zero.")
 
         # explicit_use = use = use.lower() if isinstance(use, str) else use
         if use is None:

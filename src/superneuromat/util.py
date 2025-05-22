@@ -14,7 +14,17 @@ import os
 import numpy as np
 
 # typing
-from typing import Any
+from typing import Any, cast
+
+
+def getenv(key, default=None):
+    """Get the value of an environment variable or return a default."""
+    s = os.environ.get(key, default)
+    if isinstance(s, str):
+        s = s.lower().strip()
+        if s == '':
+            return default
+    return s
 
 
 def getenvbool(key, default=None):
@@ -32,11 +42,61 @@ def getenvbool(key, default=None):
 
 
 def is_intlike(x):
-    """Returns ``True`` if ``x`` is equivalent to an integer."""
+    """Returns ``True`` if ``x`` is equivalent to an integer.
+
+    Raises
+    ------
+    ValueError
+        If ``x`` cannot be coerced to an integer.
+    """
     if isinstance(x, int):
         return True
     else:
         return x == int(x)
+
+
+def is_intlike_catch(x):
+    """Returns ``True`` if ``x`` is equivalent to an integer or False if x is not a number."""
+    if isinstance(x, int):
+        return True
+    else:
+        try:
+            return x == int(x)
+        except (ValueError, TypeError):
+            return False
+
+
+def int_err(x, name='', fname='', msg=None):
+    """Cast int and raise a ValueError if x is not an int or int-like."""
+    try:
+        y = int(x)
+    except ValueError as e:
+        if msg is None:
+            msg = f"{ f'{fname} c' if fname else 'C'}ould not convert argument {name} of type {type(x)} to int: {x!r}"
+        raise ValueError(msg) from e
+    except TypeError as e:
+        if msg is None:
+            msg = f"{fname} argument {name} of type {type(x)} must be a string, bytes-like object, or a real number, not {x!r}"
+        raise TypeError(msg) from e
+    if y != x:
+        if msg is None:
+            msg = f"{fname} casting argument {name} to int resulted in loss of precision: {y} <- {x!r}"
+        raise ValueError(msg)
+    return y
+
+
+def float_err(x, name='', fname='', msg=None):
+    """Cast float and raise a custom error"""
+    try:
+        return float(x)
+    except ValueError as e:
+        if msg is None:
+            msg = f"{ f'{fname} c' if fname else 'C'}ould not convert argument {name} of type {type(x)} to float: {x!r}"
+        raise ValueError(msg) from e
+    except TypeError as e:
+        if msg is None:
+            msg = f"{fname} argument {name} of type {type(x)} must be a string or a real number, not {x!r}"
+        raise TypeError(msg) from e
 
 
 def pretty_spike_train(
@@ -78,8 +138,8 @@ def pretty_spike_train(
         if horizontally_continuous:
             return sep.join([c1 if x else c0 for x in spiked])
         else:
-            fi = max_neurons // 2
-            li = max_neurons // 2
+            fi = max_neurons // 2  # pyright: ignore[reportOptionalOperand]
+            li = max_neurons // 2  # pyright: ignore[reportOptionalOperand]
             first = spiked[:fi]
             last = spiked[-li:]
             return sep.join([c1 if x else c0 for x in first] + [ellip] + [c1 if x else c0 for x in last])
@@ -88,7 +148,7 @@ def pretty_spike_train(
     if horizontally_continuous:
         ids = [f"{i:<{i_nchar}d}" for i in range(neurons)]
     else:
-        fi = max_neurons // 2
+        fi = max_neurons // 2  # pyright: ignore[reportOptionalOperand]
         first = [f"{i:<{i_nchar}d}" for i in range(fi)]
         last = [f"{i:<{i_nchar}d}" for i in range(neurons - fi, neurons)]
         ids = first + [ellip] + last
