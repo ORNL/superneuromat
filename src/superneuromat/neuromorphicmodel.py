@@ -4,12 +4,13 @@ import math
 import copy
 import warnings
 import numpy as np
+from numpy import typing as npt
 from textwrap import dedent
 from scipy.sparse import csc_array  # scipy is also used for BLAS + numpy (dense matrix)
 from .util import getenvbool, is_intlike, pretty_spike_train
 from .accessor_classes import Neuron, Synapse, NeuronList, SynapseList
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 try:
     import numba
@@ -18,12 +19,23 @@ try:
     from .numba_jit import stdp_update_jit_apos, stdp_update_jit_aneg
 except ImportError:
     numba = None
+if TYPE_CHECKING:
+    from numba import cuda  # stops pyright from analyzing the ^^^ except code path
+    from .numba_jit import lif_jit, stdp_update_jit
+    from .numba_jit import stdp_update_jit_apos, stdp_update_jit_aneg
 
 try:
     # cuda.is_available() may give TypeError on Win64 w/ no CUDA. @ numba-cuda 0.9.0
     GPU_AVAILABLE = numba and cuda.is_available()
 except Exception:
     GPU_AVAILABLE = False
+
+
+if TYPE_CHECKING:
+    _arr_boollike_T = np.dtype[np.bool]
+    _arr_floatlike_T = np.dtype[np.floating]
+else:
+    _arr_boollike_T = _arr_floatlike_T = None
 
 
 def check_numba():
@@ -144,11 +156,17 @@ class SNN:
         Parameters
         ----------
         use : str
+            The backend to use. Can be ``'auto'``, ``'cpu'``, ``'jit'``, or ``'gpu'``.
 
         Raises
         ------
         ValueError
-            if ``use`` is not one of ``'auto'``, ``'cpu'``, ``'jit'``, or ``'gpu'``.
+            If ``use`` is not one of ``'auto'``, ``'cpu'``, ``'jit'``, or ``'gpu'``.
+
+
+        `'auto'` is the default value. This will choose a backend at :py:meth:`simulate()` time
+        based on the network size and time steps, as chosen by :py:meth:`recommend()`.
+
         """
         return self._backend
 
@@ -216,7 +234,30 @@ class SNN:
 
     @sparse.setter
     def sparse(self, sparse: bool | str | Any):
-        """Sets the requested sparsity setting."""
+        """Sets the requested sparsity setting.
+
+        Parameters
+        ----------
+        sparse : bool | str | Any, required
+            The requested sparsity setting.
+
+        The following values will be interpreted as ``True``:
+
+        * ``1``
+        * ``'1'``
+        * ``True``
+        * ``'true'``
+        * ``'sparse'``
+
+        The following values will be interpreted as ``False``:
+
+        * ``0``
+        * ``'0'``
+        * ``False``
+        * ``'false'``
+
+        When the :py:class:`SNN` is created, the ``sparse`` parameter is ``'auto'`` by default.
+        """
         self._sparse = self._parse_sparsity(sparse)
 
     @property
@@ -236,32 +277,58 @@ class SNN:
         return len(self.pre_synaptic_neuron_ids)
 
     def get_synapses_by_pre(self, pre_id: int | Neuron):
-        """Returns a list of synapses with the given pre-synaptic neuron."""
+        """Returns a list of synapses with the given pre-synaptic neuron.
+
+        Parameters
+        ----------
+        pre_id : int | Neuron, required
+            The ID of the pre-synaptic neuron.
+        """
         if isinstance(pre_id, Neuron):
             pre_id = pre_id.idx
         return [idx for idx, pre in enumerate(self.pre_synaptic_neuron_ids) if pre == pre_id]
 
     def get_synapses_by_post(self, post_id: int | Neuron):
-        """Returns a list of synapses with the given post-synaptic neuron."""
+        """Returns a list of synapses with the given post-synaptic neuron.
+
+        Parameters
+        ----------
+        post_id : int | Neuron, required
+            The ID of the post-synaptic neuron.
+        """
         if isinstance(post_id, Neuron):
             post_id = post_id.idx
         return [idx for idx, post in enumerate(self.post_synaptic_neuron_ids) if post == post_id]
 
-    def get_synapse(self, pre_id: int | Neuron, post_id: int | Neuron) -> Synapse | None:
+    def get_synapse(self, pre_id: int | Neuron, post_id: int | Neuron) -> Synapse:
         """Returns the synapse that connects the given pre- and post-synaptic neurons.
 
         Parameters
         ----------
-        pre_id : int | Neuron
-        post_id : int | Neuron
+        pre_id : int | Neuron, required
+        post_id : int | Neuron, required
 
         Returns
         -------
-        Synapse | None
-            If no matching synapse exists, returns ``None``.
+        Synapse
+
+        Raises
+        ------
+        IndexError
+            If no matching synapse is found.
+        TypeError
+            When `pre_id` or `post_id` is not a Neuron or neuron ID (int).
         """
         if (idx := self.get_synapse_id(pre_id, post_id)):
             return self.synapses[idx]
+
+        # synapse not found, raise error.
+        if isinstance(pre_id, Neuron):
+            pre_id = pre_id.idx
+        if isinstance(post_id, Neuron):
+            post_id = post_id.idx
+        msg = f"Synapse not found between neurons {pre_id} and {post_id}."
+        raise IndexError(msg)
 
     def get_synapse_id(self, pre_id: int | Neuron, post_id: int | Neuron) -> int | None:
         """Returns the id of the synapse connecting the given pre- and post-synaptic neurons.
@@ -275,11 +342,18 @@ class SNN:
         -------
         int | None
             If no matching synapse exists, returns ``None``.
+
+        Raises
+        ------
+        TypeError
+            If `pre_id` or `post_id` is not a Neuron or neuron ID (int).
         """
         if isinstance(pre_id, Neuron):
             pre_id = pre_id.idx
         if isinstance(post_id, Neuron):
             post_id = post_id.idx
+        if not (is_intlike(pre_id) and is_intlike(post_id)):
+            raise TypeError("get_synapse_id() requires pre_id and post_id to be int or Neuron.")
         return self.connection_ids.get((pre_id, post_id), None)
 
     @property
@@ -354,7 +428,7 @@ class SNN:
         return df.fillna(0.0)
 
     @property
-    def ispikes(self) -> np.ndarray[(int, int), bool]:
+    def ispikes(self) -> np.ndarray[(int, int), _arr_boollike_T]:
         """Convert the output spike train to a dense binary :py:class:`numpy.ndarray`.
 
         Returns
@@ -397,7 +471,16 @@ class SNN:
         print(self.pretty(), **kwargs)
 
     def short(self):
-        """Return a 1-line summary of the SNN."""
+        """Return a 1-line summary of the SNN.
+
+        Examples
+        --------
+
+        .. code-block::
+
+            SNN with 100 neurons and 1000 synapses @ 0x7f9c0a0c5d10
+
+        """
         # this will be grammatically incorrect for n=1, but this makes it easier to parse
         return f"SNN with {self.num_neurons} neurons and {self.num_synapses} synapses @ {hex(id(self))}"
 
@@ -684,7 +767,7 @@ class SNN:
             The value of the external spike (default: 1.0)
         duplicate : str
             action for existing spikes on a neuron at a given time step.
-            Should be one of ['error', 'overwrite', 'add', 'dontadd'].
+            Should be one of ['error', 'overwrite', 'add', 'dontadd']. (default: 'error')
 
             if duplicate='add', the existing spike value is added to the new value.
 
@@ -835,9 +918,9 @@ class SNN:
                 raise ValueError("Apos and Aneg should have the same size.")
 
         if not self.allow_incorrect_stdp_sign:
-            if positive_update and not all([x >= 0.0 for x in Apos]):
+            if positive_update and not all([x >= 0.0 for x in Apos]):  # pyright:ignore[reportOptionalIterable]
                 raise ValueError("All elements in Apos should be positive. To ignore this, set snn.allow_incorrect_stdp_sign=True .")  # noqa
-            if negative_update and not all([x <= 0.0 for x in Aneg]):
+            if negative_update and not all([x <= 0.0 for x in Aneg]):  # pyright:ignore[reportOptionalIterable]
                 raise ValueError("All elements in Aneg should be negative. To ignore this, set snn.allow_incorrect_stdp_sign=True .")  # noqa
 
         if not any(self.enable_stdp):
@@ -862,7 +945,7 @@ class SNN:
                           RuntimeWarning, stacklevel=2)
         self._setup(**kwargs)
 
-    def set_weights_from_mat(self, mat: np.ndarray[(int, int), float] | np.ndarray | csc_array):
+    def set_weights_from_mat(self, mat: np.ndarray[(int, int), _arr_floatlike_T] | np.ndarray | csc_array):
         """Set the synaptic weights from a matrix.
 
         Parameters
@@ -934,7 +1017,7 @@ class SNN:
         mat[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids] = self.enable_stdp
         return mat
 
-    def set_stdp_enabled_from_mat(self, mat: np.ndarray[(int, int), bool] | np.ndarray):
+    def set_stdp_enabled_from_mat(self, mat: np.ndarray[(int, int), np.dtype[Any]] | np.ndarray | csc_array):
         self.enable_stdp = list(mat[self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids])
 
     def stdp_enabled_sparse(self, dtype=None):
@@ -1099,8 +1182,7 @@ class SNN:
 
                 restore()  # restore all memoized variables
         """
-        if args:
-            keys = [self._get_self_eqvar(arg) for arg in args]
+        keys = [self._get_self_eqvar(arg) for arg in args]
         for key, value in self.memoized.items():
             if key not in self.eqvars:
                 msg = f"Invalid key: {key}"
@@ -1441,13 +1523,13 @@ class SNN:
 
             input_spikes = cuda.to_device(self._input_spikes[tick])
 
-            gpu.post_synaptic[v_blocks, v_tpb](
+            gpu.post_synaptic[v_blocks, v_tpb](  # pyright: ignore[reportIndexIssue]
                 weights,
                 output_spikes,
                 post_synapse,
             )
 
-            gpu.lif[v_blocks, v_tpb](
+            gpu.lif[v_blocks, v_tpb](  # pyright: ignore[reportIndexIssue]
                 input_spikes,
                 output_spikes,
                 post_synapse,
@@ -1464,8 +1546,8 @@ class SNN:
             if self._do_stdp:
                 for i in range(min(self.stdp_time_steps, len(self.spike_train) - 1)):
                     prev_spikes = cuda.to_device(self.spike_train[~i - 1].astype(self.dbin))
-                    gpu.stdp_update[m_blocks, m_tpb](weights, prev_spikes, output_spikes,
-                                    stdp_enabled, apos[i], aneg[i])
+                    gpu.stdp_update[m_blocks, m_tpb](weights, prev_spikes, output_spikes,  # pyright: ignore[reportIndexIssue]
+                                    stdp_enabled, apos[i], aneg[i])  # pyright: ignore[reportPossiblyUnboundVariable]
 
         self._weights = weights.copy_to_host()
         self._neuron_refractory_periods = refractory_periods.copy_to_host()
