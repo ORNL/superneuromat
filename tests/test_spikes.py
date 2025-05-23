@@ -109,7 +109,7 @@ class SpikeTest(unittest.TestCase):
         snn.print_spike_train()
 
     def test_send_spikes_dup(self):
-        """Test the add_spikes duplicate parameter"""
+        """Test the add_spikes exist parameter"""
 
         print("begin test_send_spikes_dup")
 
@@ -127,12 +127,12 @@ class SpikeTest(unittest.TestCase):
         a.add_spikes([
             (5, 0.0),
             (6, 0.0),
-        ], duplicate='overwrite')
+        ], exist='overwrite')
 
         def raises_valueerror():
-            a.add_spike(8, 1.0, duplicate='error')
+            a.add_spike(8, 1.0, exist='error')
 
-        a.add_spike(7, 0.0, duplicate='dontadd')
+        a.add_spike(7, 0.0, exist='dontadd')
 
         print(snn.input_spikes_info())
 

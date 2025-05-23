@@ -153,24 +153,26 @@ Methods
    :toctree: _gen/
    :nosignatures:
 
-   ~SNN.get_input_spikes_df
    ~SNN.get_neuron_df
-   ~SNN.get_stdp_enabled_df
+   ~SNN.neuron_spike_totals
    ~SNN.get_synapse
    ~SNN.get_synapse_df
-   ~SNN.get_synapse_id
    ~SNN.get_synapses_by_post
    ~SNN.get_synapses_by_pre
+   ~SNN.get_synapse_id
+   ~SNN.get_synaptic_ids_by_post
+   ~SNN.get_synaptic_ids_by_pre
    ~SNN.get_weights_df
    ~SNN.input_spikes_info
+   ~SNN.get_input_spikes_df
+   ~SNN.get_stdp_enabled_df
    ~SNN.last_used_backend
-   ~SNN.neuron_info
-   ~SNN.neuron_spike_totals
    ~SNN.pretty
    ~SNN.pretty_print
    ~SNN.pretty_spike_train
    ~SNN.print_spike_train
    ~SNN.short
+   ~SNN.neuron_info
    ~SNN.stdp_info
    ~SNN.synapse_info
    ~SNN.stdp_enabled_mat
@@ -235,4 +237,3 @@ Attributes
    ~SNN.jit_threshold
    ~SNN.gpu_threshold
    ~SNN.sparsity_threshold
-

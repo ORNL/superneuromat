@@ -105,7 +105,7 @@ class Neuron:
             The number of time_steps until the spike is sent.
         value : float, default=1.0
             The value of the spike.
-        overwrite : str, default='error'
+        exist : str, default='error'
             Action if a queued spike already exists at the given time step.
             Should be one of ['error', 'overwrite', 'add', 'dontadd'].
         """
@@ -115,7 +115,7 @@ class Neuron:
         self,
         spikes: list[float] | list[tuple[int, float]] | np.ndarray[(int,), dtype] | np.ndarray[(int, 2), dtype],
         time_offset: int = 0,
-        duplicate: str = 'error',
+        exist: str = 'error',
     ):
         """Add a time-series of spikes to this neuron.
 
@@ -124,7 +124,7 @@ class Neuron:
         spikes : numpy.typing.ArrayLike
         time_offset : int, default=0
             The number of time steps to offset the spikes by.
-        overwrite : str, default='error'
+        exist : str, default='error'
             Action if a queued spike already exists at the given time step.
             Should be one of ['error', 'overwrite', 'add', 'dontadd'].
 
@@ -140,7 +140,7 @@ class Neuron:
            for i in range(4):
                neuron.add_spike(i, i)
 
-        However, ``0.0``-valued spikes are not added unless ``duplicate='overwrite'``.
+        However, ``0.0``-valued spikes are not added unless ``exist='overwrite'``.
 
         If you would like to send a set of spikes at particular times, you can use a list of tuples:
 
@@ -156,19 +156,24 @@ class Neuron:
 
            The times and values will be cast to :py:attr:`SNN.default_dtype`.
 
+        .. seealso::
+
+           :py:meth:`Neuron.add_spike`
+           :py:meth:`SNN.add_spike`
         """
-        if not isinstance(duplicate, str):
-            raise TypeError("duplicate must be a string")
-        duplicate = duplicate.lower()
+        if not isinstance(exist, str):
+            raise TypeError("exist must be a string")
+        exist = exist.lower()
         arr = np.asarray(spikes, dtype=self.m.default_dtype)
         if arr.ndim == 1:
             times = range(len(arr))
             arr = np.stack([times, arr], axis=1)
         for time, value in arr:
-            if value != 0.0 or duplicate == 'overwrite':
-                self.add_spike(time + time_offset, value, duplicate=duplicate)
+            if value != 0.0 or exist == 'overwrite':
+                self.add_spike(time + time_offset, value, exist=exist)
 
-    def connect_child(self, child, weight: float = 1.0, delay: int = 1, stdp_enabled: bool = False):
+    def connect_child(self, child, weight: float = 1.0, delay: int = 1, stdp_enabled: bool = False,
+                      exist='error'):
         """Connect this neuron to a child neuron.
 
         Parameters
@@ -181,12 +186,19 @@ class Neuron:
             The delay of the synapse connecting this neuron to the child.
         stdp_enabled : bool, default=False
             If ``True``, enable STDP learning on the synapse connecting this neuron to the child.
+
+        .. seealso::
+
+           :py:meth:`Neuron.connect_parent`
+           :py:meth:`SNN.create_synapse`
         """
         if isinstance(child, Neuron):
             child = child.idx
-        self.m.create_synapse(self.idx, child, weight=weight, delay=delay, stdp_enabled=stdp_enabled)
+        self.m.create_synapse(self.idx, child, weight=weight, delay=delay, stdp_enabled=stdp_enabled,
+                              exist=exist)
 
-    def connect_parent(self, parent, weight: float = 1.0, delay: int = 1, stdp_enabled: bool = False):
+    def connect_parent(self, parent, weight: float = 1.0, delay: int = 1, stdp_enabled: bool = False,
+                       exist='error'):
         """Connect this neuron to a parent neuron.
 
         Parameters
@@ -199,10 +211,16 @@ class Neuron:
             The delay of the synapse connecting the parent to this neuron.
         stdp_enabled : bool, default=False
             If ``True``, enable STDP learning on the synapse connecting the parent to this neuron.
+
+        .. seealso::
+
+           :py:meth:`Neuron.connect_child`
+           :py:meth:`SNN.create_synapse`
         """
         if isinstance(parent, Neuron):
             parent = parent.idx
-        self.m.create_synapse(parent, self.idx, weight=weight, delay=delay, stdp_enabled=stdp_enabled)
+        self.m.create_synapse(parent, self.idx, weight=weight, delay=delay, stdp_enabled=stdp_enabled,
+                              exist=exist)
 
     def spikes_str(self, max_steps=10, use_unicode=True):
         """Returns a pretty string of the spikes that have been emitted by this neuron.
@@ -245,7 +263,10 @@ class Neuron:
         return f"<Virtual Neuron {self.idx} on model at {hex(id(self.m))}>"
 
     def info(self):
-        """Returns a string containing information about this neuron."""
+        """Returns a string containing information about this neuron.
+
+        The order of the fields is the same as in :py:meth:`SNN.neuron_info` but without the spikes column.
+        """
         return ' | '.join([
             f"id: {self.idx:d}",
             f"state: {self.state:f}",
@@ -259,24 +280,27 @@ class Neuron:
         return f"<Neuron {self.info()}>"
 
     def info_row(self):
-        """Returns a string containing information about this neuron for use in a table."""
+        """Returns a string containing information about this neuron for use in a table.
+
+        This function is used to generate rows for :py:meth:`SNN.neuron_info`.
+        """
         return ''.join([
-            f"{self.idx:>5d}\t",
-            f"{self.state:>11.9g}\t",
-            f"{self.threshold:>11.9g}\t",
-            f"{self.leak:>8.6g}  ",
-            f"{self.refractory_state:>3d} ",
-            f"{self.refractory_period:>3d}\t",
+            f"{self.idx:>6d} ",
+            f"{self.state:>11.7g} ",
+            f"{self.threshold:>11.7g} ",
+            f"{self.leak:>11.7g}       ",
+            f"{self.refractory_state:>4d}        ",
+            f"{self.refractory_period:>4d} ",
             self.spikes_str(max_steps=10),
         ])
 
     @classmethod
     def row_header(cls):
-        return "  idx         state          thresh         leak  ref per       spikes"
+        return "   idx       state      thresh        leak  ref_state  ref_period spikes"
 
     @classmethod
     def row_cont(cls):
-        return "  ...           ...             ...          ...  ... ...       [...]"
+        return "  ...          ...         ...          ...       ...         ... [...]"
 
 
 class NeuronList:

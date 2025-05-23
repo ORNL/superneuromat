@@ -152,7 +152,7 @@ def pretty_spike_train(
         first = [f"{i:<{i_nchar}d}" for i in range(fi)]
         last = [f"{i:<{i_nchar}d}" for i in range(neurons - fi, neurons)]
         ids = first + [ellip] + last
-    lines.append(f"{'t':>{t_nchar}s}:  {sep.join(ids)} ")
+    lines.append(f"{'t':>{t_nchar}s}|id{sep.join(ids)} ")
 
     if max_steps is None or len(spike_train) <= max_steps:
         for time, spiked in enumerate(spike_train):

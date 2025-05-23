@@ -144,11 +144,11 @@ class SparseTest(unittest.TestCase):
             n = np.random.randint(num_neurons)
 
             if sparse:
-                snn_sparse.add_spike(t, n, 10, duplicate='add')
+                snn_sparse.add_spike(t, n, 10, exist='add')
                 snn_sparse.sparse = True
 
             if dense:
-                snn_dense.add_spike(t, n, 10, duplicate='add')
+                snn_dense.add_spike(t, n, 10, exist='add')
                 snn_dense.sparse = False
 
         print("Spikes added")

@@ -139,12 +139,15 @@ class SNN:
         Returns
         -------
         str
-            Returns 'cpu' | 'jit' | 'gpu'
+            Returns 'cpu' | 'jit' | 'gpu' for the backend that was used during
+            :py:meth:`simulate`, or ``None`` if no simulation has been run yet.
+
 
         .. seealso::
 
-           :py:meth:`backend`
-           :py:meth:`is_sparse`
+            :py:meth:`backend`
+
+            :py:meth:`is_sparse`
 
         """
         return self._last_used_backend
@@ -194,7 +197,7 @@ class SNN:
 
     @property
     def sparse(self):
-        """Returns True if either user has requested sparse, or if SNN is sparse internally.
+        """The user-requested sparsity setting for the SNN
 
         When creating an :py:class:`SNN`\\ , the ``sparse`` parameter is ``'auto'`` by default.
 
@@ -209,13 +212,13 @@ class SNN:
 
             If ``'auto'``, the sparsity will be determined at setup-time via :py:meth:`recommend_sparsity()`.
 
-
-        .. seealso::
-
-            To check the user-specified sparsity, see :py:attr:`_sparse`.
+        Returns
+        -------
+        bool | str
+            Returns ``True``, ``False``, or ``'auto'``.
 
         """
-        return self._sparse or self._is_sparse
+        return self._sparse
 
     @property
     def is_sparse(self):
@@ -241,28 +244,6 @@ class SNN:
     @sparse.setter
     def sparse(self, sparse: bool | str | Any):
         """Sets the requested sparsity setting.
-
-        Parameters
-        ----------
-        sparse : bool | str | Any, required
-            The requested sparsity setting.
-
-        The following values will be interpreted as ``True``:
-
-        * ``1``
-        * ``'1'``
-        * ``True``
-        * ``'true'``
-        * ``'sparse'``
-
-        The following values will be interpreted as ``False``:
-
-        * ``0``
-        * ``'0'``
-        * ``False``
-        * ``'false'``
-
-        When the :py:class:`SNN` is created, the ``sparse`` parameter is ``'auto'`` by default.
         """
         self._sparse = self._parse_sparsity(sparse)
 
@@ -405,12 +386,13 @@ class SNN:
 
         Parameters
         ----------
-        pre_id : int | Neuron
-        post_id : int | Neuron
+        pre_id : int | Neuron, required
+        post_id : int | Neuron, required
 
         Returns
         -------
         int | None
+            The id of the synapse connecting the pre-synaptic -> post-synaptic neurons.
             If no matching synapse exists, returns ``None``.
 
         Raises
@@ -430,15 +412,31 @@ class SNN:
     def stdp_time_steps(self) -> int:
         """Returns the number of time steps over which STDP updates will be made.
 
+        This is the effective number of time steps that Spike-Timing Dependent Plasticity (STDP)
+        will be applied over. This depends on the length of the :py:attr:`apos` and :py:attr:`aneg`
+        lists, as well whether :py:attr:`stdp_positive_update` or :py:attr:`stdp_negative_update`
+        are enabled.
+
         If STDP is not enabled, returns ``0``.
+
+        Raises
+        ------
+        RuntimeError
+            If both positive and negative updates are enabled,
+            but :py:attr:`apos` and :py:attr:`aneg` are not the same length.
         """
         apos, aneg = len(self.apos), len(self.aneg)
 
+        if not self.stdp:
+            return 0
         if self.stdp_positive_update and self.stdp_negative_update:
             if not apos or not aneg:
                 return max(apos, aneg)
             else:
-                assert apos == aneg
+                if apos != aneg:
+                    msg = "positive and negative updates are enabled, but apos and aneg are not the same length."
+                    msg += " Refusing to report STDP time steps."
+                    raise RuntimeError(msg)
                 return apos
         if self.stdp_positive_update:
             return apos
@@ -501,11 +499,52 @@ class SNN:
     def ispikes(self) -> np.ndarray[(int, int), _arr_boollike_T]:
         """Convert the output spike train to a dense binary :py:class:`numpy.ndarray`.
 
+        This is useful for slicing and analyzing the spike train.
+
+        Index with ``snn.ispikes[time, neuron]``.
+
+        Note that this is converted from the output spike train, which may be cleared
+        with :py:meth:`clear_spike_train` or :py:meth:`reset`.
+
         Returns
         -------
         numpy.ndarray[(int, int), bool]
+            The ``dtype`` of the array will be :py:attr:`default_bool_dtype`.
 
-        The ``dtype`` of the array will be :py:attr:`default_bool_dtype`.
+        Examples
+        --------
+        >>> # Here's an example spike train:
+        >>> snn.ispikes
+        array([[False, False, False, False,  True],
+               [False,  True, False,  True,  True],
+               [ True,  True,  True,  True,  True],
+               [ True,  True, False, False, False]])
+        >>> snn.print_spike_train()
+        t|id0 1 2 3 4
+        0: [│ │ │ │ ├─]
+        1: [│ ├─│ ├─├─]
+        2: [├─├─├─├─├─]
+        3: [├─├─│ │ │ ]
+
+        >>> # single neuron
+        >>> snn.ispikes[0, 0]  # True if neuron 0 spiked at time 0
+        np.False_
+
+        >>> # multiple neurons
+        >>> snn.ispikes[0, :]  # Whether a neuron spiked at time step 0
+        array([False, False, False, False,  True])
+        >>> snn.ispikes[:, 0]  # Whether neuron 0 spiked for a particular time step
+        array([False, False,  True,  True])
+        >>> snn.ispikes[-1]  # Whether a neuron spiked at the last time step
+        array([ True,  True, False, False, False])
+        >>> snn.ispikes[-3:].sum()  # Number of spikes emitted in the last 3 time steps
+        np.int64(10)
+        >>> snn.ispikes[-3:].sum(0)  # Number of spikes emitted for each neuron in the last 3 time steps
+        array([2, 3, 1, 2, 2])
+        >>> snn.ispikes[:, 2:].sum(0)  # Number of spikes emitted by the first 2 neurons over all time
+        array([2, 3])
+        >>> snn.ispikes.sum(1)  # number of spikes emitted per neuron over all time
+        array([1, 3, 5, 2])
         """
         return np.asarray(self.spike_train, dtype=self.dbin)
 
@@ -537,8 +576,23 @@ class SNN:
     def __str__(self):
         return self.pretty()
 
-    def pretty_print(self, **kwargs):
-        print(self.pretty(), **kwargs)
+    def pretty_print(self, n=20, **kwargs):
+        """Pretty-prints the model.
+
+        You can also do ``print(snn)``.
+
+        Parameters
+        ----------
+        n : int, default=20
+            Limits the size each section of the printout.
+
+        .. seealso::
+
+            * :py:meth:`SNN.pretty`
+            * :py:meth:`SNN.short`
+            * :py:meth:`SNN.print_spike_train`
+        """
+        print(self.pretty(n), **kwargs)
 
     def short(self):
         """Return a 1-line summary of the SNN.
@@ -550,18 +604,80 @@ class SNN:
 
             SNN with 100 neurons and 1000 synapses @ 0x7f9c0a0c5d10
 
+        .. seealso::
+
+            * :py:meth:`SNN.pretty`
         """
         # this will be grammatically incorrect for n=1, but this makes it easier to parse
         return f"SNN with {self.num_neurons} neurons and {self.num_synapses} synapses @ {hex(id(self))}"
 
     def stdp_info(self):
+        """Generate a description of the current global STDP settings.
+
+        Returns
+        -------
+        list[str]
+
+        Examples
+        --------
+        >>> print(snn.stdp_info())
+        STDP is globally enabled over 3 time steps.
+        apos: [1.0, 0.5, 0.25]
+        aneg: [-0.1, -0.05, -0.025]
+        5 synapses have STDP enabled.
+
+        .. seealso::
+
+            * :py:meth:`SNN.pretty`
+        """
+        extra = f" over {self.stdp_time_steps} time steps." if self.stdp_time_steps else ""
         return '\n'.join([
-            f"STDP is globally {'en' if self.stdp else 'dis'}abled" + f" over {self.stdp_time_steps} time steps",
+            f"STDP is globally {'enabled' if self.stdp else 'disabled.'}" + extra,
             f"apos: {self.apos}",
             f"aneg: {self.aneg}",
+            f"{self.stdp_enabled_mat().sum()} synapses have STDP enabled.",
         ])
 
     def neuron_info(self, max_neurons=None):
+        """Generate a description of the neurons in the SNN.
+
+        Generates a list of strings which can be printed, which shows a table of the neurons in the SNN.
+        The first line also shows the number of neurons in the SNN.
+
+        Here are the headers and columns which will be shown:
+
+        +-----------+--------------+-----------+------+------------------+-------------------+-------------+
+        | idx       | state        | thresh    | leak | ref_state        | ref_period        | spikes      |
+        +===========+==============+===========+======+==================+===================+=============+
+        | Neuron ID | Charge State | Threshold | Leak | Refractory State | Refractory Period | Spike Train |
+        +-----------+--------------+-----------+------+------------------+-------------------+-------------+
+
+        Parameters
+        ----------
+        max_neurons : int, optional
+            If more than ``max_neurons`` neurons are in the SNN, only the
+            first and last ``max_neurons // 2`` neurons will be printed.
+
+        Returns
+        -------
+        list[str]
+
+        Examples
+        --------
+        >>> print(snn.neuron_info())
+        Neuron Info (2):
+           idx       state      thresh        leak  ref_state  ref_period spikes
+             0          -2          -1           2          0           3 [----⋯------]
+             1          -2           0           1          0           1 [-┴--⋯-┴----]
+
+        .. seealso::
+
+            * :py:meth:`SNN.pretty`
+            * :py:meth:`Neuron.info`
+
+        These functions generate parts of the table above:
+        :py:meth:`Neuron.row_header`, :py:meth:`Neuron.info_row`, :py:meth:`Neuron.row_cont`
+        """
         if max_neurons is None or self.num_neurons <= max_neurons:
             rows = (neuron.info_row() for neuron in self.neurons)
         else:
@@ -576,6 +692,48 @@ class SNN:
         ])
 
     def synapse_info(self, max_synapses=None):
+        """Generate a description of the synapses in the SNN.
+
+        Generates a list of strings which can be printed, which shows a table of the synapses in the SNN.
+        The first line also shows the number of synapses in the SNN.
+
+        Here are the headers and columns which will be shown:
+
+        +------------+------------------------+-------------------------+--------+-------+--------------+
+        | idx        | pre                    | post                    | weight | delay | stdp_enabled |
+        +============+========================+=========================+========+=======+==============+
+        | Synapse ID | Pre-synaptic Neuron ID | Post-synaptic Neuron ID | Weight | Delay | STDP Enabled |
+        +------------+------------------------+-------------------------+--------+-------+--------------+
+
+        The stdp_enabled column will contain either ``Y`` or ``-``
+        if the synapse allows STDP updates or not, respectively.
+
+        Parameters
+        ----------
+        max_synapses : int, optional
+            If more than ``max_synapses`` synapses are in the SNN, only the
+            first and last ``max_synapses // 2`` synapses will be printed.
+
+        Returns
+        -------
+        list[str]
+
+        Examples
+        --------
+        >>> print(snn.synapse_info())
+        Synapse Info (2):
+          idx     pre   post         weight     delay   stdp_enabled
+            0       0      1              1         1   -
+            1       1      0              4         1   Y
+
+        .. seealso::
+
+            * :py:meth:`SNN.pretty`
+            * :py:meth:`Synapse.info`
+
+        These functions generate parts of the table above:
+        :py:meth:`Synapse.row_header`, :py:meth:`Synapse.info_row`, :py:meth:`Synapse.row_cont`
+        """
         if max_synapses is None or self.num_synapses <= max_synapses:
             rows = (synapse.info_row() for synapse in self.synapses)
         else:
@@ -590,6 +748,43 @@ class SNN:
         ])
 
     def input_spikes_info(self, max_entries=None):
+        """Generate a description of the synapses in the SNN.
+
+        Generates a list of strings which can be printed, which shows a
+        table of the individual input spikes queued to be sent to the SNN.
+        The first line also shows the number of queued spikes.
+
+        Here are the headers for the information which will be shown:
+
+        +------+-------------+-------------+
+        | Time | Spike-value | Destination |
+        +------+-------------+-------------+
+
+        1. Time: The number of time steps to wait before sending the spike.
+        2. Spike-value: The amplitude or value of the spike.
+        3. Destination: The ID of the neuron to which the spike will be sent.
+
+        Parameters
+        ----------
+        max_entries : int, optional
+            If more than ``max_entries`` input spikes are queued, only the
+            first and last ``max_entries // 2`` spikes will be printed.
+
+        Returns
+        -------
+        list[str]
+
+        Examples
+        --------
+        >>> print(snn.input_spikes_info())
+        Input Spikes (1):
+        Time:  Spike-value    Destination
+            0:          2.1 -> <Virtual Neuron 4 on model at 0x290f4bb8800>
+
+        .. seealso::
+
+            * :py:meth:`SNN.pretty`
+        """
 
         def row(time, nid, value):
             return f"{time:>5d}: \t{value:>11.9g} -> {self.neurons[nid]!r}"
@@ -611,19 +806,42 @@ class SNN:
             '\n'.join(rows),
         ])
 
-    def pretty(self):
+    def pretty(self, n=20):
+        """Generates a text description of the model.
+
+        .. seealso::
+
+            Used in:
+
+            * :py:meth:`pretty_print`
+            * :py:meth:`SNN.__str__`
+
+            Generated by:
+
+            * :py:meth:`short`
+            * :py:meth:`stdp_info`
+            * :py:meth:`neuron_info`
+            * :py:meth:`synapse_info`
+            * :py:meth:`input_spikes_info`
+            * :py:meth:`print_spike_train`
+
+        Parameters
+        ----------
+        n : int, default=20
+            Limits the size each section of the printout.
+        """
         lines = [
             self.short(),
             self.stdp_info(),
             '',
-            self.neuron_info(20),
+            self.neuron_info(n),
             '',
-            self.synapse_info(20),
+            self.synapse_info(n),
             '',
-            self.input_spikes_info(20),
+            self.input_spikes_info(n),
             '',
             "Spike Train:",
-            self.pretty_spike_train(),
+            self.pretty_spike_train(max_steps=n),
             f"{self.ispikes.sum()} spikes since last reset",
         ]
         return '\n'.join(lines)
@@ -707,7 +925,8 @@ class SNN:
         weight: float = 1.0,
         delay: int = 1,
         stdp_enabled: bool | Any = False,
-        # exist: str = "error"
+        exist: str = "error",
+        **kwargs,
     ) -> Synapse:
         """Creates a synapse in the SNN
 
@@ -724,24 +943,32 @@ class SNN:
             Synaptic weight; weight is multiplied to the incoming spike.
         delay : int, default=1
             Synaptic delay; number of time steps by which the outgoing signal of the syanpse is delayed by.
-        enable_stdp : bool | Any, default=False
+        stdp_enabled : bool | Any, default=False
             If True, stdp will be enabled on the synapse, allowing the weight of this synapse to be updated.
 
         Raises
         ------
         TypeError
-            if:
 
-            * pre_id or post_id is not neuron or neuron ID (int).
-            * weight is not a float.
-            * delay cannot be cast to int.
+            * ``pre_id`` or ``post_id`` is not neuron or neuron ID (``int``).
+            * ``weight`` is not a ``float``.
+            * ``delay`` cannot be cast to ``int``.
+            * ``exist`` is not a ``str``.
 
         ValueError
-            if:
 
-            * pre_id or post_id is not a valid neuron or neuron ID.
-            * delay is less than or equal to 0
-            * Synapse with the given pre- and post-synaptic neurons already exists
+            * ``pre_id`` or ``post_id`` is not a valid neuron or neuron ID.
+            * ``delay`` is less than or equal to ``0``
+            * ``exist`` is not one of ``'error', 'overwrite', 'dontadd'``.
+            * Synapse with the given pre- and post-synaptic neurons already exists, ``exist='overwrite'``, and ``delay != 1``.
+
+        RuntimeError
+
+            * Synapse with the given pre- and post-synaptic neurons already exists and ``exist='error'``.
+
+        Returns
+        -------
+        Synapse
 
 
         .. seealso::
@@ -769,7 +996,6 @@ class SNN:
         weight = float_err(weight, 'weight', fname)
         delay = int_err(delay, 'delay', fname)
 
-        # Value errors
         if pre_id < 0:
             raise ValueError("pre_id must be greater than or equal to zero")
         elif not pre_id < self.num_neurons:
@@ -791,35 +1017,57 @@ class SNN:
         if delay <= 0:
             raise ValueError("delay must be greater than or equal to 1")
 
-        if (idx := self.get_synapse_id(pre_id, post_id)) is not None:
-            msg = f"Synapse already exists: {self.synapses[idx]!s}"
-            raise RuntimeError(msg)
+        if (idx := self.get_synapse_id(pre_id, post_id)) is not None:  # if synapse already exists
+            if not isinstance(exist, str):
+                raise TypeError("exist must be a string")
+            exist = exist.lower()
+            if exist == "error":
+                msg = f"Synapse already exists: {self.synapses[idx]!s}"
+                msg += "If this was intentional, pass arg exist='add', 'dontadd', 'overwrite'."
+                raise RuntimeError(msg)
+            elif exist == "overwrite":
+                if delay != 1 or self.synaptic_delays[idx] != 1:
+                    raise ValueError("overwrite mode on create_synapse() only works for synapses with delay=1")
+                # overwrite old synapse params
+                self.pre_synaptic_neuron_ids[idx] = pre_id
+                self.post_synaptic_neuron_ids[idx] = post_id
+                self.synaptic_weights[idx] = weight
+                self.synaptic_delays[idx] = delay
+                self.enable_stdp[idx] = stdp_enabled
+            elif exist == "dontadd":
+                return self.synapses[idx]
+            else:
+                msg = f"Invalid value for exist: {exist}. Expected 'error', 'overwrite', or 'dontadd'."
+                raise ValueError(msg)
+            return self.synapses[idx]  # prevent fall-through if user catches the error
 
-        # Collect synapse parameters
+        idx = self.num_synapses  # this will become the new id of the synapse
+
+        # Set new synapse parameters
         if delay == 1:
             self.pre_synaptic_neuron_ids.append(pre_id)
             self.post_synaptic_neuron_ids.append(post_id)
             self.synaptic_weights.append(weight)
             self.synaptic_delays.append(delay)
             self.enable_stdp.append(stdp_enabled)
-            self.connection_ids[(pre_id, post_id)] = self.num_synapses - 1
+            self.connection_ids[(pre_id, post_id)] = idx
         else:
-            for _d in range(int(delay) - 1):
+            for _d in range(int(delay) - 1):  # delay by stringing together hidden synapses
                 temp_id = self.create_neuron()
                 self.create_synapse(pre_id, temp_id)
                 pre_id = temp_id
-
+            # place weight on last hidden synapse
             self.create_synapse(pre_id, post_id, weight=weight, stdp_enabled=stdp_enabled)
 
         # Return synapse ID
-        return Synapse(self, self.num_synapses - 1)
+        return Synapse(self, idx)
 
     def add_spike(
         self,
         time: int,
         neuron_id: int | Neuron,
         value: float = 1.0,
-        duplicate: str = "error",
+        exist: str = "error",
     ) -> None:
         """Adds an external spike in the SNN
 
@@ -831,11 +1079,11 @@ class SNN:
             The neuron for which the external spike is added
         value : float
             The value of the external spike (default: 1.0)
-        duplicate : str
+        exist : str
             action for existing spikes on a neuron at a given time step.
             Should be one of ['error', 'overwrite', 'add', 'dontadd']. (default: 'error')
 
-            if duplicate='add', the existing spike value is added to the new value.
+            if exist='add', the existing spike value is added to the new value.
 
         Raises
         ------
@@ -847,8 +1095,8 @@ class SNN:
             * value is not an int or float
 
         ValueError
-            if spike already exists at that neuron and timestep and duplicate='error',
-            or if duplicate is an invalid setting.
+            if spike already exists at that neuron and timestep and exist='error',
+            or if exist is an invalid setting.
 
 
         .. seealso::
@@ -876,30 +1124,32 @@ class SNN:
             msg = f"Added spike to non-existent Neuron {neuron_id} at time {time}."
             raise warnings.warn(msg, stacklevel=2)
 
-        # Add spikes
+        # Ensure data structure exists for the requested time
         if time not in self.input_spikes:
             self.input_spikes[time] = {"nids": [], "values": []}
 
-        if neuron_id in self.input_spikes[time]["nids"]:
-            if not isinstance(duplicate, str):
+        if neuron_id in self.input_spikes[time]["nids"]:  # queued spike already exists
+            if not isinstance(exist, str):
                 raise TypeError("duplicate must be a string")
-            duplicate = duplicate.lower()
-            if duplicate == "error":
+            exist = exist.lower()
+            if exist == "error":
                 msg = f"add_spike() encountered existing spike at time {time} for Neuron {neuron_id}. "
-                msg += "If this was intentional, pass arg duplicate='add', 'dontadd', 'overwrite'."
+                msg += "If this was intentional, pass arg exist='add', 'dontadd', 'overwrite'."
                 raise ValueError(msg)
-            elif duplicate == "overwrite":
+            elif exist == "overwrite":
                 idx = self.input_spikes[time]["nids"].index(neuron_id)
                 self.input_spikes[time]["values"][idx] = value
-            elif duplicate == "add":
+            elif exist == "add":
                 idx = self.input_spikes[time]["nids"].index(neuron_id)
                 self.input_spikes[time]["values"][idx] += value
-            elif duplicate == "dontadd":
+            elif exist == "dontadd":
                 return
             else:
-                msg = f"Invalid value for duplicate: {duplicate}. Expected 'error', 'overwrite', or 'dontadd'."
+                msg = f"Invalid value for exist: {exist}. Expected 'error', 'overwrite', 'add', or 'dontadd'."
                 raise ValueError(msg)
+            return  # prevent fall-through if user catches the error
 
+        # Add spike to input spikes
         self.input_spikes[time]["nids"].append(neuron_id)
         self.input_spikes[time]["values"].append(value)
 
@@ -941,8 +1191,7 @@ class SNN:
 
         RuntimeError
 
-                * enable_stdp is not set to True on any of the synapses
-
+            * enable_stdp is not set to True on any of the synapses
         """
 
         if Apos is None and Aneg is None:
@@ -1094,12 +1343,6 @@ class SNN:
             (self.enable_stdp, (self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids)),
             shape=[self.num_neurons, self.num_neurons], dtype=dtype
         )
-
-    def _set_sparse(self, sparse):
-        if sparse is not None:
-            self.sparse = sparse
-        else:
-            self._is_sparse = self._sparse
 
     def _setup(self, dtype=None, sparse=None):
         """Setup the SNN for simulation. Not intended to be called by end user."""

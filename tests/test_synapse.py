@@ -51,7 +51,6 @@ class SynapseTest(unittest.TestCase):
     def test_multiple_synapses(self):
         """ Test if multiple synapses from a neuron to another neuron are possible.
             This test shoud throw an error as multiple synapses between the same 2 neurons are not allowed.
-
         """
 
         # Create SNN, neurons, and synapses
@@ -62,15 +61,42 @@ class SynapseTest(unittest.TestCase):
 
         snn.create_synapse(a, b, delay=1, stdp_enabled=True)
 
-        def multi_synapse_error():
-            snn.create_synapse(a, b, delay=2)
+        assert snn.num_synapses == 1
 
-        try:
-            multi_synapse_error()
-        except RuntimeError as e:
-            print(e)
-        self.assertRaises(RuntimeError, multi_synapse_error)
-        print("test_multiple_synapses completed successfully")
+        # test exist options
+        with self.assertRaises(RuntimeError):
+            snn.create_synapse(a, b)
+
+        s = snn.create_synapse(a, b, exist='dontadd')
+        assert s.idx == 0
+        assert snn.num_synapses == 1
+
+        s = snn.create_synapse(a, b, weight=9, exist='overwrite')
+        assert s.idx == 0
+        assert snn.num_synapses == 1
+        assert snn.synapses[0].weight == snn.synaptic_weights[0] == 9.0
+
+    def test_synapse_exist_values(self):
+        """ Test for input validation of create_synapse() exist parameter
+        """
+
+        # Create SNN, neurons, and synapses
+        snn = SNN()
+
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+
+        snn.create_synapse(a, b, delay=1, stdp_enabled=True)
+
+        # input validation
+        with self.assertRaises(ValueError):
+            snn.create_synapse(a, b, exist='oops')
+
+        with self.assertRaises(ValueError):
+            snn.create_synapse(a, b, delay=2, exist='overwrite')
+
+        with self.assertRaises(TypeError):
+            snn.create_synapse(a, b, exist=1)  # pyright: ignore[reportArgumentType]
 
     def test_get_synapses(self):
         """ Test if the get_synapses functions are working properly.
