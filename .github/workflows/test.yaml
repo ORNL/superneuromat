@@ -23,7 +23,7 @@ jobs:
       matrix:
         env:  # see entries in [tool.tox.gh.python] in pyproject.toml
           - "3.13"
-          - "3.10"
+          - "3.9"
         os:
           - ubuntu-latest
           - macos-latest

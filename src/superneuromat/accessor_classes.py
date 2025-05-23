@@ -1,3 +1,4 @@
+from __future__ import annotations
 from .util import is_intlike
 
 from typing import TYPE_CHECKING

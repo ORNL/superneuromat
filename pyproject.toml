@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "superneuromat"
 version = "3.0.1"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 dependencies = [
     "numpy>=1.26.0",
     "scipy"
@@ -70,9 +70,10 @@ docs = [
 #
 
 [tool.tox]
-env_list = ['py310', 'py313', 'pandas', 'jit', 'numpy126', 'numpy20']
+env_list = ['py39', 'py313', 'pandas', 'jit', 'numpy126', 'numpy20']
 
 [tool.tox.gh.python]
+"3.9" = ['py39']
 "3.10" = ['py310',]
 "3.13" = ['py313', 'pandas', 'jit']
 

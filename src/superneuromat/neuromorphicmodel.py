@@ -1,5 +1,6 @@
 """Spiking Neural Network model implementing LIF and STDP using matrix representations."""
 
+from __future__ import annotations
 import math
 import copy
 import warnings
