@@ -190,6 +190,12 @@ Installing SuperNeuroMAT
 
          uv pip install git+https://github.com/kenblu24/superneuromat.git@main
 
+      .. note::
+         
+         It's possible to install SuperNeuroMAT to the global system Python installation
+         with the ``--system`` flag. However, this is not recommended, as it may cause
+         conflicts with other packages.
+
    .. tab-item:: pip
       :sync: pip
 
@@ -237,12 +243,12 @@ currently running commands and then :kbd:`Ctrl+D` or ``quit()`` to quit the pyth
 Installing with Numba support
 =============================
 
+If you want to use SuperNeuroMAT with the ``'jit'`` backend or with the CUDA ``'gpu'`` backend, you'll need to install
+`Numba <https://numba.readthedocs.io/en/stable/>`_.
+
 .. admonition:: Don't forget to activate the virtual environment!
 
    :ref:`activate-venv`
-
-If you want to use SuperNeuroMAT with the ``'jit'`` backend or with the CUDA ``'gpu'`` backend, you'll need to install
-`Numba <https://numba.readthedocs.io/en/stable/>`_.
 
 .. tab-set::
    :class: sd-width-content-min

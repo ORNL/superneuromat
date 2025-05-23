@@ -103,6 +103,8 @@ You should see something similar to this:
 
    If you already made the virtual environment, the easiest way to fix this is to delete the virtual environment and start over.
 
+.. _snm-install-editable:
+
 Downloading & Installing as editable
 ====================================
 

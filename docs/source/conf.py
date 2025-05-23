@@ -10,7 +10,14 @@
 project = 'SuperNeuroMAT'
 copyright = '2025, Prasanna Date, Chathika Gunaratne, Shruti Kulkarni, Robert Patton, Mark Coletti'
 author = 'Prasanna Date, Chathika Gunaratne, Shruti Kulkarni, Robert Patton, Mark Coletti'
-release = '2.1.0'
+
+# to change version, set [project] -> version in pyproject.toml
+# and re-install superneuromat via pip or uv
+try:
+    import superneuromat
+    release = superneuromat.__version__  # may be 'unknown'
+except ImportError:
+    release = 'latest'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -50,6 +57,7 @@ intersphinx_mapping = {
     'numpy': ('https://numpy.org/doc/stable/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/', None),
     'numba': ('https://numba.readthedocs.io/en/stable', None),
+    'pypa': ('https://packaging.python.org/en/latest/', None),
     'cuquantum': ('https://docs.nvidia.com/cuda/cuquantum/latest', None),
     # blocked by data-apis/array-api#428
     # 'array-api': ('https://data-apis.org/array-api/2021.12/', None),

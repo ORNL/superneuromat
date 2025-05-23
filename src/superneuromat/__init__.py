@@ -11,3 +11,9 @@ __all__ = [
     "print_spike_train",
     "getenvbool",
 ]
+
+try:
+    import importlib.metadata
+    __version__ = importlib.metadata.version("superneuromat")
+except ImportError:
+    __version__ = "unknown"

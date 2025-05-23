@@ -17,8 +17,8 @@ This documentation currently covers the https://github.com/kenblu24/superneuroma
 will be upstreamed to the main SuperNeuroMAT repository in the future.
 
 .. warning::
-   Both the documentation and the simulator software are under heavy development.
-   Expect holes in documentation and please report bugs.
+   Both the documentation and the simulator software are under development.
+   Please report any issues with the software or documentation to the `GitHub issue tracker <https://github.com/kenblu24/superneuromat/issues>`_.
 
 Get Started
 ===========

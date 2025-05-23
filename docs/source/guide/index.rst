@@ -26,3 +26,4 @@ User Guide
    firstrun
    managing_state
    speed
+   migration2

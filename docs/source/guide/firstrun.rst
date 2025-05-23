@@ -282,6 +282,9 @@ but we want them to fire in a specific order.
    
    Add an example of first-to-spike encoding.
 
+
+.. _snm-decoding-recipes:
+
 Decoding Recipes
 ================
 

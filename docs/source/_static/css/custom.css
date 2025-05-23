@@ -1,3 +1,11 @@
+
+blockquote.highlights {  /* style highlights like dropdowns */
+    padding: .5em .6em .5em 1em;
+    font-weight: var(--sd-fontweight-dropdown-title);
+    border-left: .2rem solid var(--pst-gray-500) !important;
+    box-shadow: 0 .2rem .5rem var(--pst-color-shadow),0 0 .0625rem var(--pst-color-shadow) !important;
+}
+
 .float-right {
     float: right;
 }

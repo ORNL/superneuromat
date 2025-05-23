@@ -96,7 +96,7 @@ This will return a :py:func:`~copy.deepcopy` of the SNN, which you can then use 
 The full list of SNN variables which can be memoized is available in the :py:attr:`~superneuromat.SNN.eqvars` attribute.
 
 
-.. low-level-control:
+.. _low-level-control:
 
 Manual Setup
 ------------
