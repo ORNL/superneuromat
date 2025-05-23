@@ -945,6 +945,9 @@ class SNN:
             Synaptic delay; number of time steps by which the outgoing signal of the syanpse is delayed by.
         stdp_enabled : bool | Any, default=False
             If True, stdp will be enabled on the synapse, allowing the weight of this synapse to be updated.
+        exist : str, default='error'
+            Action if a queued spike already exists at the given time step.
+            Should be one of ['error', 'overwrite', 'dontadd'].
 
         Raises
         ------
