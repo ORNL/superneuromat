@@ -18,7 +18,7 @@ Documentation available: https://kenblu24.github.io/superneuromat/
 
 [<img src="https://gist.githubusercontent.com/cxmeel/0dbc95191f239b631c3874f4ccf114e2/raw/documentation.svg" alt="Documentation" height="40" />](https://kenblu24.github.io/superneuromat/)
 
-Unlike its sister package, [SuperNeuroABM](https://github.com/kenblu24/superneuroabm), SuperNeuroMAT uses a matrix-based representation
+Unlike its sister package, [SuperNeuroABM](https://github.com/ORNL/superneuroabm), SuperNeuroMAT uses a matrix-based representation
 of the network, which allows for more efficient simulation and GPU acceleration.
 
 SuperNeuroMAT focuses on super-fast computation of Leaky Integrate and Fire **(LIF)** spiking neuron models with STDP.
