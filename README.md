@@ -1,3 +1,10 @@
+<div align="center" style="text-align: center;">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./docs/source/_staticsuperneuro_wm_sm_white.svg">
+  <img alt="SuperNeuroMAT Logo" src="./docs/source/_staticsuperneuro_wm_sm_black.svg">
+</picture>
+</div>
+
 # SuperNeuroMAT
 
 SuperNeuroMAT is a Python package for simulating and analyzing spiking neural networks.
