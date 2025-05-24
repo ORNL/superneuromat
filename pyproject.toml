@@ -7,7 +7,7 @@ name = "superneuromat"
 version = "3.0.1"
 requires-python = ">=3.9"
 dependencies = [
-    "numpy>=1.26.0",
+    "numpy>=1.24.0",
     "scipy"
 ]
 authors = [
@@ -47,7 +47,7 @@ file = "LICENSE"
 
 [project.optional-dependencies]
 jit = [
-    "numba~=0.61.0"
+    "numba"
 ]
 cuda = [
     "numba-cuda",
@@ -70,10 +70,18 @@ docs = [
 #
 
 [tool.tox]
-env_list = ['py39', 'py313', 'pandas', 'jit', 'numpy126', 'numpy20']
+env_list = [
+    'py39',
+    # 'jit_py39',
+    'py313',
+    'pandas',
+    'jit',
+    'numpy126',
+    'numpy20',
+]
 
 [tool.tox.gh.python]
-"3.9" = ['py39']
+"3.9" = ['py39',]
 "3.10" = ['py310',]
 "3.13" = ['py313', 'pandas', 'jit']
 
@@ -101,6 +109,16 @@ commands = [
     ["python", "test_jit.py",],
 ]
 
+[tool.tox.env.jit_py39]
+description = "Run jit test"
+base_python = ["python3.9"]
+change_dir = "tests"
+extras = ["jit"]
+commands = [
+    ["python", "test_cpu.py",],
+    ["python", "test_jit.py",],
+]
+
 [tool.tox.env.cuda]
 description = "Run cuda test"
 base_python = ["python3.13"]
@@ -114,10 +132,11 @@ commands = [
 
 [tool.tox.env.pandas]
 description = "Run tests for pandas"
+base_python = ["python3.13"]
 change_dir = "tests"
 deps = ["pandas"]
 commands = [
-    ["python", "test_cpu.py",],
+
     ["python", "test_display.py",],
     ["python", "test_df.py",],
 ]
@@ -126,8 +145,10 @@ commands = [
 description = "Run tests for numpy 1.26.0"
 change_dir = "tests"
 deps = ["numpy<2.0.0"]
+# extras = ["jit"]
 commands = [
     ["python", "test_cpu.py",],
+    # ["python", "test_jit.py",],
     ["python", "test_neuron.py"],
     ["python", "test_synapse.py",],
     ["python", "test_sparse.py",],
