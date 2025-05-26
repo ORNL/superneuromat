@@ -14,7 +14,7 @@ import os
 import numpy as np
 
 # typing
-from typing import Any, cast
+from typing import Any, TYPE_CHECKING
 
 
 def getenv(key, default=None):
@@ -27,8 +27,39 @@ def getenv(key, default=None):
     return s
 
 
-def getenvbool(key, default=None):
-    """Get the value of an environment variable or return a default."""
+if TYPE_CHECKING:
+    from typing import overload, Literal
+    @overload
+    def getenvbool(key: str, default: bool | None | str | Any = None, force_bool: Literal[False] = False) -> Any: ...
+    @overload
+    def getenvbool(key: str, default: bool | None | str = None, force_bool: Literal[False] = False) -> bool | str: ...
+    @overload
+    def getenvbool(key: str, default: bool | None = None, force_bool: Literal[True] = True) -> bool: ...
+
+
+def getenvbool(key, default=None, force_bool=False):
+    """Get the value of an environment variable and attempt to cast to bool, or return a default.
+
+    Parameters
+    ----------
+    key : str
+        The name of the environment variable.
+    default : bool | None, optional
+        The default value to return if the environment variable is not set.
+    force_bool : bool, default=False
+        If True, raise an error if the environment variable is not a bool.
+
+    Returns
+    -------
+    bool | str
+        The value of the environment variable, or the default value if the environment variable is not set.
+
+    Raises
+    ------
+    ValueError
+        If the environment variable is not a bool and force_bool is ``True``, or
+        if you set ``force_bool=True`` and a non-bool value for ``default``
+    """
     s = os.environ.get(key, default)
     if isinstance(s, str):
         s2 = s.lower().strip()
@@ -38,6 +69,13 @@ def getenvbool(key, default=None):
             return True
         if s == '':
             return default
+    if force_bool and not isinstance(s, bool):
+        if not isinstance(default, bool):
+            msg = f"Expected either True|False as default for getenvbool() {key}"
+            msg += f" because you set force_bool=True, but you set default={default!r}"
+        else:
+            msg = f"Expected either true|false for environment variable {key}: {s}"
+        raise ValueError(msg)
     return s
 
 
