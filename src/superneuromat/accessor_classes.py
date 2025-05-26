@@ -409,6 +409,8 @@ class Synapse:
 
     @delay.setter
     def delay(self, value):
+        if value != self.m.synaptic_delays[self.idx]:
+            raise ValueError("delay cannot be changed on chained synapse.")
         if not is_intlike(value):
             raise TypeError("delay must be an integer")
         self.m.synaptic_delays[self.idx] = int(value)
@@ -444,7 +446,7 @@ class Synapse:
             f"pre: {self.pre_id:d}",
             f"post: {self.post_id:d}",
             f"weight: {self.weight:g}",
-            f"delay: {self.delay:d}",
+            f"delay: {'- ' if self.delay < 1 else '  '}{abs(self.delay):d}",
             f"stdp {'en' if self.stdp_enabled else 'dis'}abled",
         ])
 
@@ -453,22 +455,23 @@ class Synapse:
 
     def info_row(self):
         """Returns a string containing information about this synapse for use in a table."""
+        delaystr = f"{'- ' if self.delay < 1 else '  '}{abs(self.delay):d}"
         return ''.join([
             f"{self.idx:>5d}\t",
             f"{self.pre_id:>5d}  ",
             f"{self.post_id:>5d}\t",
             f"{self.weight:>11.9g}\t",
-            f"{self.delay:>5d}\t",
+            f"{delaystr:>6}\t",
             f"{'Y' if self.stdp_enabled else '-'}",
         ])
 
     @staticmethod
     def row_header():
-        return "  idx\t  pre   post\t     weight\tdelay\tstdp_enabled"
+        return "  idx\t  pre   post\t     weight\t  delay\tstdp_enabled"
 
     @staticmethod
     def row_cont():
-        return "  ...\t  ...    ...\t        ...\t  ...\t..."
+        return "  ...\t  ...    ...\t        ...\t    ...\t..."
 
 
 class SynapseList:

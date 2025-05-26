@@ -1036,8 +1036,9 @@ class SNN:
                 msg += "If this was intentional, pass arg exist='add', 'dontadd', 'overwrite'."
                 raise RuntimeError(msg)
             elif exist == "overwrite":
-                if delay != 1 or self.synaptic_delays[idx] != 1:
-                    raise ValueError("overwrite mode on create_synapse() only works for synapses with delay=1")
+                # check if delay has changed
+                if delay != self.synaptic_delays[idx]:
+                    raise ValueError("create_synapse() tried to overwrite chained synapse with different delay.")
                 # overwrite old synapse params
                 self.pre_synaptic_neuron_ids[idx] = pre_id
                 self.post_synaptic_neuron_ids[idx] = post_id
@@ -1052,7 +1053,7 @@ class SNN:
             return self.synapses[idx]  # prevent fall-through if user catches the error
 
         # Set new synapse parameters
-        if delay == 1:
+        if delay == 1 or last_in_chain:
             self.pre_synaptic_neuron_ids.append(pre_id)
             self.post_synaptic_neuron_ids.append(post_id)
             self.synaptic_weights.append(weight)
@@ -1065,7 +1066,8 @@ class SNN:
                 self.create_synapse(pre_id, temp_id)
                 pre_id = temp_id
             # place weight on last hidden synapse
-            self.create_synapse(pre_id, post_id, weight=weight, stdp_enabled=stdp_enabled)
+            self.create_synapse(pre_id, post_id, weight=weight, stdp_enabled=stdp_enabled,
+                                delay=-delay, _is_last_chained_synapse=True)  # , chained_neuron_delay=True)
 
         # Return synapse ID
         return Synapse(self, self.num_synapses - 1)
