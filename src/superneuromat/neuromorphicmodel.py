@@ -1045,8 +1045,6 @@ class SNN:
                 raise ValueError(msg)
             return self.synapses[idx]  # prevent fall-through if user catches the error
 
-        idx = self.num_synapses  # this will become the new id of the synapse
-
         # Set new synapse parameters
         if delay == 1:
             self.pre_synaptic_neuron_ids.append(pre_id)
@@ -1054,7 +1052,7 @@ class SNN:
             self.synaptic_weights.append(weight)
             self.synaptic_delays.append(delay)
             self.enable_stdp.append(stdp_enabled)
-            self.connection_ids[(pre_id, post_id)] = idx
+            self.connection_ids[(pre_id, post_id)] = self.num_synapses - 1
         else:
             for _d in range(int(delay) - 1):  # delay by stringing together hidden synapses
                 temp_id = self.create_neuron()
@@ -1064,7 +1062,7 @@ class SNN:
             self.create_synapse(pre_id, post_id, weight=weight, stdp_enabled=stdp_enabled)
 
         # Return synapse ID
-        return Synapse(self, idx)
+        return Synapse(self, self.num_synapses - 1)
 
     def add_spike(
         self,
