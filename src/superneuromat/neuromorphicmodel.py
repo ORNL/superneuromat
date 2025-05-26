@@ -1052,7 +1052,7 @@ class SNN:
             exist = exist.lower()
             if exist == "error":
                 msg = f"Synapse already exists: {self.synapses[idx]!s}"
-                msg += "If this was intentional, pass arg exist='add', 'dontadd', 'overwrite'."
+                msg += "If this was intentional, choose arg exist=<'dontadd', 'overwrite'>."
                 raise RuntimeError(msg)
             elif exist == "overwrite":
                 # check if delay has changed

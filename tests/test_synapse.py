@@ -159,7 +159,7 @@ class SynapseTest(unittest.TestCase):
             syn.delay = 1
 
     def test_synapse_get_delay_chain(self):
-        """ Test if error raised when changing delay on chained synapse
+        """ Test if synapse delay chain properties work as expected
 
         """
         # Create SNN, neurons, and synapses
@@ -174,6 +174,9 @@ class SynapseTest(unittest.TestCase):
         print(snn)
         print(neuron_chain)
         print(*(syn.info_row() for syn in synapse_chain), sep='\n')
+        assert [int(n.idx) for n in neuron_chain] == [0, 2, 3, 1]
+        assert [int(s.idx) for s in synapse_chain] == [0, 1, 2]
+        assert snn.synapses[0].delay_chain == []
 
 
 
