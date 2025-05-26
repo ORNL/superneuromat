@@ -992,7 +992,6 @@ class SNN:
            :py:meth:`Neuron.connect_child`, :py:meth:`Neuron.connect_parent`
         """
 
-        # TODO: raise error on unknown kwargs
         # TODO: make delay chaining an SNN option
         # TODO: ensure created hidden synapses are not flagged as newdelay
 
@@ -1042,6 +1041,10 @@ class SNN:
         last_in_chain = kwargs.pop('_is_last_chained_synapse', False)
         if delay <= 0 and not last_in_chain:
             raise ValueError("delay must be greater than or equal to 1")
+
+        if kwargs:
+            msg = f"create_synapse() received unexpected keyword arguments: {list(kwargs.keys())}"
+            raise TypeError(msg)
 
         if (idx := self.get_synapse_id(pre_id, post_id)) is not None:  # if synapse already exists
             if not isinstance(exist, str):
