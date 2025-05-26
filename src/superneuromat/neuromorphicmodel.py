@@ -1012,13 +1012,19 @@ class SNN:
             msg = f"Added synapse to non-existent post-synaptic Neuron {post_id}."
             raise warnings.warn(msg, stacklevel=2)
 
+        if (enable_stdp := kwargs.pop('enable_stdp', None)) is not None:
+            warnings.warn("create_synapse kwarg 'enable_stdp' is deprecated. Use 'stdp_enabled' instead.",
+                          DeprecationWarning, stacklevel=2)
+            stdp_enabled = enable_stdp
+
         ambiguous = ('true', '1', 'y', 'yes', 'on', 'f', 'false', '0', 'n', 'no', 'off')
         if isinstance(stdp_enabled, str) and stdp_enabled.lower() in ambiguous:
             msg = f"{fname} argument stdp_enabled received {stdp_enabled!r}"
             msg += " which has ambiguous truthiness. Consider using an explicit boolean value instead."
             warnings.warn(msg, stacklevel=2)
 
-        if delay <= 0:
+        last_in_chain = kwargs.pop('_is_last_chained_synapse', False)
+        if delay <= 0 and not last_in_chain:
             raise ValueError("delay must be greater than or equal to 1")
 
         if (idx := self.get_synapse_id(pre_id, post_id)) is not None:  # if synapse already exists
