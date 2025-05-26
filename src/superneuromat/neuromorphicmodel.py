@@ -943,12 +943,24 @@ class SNN:
         weight : float, default=1.0
             Synaptic weight; weight is multiplied to the incoming spike.
         delay : int, default=1
-            Synaptic delay; number of time steps by which the outgoing signal of the syanpse is delayed by.
+            Synaptic delay; number of time steps by which the outgoing signal of the synapse is delayed by.
         stdp_enabled : bool | Any, default=False
             If True, stdp will be enabled on the synapse, allowing the weight of this synapse to be updated.
         exist : str, default='error'
-            Action if a queued spike already exists at the given time step.
+            Action if synapse  already exists with the exact pre- and post-synaptic neurons.
             Should be one of ['error', 'overwrite', 'dontadd'].
+
+
+        If a delay is specified, a chain of neurons and synapses will automatically be added to the model
+        to represent the delay, and this function will return the last synapse of the chain.
+        The other neurons and synapses in the chain can be accessed via the :py:attr:`delay_chain` and
+        :py:attr:`delay_chain_synapses` properties of the synapse, respectively.
+
+        While only positive delay values are supported due to temporal consistency and causality requirements,
+        The delay will be stored as ``delay * -1`` in the model to represent that it is a chained delay.
+        This does not affect the effective delay value, as the delay will still be applied via the delay chain.
+
+        Note that delays of delay chains cannot be modified after creation.
 
         Raises
         ------
@@ -979,6 +991,10 @@ class SNN:
 
            :py:meth:`Neuron.connect_child`, :py:meth:`Neuron.connect_parent`
         """
+
+        # TODO: raise error on unknown kwargs
+        # TODO: make delay chaining an SNN option
+        # TODO: ensure created hidden synapses are not flagged as newdelay
 
         # Ensure we work with neuron ids
         if isinstance(pre_id, Neuron):

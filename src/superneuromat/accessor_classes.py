@@ -432,6 +432,32 @@ class Synapse:
     def weight(self, value: float):
         self.m.synaptic_weights[self.idx] = float(value)
 
+    @property
+    def delay_chain(self):
+        """Returns a list of neurons in the delay chain for this synapse.
+
+        The list is in the same order that spikes will pass through the chain.
+
+        Returns ``[]`` if synapse is not the last synapse in a delay chain."""
+        if self.delay > 0:
+            return []
+        second = self.pre.idx + self.delay + 2
+        last = self.pre.idx + 1
+        first_syn = self.m.synapses[self.idx + self.delay + 1]
+        return [first_syn.pre] + self.m.neurons[second:last] + [self.post]
+
+    @property
+    def delay_chain_synapses(self):
+        """A list of synapses in the delay chain for this synapse.
+
+        The list is in the same order that spikes will pass through the chain.
+
+        Returns ``[]`` if synapse is not the last synapse in a delay chain."""
+        if self.delay > 0:
+            return []
+        first_syn = self.m.synapses[self.idx + self.delay + 1]
+        return self.m.synapses[first_syn.idx:self.idx] + [self]
+
     def __eq__(self, x):
         """Check if two Synapse instances represent the same synapse in the SNN."""
         if isinstance(x, Synapse):
@@ -440,7 +466,11 @@ class Synapse:
             return False
 
     def info(self):
-        """Returns a string containing information about this synapse."""
+        """Returns a string containing information about this synapse.
+
+        Note that a dash ``-`` is used to represent that the synapse
+        is the last in a delay chain. See :py:meth:`create_synapse`\\ .
+        """
         return ' | '.join([
             f"id: {self.idx:d}",
             f"pre: {self.pre_id:d}",
@@ -454,24 +484,28 @@ class Synapse:
         return f"<Synapse {self.info()}>"
 
     def info_row(self):
-        """Returns a string containing information about this synapse for use in a table."""
+        """Returns a string containing information about this synapse for use in a table.
+
+        Note that a dash ``-`` is used to represent that the synapse
+        is the last in a delay chain. See :py:meth:`create_synapse`\\ .
+        """
         delaystr = f"{'- ' if self.delay < 1 else '  '}{abs(self.delay):d}"
         return ''.join([
-            f"{self.idx:>5d}\t",
-            f"{self.pre_id:>5d}  ",
-            f"{self.post_id:>5d}\t",
-            f"{self.weight:>11.9g}\t",
-            f"{delaystr:>6}\t",
+            f"{self.idx:>7d} ",
+            f"{self.pre_id:>6d} -> ",
+            f"{self.post_id:>6d} ",
+            f"{self.weight:>11.7g} ",
+            f"{delaystr:>7} ",
             f"{'Y' if self.stdp_enabled else '-'}",
         ])
 
     @staticmethod
     def row_header():
-        return "  idx\t  pre   post\t     weight\t  delay\tstdp_enabled"
+        return "    idx    pre ->   post      weight    delay stdp_enabled"
 
     @staticmethod
     def row_cont():
-        return "  ...\t  ...    ...\t        ...\t    ...\t..."
+        return "    ...    ...       ...         ...      ... ..."
 
 
 class SynapseList:

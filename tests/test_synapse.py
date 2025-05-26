@@ -141,6 +141,41 @@ class SynapseTest(unittest.TestCase):
 
         print("test_get_synapses completed successfully")
 
+    def test_synapse_change_chained_delay(self):
+        """ Test if error raised when changing delay on chained synapse
+
+        """
+        # Create SNN, neurons, and synapses
+        snn = SNN()
+
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+
+        syn = snn.create_synapse(a, b, delay=2, stdp_enabled=True)  # a -> _ -> b  (hidden neuron created)
+        snn.create_synapse(a, b, delay=1, stdp_enabled=True)  # this is fine because a -> b doesn't exist yet
+        with self.assertRaises(ValueError):
+            snn.create_synapse(syn.pre, syn.post, delay=1, stdp_enabled=True, exist='overwrite')
+        with self.assertRaises(ValueError):
+            syn.delay = 1
+
+    def test_synapse_get_delay_chain(self):
+        """ Test if error raised when changing delay on chained synapse
+
+        """
+        # Create SNN, neurons, and synapses
+        snn = SNN()
+
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+
+        syn = snn.create_synapse(a, b, delay=3, stdp_enabled=True)  # a -> _ -> b  (hidden neuron created)
+        neuron_chain = syn.delay_chain
+        synapse_chain = syn.delay_chain_synapses
+        print(snn)
+        print(neuron_chain)
+        print(*(syn.info_row() for syn in synapse_chain), sep='\n')
+
+
 
 if __name__ == "__main__":
     unittest.main()
