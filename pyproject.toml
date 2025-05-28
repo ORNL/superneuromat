@@ -123,6 +123,10 @@ commands = [
 description = "Run cuda test"
 base_python = ["python3.13"]
 change_dir = "tests"
+pass_env = [
+    "CUDA_PATH",
+    "CUDA_PATH_V11_8",
+]
 extras = ["cuda"]
 commands = [
     ["python", "test_cpu.py",],
