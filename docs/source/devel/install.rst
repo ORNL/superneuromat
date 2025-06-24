@@ -29,6 +29,8 @@ If you're contributing to SuperNeuroMAT, you should probably be using :fab:`git-
 
 Once you have git, make sure you can run ``git`` from the command line. If not, you may need to restart your terminal.
 
+.. _snm-install-ssh-keys:
+
 SSH keys
 ========
 
@@ -170,10 +172,10 @@ Now, we need to activate the virtual environment.
 
          source .venv/bin/activate
 
-.. note::
+.. admonition:: Activating fish, Nushell, or PowerShell
 
    The above activation command is for the default shell environments, such as ``bash``, ``zsh``, or ``sh`` on Unix, or ``cmd`` and ``powershell`` on Windows.
-   If you're using a different shell, such as ``fish`` or ``Nushell``, you may need to use a different activation file.
+   If you're using a different shell, such as ``fish`` or ``Nushell``, or if you're using PowerShell and have activation issues, you may need to use a different activation file.
 
    .. tab-set::
       :class: sd-width-content-min
@@ -185,6 +187,13 @@ Now, we need to activate the virtual environment.
          .. code-block:: fish
 
             source .venv/bin/activate.fish
+
+      .. tab-item:: PowerShell
+         :sync: powershell
+
+         .. code-block:: powershell
+
+            .venv\bin\activate.ps1
             
 
       .. tab-item:: Nushell
@@ -213,10 +222,28 @@ You can deactivate the virtual environment with the ``deactivate`` command.
 Now, let's `git clone` the SuperNeuroMAT repository.
 
 .. code-block:: bash
-   :caption: git clone the SuperNeuroMAT repository and ``cd`` into it
+   :caption: git clone the SuperNeuroMAT repository (using HTTPS URL) and ``cd`` into it
 
-   git clone git@github.com:kenblu24/superneuromat.git
+   git clone https://github.com/kenblu24/superneuromat.git
    cd superneuromat
+
+
+.. admonition:: SSH URLs
+
+   If GitHub won't let you push to HTTPS remote URLs using password authentication. If you choose to use the HTTPS URL as shown above,
+   you'll need to create a `personal access token <https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token>`_
+   and use that as the password every time you push.
+
+   However, if you successfully set up your SSH key in the `section above <snm-install-ssh-keys>`_, and have contributor-level permissions on GitHub,
+   you can use the SSH URL instead.
+
+   .. code-block:: bash
+      :caption: git clone the SuperNeuroMAT repository (using SSH URL) and ``cd`` into it
+
+      git clone git@github.com:kenblu24/superneuromat.git
+      cd superneuromat
+
+   Again, if you're not an internal contributor, you'll need to fork the <https://github.com/ornl/superneuromat/fork> repository and use the URL for your fork.
 
 A ``pip --editable`` install allows you to make changes to the code and see the effects immediately.
 
@@ -283,8 +310,8 @@ If the installation was successful, you should be able to open a ``python`` shel
    >>> import superneuromat
    >>> 
 
-If you installed ``pyreadline3``, you can exit the ``python`` shell with :kbd:`Ctrl+C` to stop
-currently running commands and then :kbd:`Ctrl+D` or ``quit()`` to quit the python REPL.
+If you installed ``pyreadline3`` or are using Python 3.13 or newer, you can exit the ``python`` shell with :kbd:`Ctrl+C` to stop
+currently running commands and then :kbd:`Ctrl+D`. Or you can type ``quit()`` to quit the python REPL.
 
 -----
 
