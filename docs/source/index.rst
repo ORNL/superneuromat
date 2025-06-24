@@ -13,9 +13,6 @@ of the network, which allows for more efficient simulation and GPU acceleration.
 
 SuperNeuroMAT focuses on super-fast computation of Leaky Integrate and Fire **(LIF)** spiking neuron models with STDP.
 
-This documentation currently covers the https://github.com/ORNL/superneuromat fork, but this
-will be upstreamed to the main SuperNeuroMAT repository in the future.
-
 .. warning::
    Both the documentation and the simulator software are under development.
    Please report any issues with the software or documentation to the `GitHub issue tracker <https://github.com/ORNL/superneuromat/issues>`_.
