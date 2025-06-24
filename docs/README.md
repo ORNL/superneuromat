@@ -11,8 +11,8 @@ cd docs
 
 To build the documentation, clone this repository:
 
-* ssh: `git clone git@github.com:kenblu24/superneuromat.git`
-* https: `git clone https://github.com/kenblu24/superneuromat.git`
+* ssh: `git clone git@github.com:ORNL/superneuromat.git`
+* https: `git clone https://github.com/ORNL/superneuromat.git`
 
 Then, from the `docs/` directory, run the following command to build the documentation:
 

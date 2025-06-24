@@ -75,13 +75,13 @@ github_version = "main"
 
 html_context = {
     # "github_url": "https://github.com", # or your GitHub Enterprise site
-    "github_user": "kenblu24",
+    "github_user": "ORNL",
     "github_repo": "superneuromat",
     "github_version": "main",
     "doc_path": "doc/build/html/",
 }
 
-github_project_url = "https://github.com/kenblu24/superneuromat"
+github_project_url = "https://github.com/ORNL/superneuromat"
 
 
 def linkcode_resolve(domain, info):

@@ -232,7 +232,7 @@ Now, let's `git clone` the SuperNeuroMAT repository.
 .. code-block:: bash
    :caption: git clone the SuperNeuroMAT repository (using HTTPS URL) and ``cd`` into it
 
-   git clone https://github.com/kenblu24/superneuromat.git
+   git clone https://github.com/ORNL/superneuromat.git
    cd superneuromat
 
 
@@ -248,7 +248,7 @@ Now, let's `git clone` the SuperNeuroMAT repository.
    .. code-block:: bash
       :caption: git clone the SuperNeuroMAT repository (using SSH URL) and ``cd`` into it
 
-      git clone git@github.com:kenblu24/superneuromat.git
+      git clone git@github.com:ORNL/superneuromat.git
       cd superneuromat
 
    Again, if you're not an internal contributor, you'll need to fork the <https://github.com/ornl/superneuromat/fork> repository and use the URL for your fork.
