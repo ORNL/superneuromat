@@ -55,7 +55,7 @@ jobs:
         ./single html
     - name: Add to archive
       run: |
-        zip -r superneuromat-${{ github.ref_name }}-docs.zip doc/build
+        zip -r superneuromat-${{ github.ref_name }}-docs.zip docs/superneuromat-docs/build
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       id: docs-release
