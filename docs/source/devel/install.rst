@@ -130,6 +130,14 @@ We recommend using UV which provides environment tools and faster installs.
 First, let's make a project folder and **virtual environment**. Pick a place
 to store your virtual environment, and then ``cd`` into it.
 
+.. code-block:: bash
+   :caption: Make a project folder and virtual environment
+
+   mkdir snm
+   cd snm
+
+Next, we can create the virtual environment.
+
 .. tab-set::
    :class: sd-width-content-min
    :sync-group: uv
@@ -230,7 +238,7 @@ Now, let's `git clone` the SuperNeuroMAT repository.
 
 .. admonition:: SSH URLs
 
-   If GitHub won't let you push to HTTPS remote URLs using password authentication. If you choose to use the HTTPS URL as shown above,
+   GitHub won't let you push to HTTPS remote URLs using password authentication. If you choose to use the HTTPS URL as shown above,
    you'll need to create a `personal access token <https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token>`_
    and use that as the password every time you push.
 
@@ -245,9 +253,9 @@ Now, let's `git clone` the SuperNeuroMAT repository.
 
    Again, if you're not an internal contributor, you'll need to fork the <https://github.com/ornl/superneuromat/fork> repository and use the URL for your fork.
 
-A ``pip --editable`` install allows you to make changes to the code and see the effects immediately.
-
 It's finally time to install SuperNeuroMAT into our virtual environment:
+
+We'll use a ``pip --editable`` install allows you to make changes to the code and see the effects immediately.
 
 .. tab-set::
    :class: sd-width-content-min

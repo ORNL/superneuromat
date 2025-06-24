@@ -78,9 +78,9 @@ First, you need to choose a location to store your virtual environment.
          pip install virtualenv
          virtualenv .venv --prompt .
 
-Now, we need to activate the virtual environment.
-
 This will create a virtual environment ``.venv`` folder in your current directory.
+
+Now, we need to activate the virtual environment.
 
 .. _activate-venv:
 
