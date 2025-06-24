@@ -1,4 +1,4 @@
-name: "Sphinx: Build HTML"
+name: "Create Draft Release w/ Docs"
 
 # deploy the documentation to GitHub Pages via an artifact
 # does not create a branch or any commits
@@ -7,16 +7,17 @@ name: "Sphinx: Build HTML"
 on:
   push:
     branches:
-      - main
-      - actions-test
-  pull_request:
-    branches:
-      - main
+      - release-test
+    tags:
+      - "v*"
+#   pull_request:
+#     branches:
+#       - main
 
 jobs:
 
   # build the documentation
-  build:
+  build-docs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -52,9 +53,18 @@ jobs:
       run: |
         cd docs
         ./single html
+    - name: Add to archive
+      run: |
+        zip -r superneuromat-${{ github.ref_name }}-docs.zip doc/build
     - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      id: docs-release
+      with:
+        name: superneuromat-docs
+        path: superneuromat-${{ github.ref_name }}-docs.zip
+    - name: Upload pages artifacts
       uses: actions/upload-pages-artifact@v3
-      id: deployment
+      id: docs-pages
       with:
         name: github-pages
         path: docs/superneuromat-docs/build/html/
@@ -66,10 +76,42 @@ jobs:
     #     publish_dir: docs/build/html
 
   # Deploy job
-  deploy:
+  draft-release:
     # Add a dependency to the build job
-    needs: build
-    if: github.ref == 'refs/heads/main'
+    needs: build-docs
+    if: github.ref_type == 'tag'
+
+    # Specify runner + deployment step
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      discussions: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: superneuromat-docs
+
+      - name: show files
+        run: ls -lAR
+      - name: Create Draft Release and attach artifacts
+        id: release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          draft: true
+          files: |
+            superneuromat-${{ github.ref_name }}-docs.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+
+  # Deploy job
+  deploy-pages:
+    # Add a dependency to the build job
+    needs: build-docs
+    # only deploy pages if not a test tag
+    if: ${{! contains(github.ref_name, 'test')}}
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:
@@ -79,11 +121,11 @@ jobs:
     # Deploy to the github-pages environment
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.docs-pages.outputs.page_url }}
 
     # Specify runner + deployment step
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to GitHub Pages
-        id: deployment
+        id: docs-pages
         uses: actions/deploy-pages@v4
