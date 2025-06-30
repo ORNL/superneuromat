@@ -19,6 +19,8 @@ authors = [
 ]
 maintainers = [{name="Prasanna Date", email="datepa@ornl.gov"}]
 readme = {file = "README.md", content-type = "text/markdown"}
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 description = "A fast and scalable matrix-based simulator for Spiking Neural Networks (SNNs)."
 keywords = [
     "Neuromorphic Computing",
@@ -30,14 +32,10 @@ keywords = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: BSD License",
     "Development Status :: 3 - Alpha",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Artificial Intelligence"
 ]
-
-[project.license]
-file = "LICENSE"
 
 [project.urls]
     url = "https://github.com/ORNL/superneuromat"
