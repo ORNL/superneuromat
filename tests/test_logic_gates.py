@@ -1,124 +1,125 @@
 import unittest
+
 import numpy as np
 
-import sys 
-sys.path.insert(0,"../src/")
+import sys
+sys.path.insert(0, "../src/")
 
 from superneuromat import SNN
 
 
-
 class LogicGatesTest(unittest.TestCase):
-	""" Test SNNs for AND and OR gate
+    """ Test SNNs for AND and OR gate
 
-	"""
+    """
 
-	def test_and(self):
-		""" AND gate
+    use = 'cpu'
+    sparse = False
 
-		"""
+    def setUp(self):
+        self.snn = SNN()
+        self.snn.backend = self.use
+        self.snn.sparse = self.sparse
 
-		print("\nAND GATE")
-		and_gate = SNN()
+    def test_and(self):
+        # AND GATE
+        print("\nAND GATE")
+        and_gate = self.snn
 
-		# Create neurons
-		a_id = and_gate.create_neuron(threshold=0.0)
-		b_id = and_gate.create_neuron(threshold=0.0)
-		c_id = and_gate.create_neuron(threshold=1.0)
+        # Create neurons
+        a = and_gate.create_neuron(threshold=0.0)
+        b = and_gate.create_neuron(threshold=0.0)
+        c = and_gate.create_neuron(threshold=1.0)
 
-		# Create synapses
-		and_gate.create_synapse(a_id, c_id, weight=1.0)
-		and_gate.create_synapse(b_id, c_id, weight=1.0)
+        # Create synapses
+        and_gate.create_synapse(a, c, weight=1.0)
+        and_gate.create_synapse(b, c, weight=1.0)
 
-		# Add spikes: [0,0]
-		and_gate.add_spike(0, a_id, 0.0)
-		and_gate.add_spike(0, b_id, 0.0)
+        # Add spikes: [0,0]
+        and_gate.add_spike(0, a, 0.0)
+        and_gate.add_spike(0, b, 0.0)
 
-		# Add spikes: [0,1]
-		and_gate.add_spike(2, a_id, 0.0)
-		and_gate.add_spike(2, b_id, 1.0)
+        # Add spikes: [0,1]
+        and_gate.add_spike(2, a, 0.0)
+        and_gate.add_spike(2, b, 1.0)
 
-		# Add spikes: [1,0]
-		and_gate.add_spike(4, a_id, 1.0)
-		and_gate.add_spike(4, b_id, 0.0)
+        # Add spikes: [1,0]
+        and_gate.add_spike(4, a, 1.0)
+        and_gate.add_spike(4, b, 0.0)
 
-		# # Add spikes: [1,1]
-		and_gate.add_spike(6, a_id, 1.0)
-		and_gate.add_spike(6, b_id, 1.0)
+        # # Add spikes: [1,1]
+        and_gate.add_spike(6, a, 1.0)
+        and_gate.add_spike(6, b, 1.0)
 
-		# Setup and simulate
-		and_gate.setup()
-		and_gate.simulate(8)
+        # Setup and simulate
+        and_gate.simulate(8)
 
-		# Print spike train and neuromorphic model
-		and_gate.print_spike_train()
+        # Print spike train and neuromorphic model
+        and_gate.print_spike_train()
+        print(and_gate)
 
-		assert (np.array_equal(np.array(and_gate.spike_train), np.array([	[0,0,0],
-																			[0,0,0],
-																			[0,1,0],
-																			[0,0,0],
-																			[1,0,0],
-																			[0,0,0],
-																			[1,1,0],
-																			[0,0,1]
-																		])))
+        expected_spike_train = [
+            [0, 0, 0],  # in:  0┬0
+            [0, 0, 0],  # out:  0
+            [0, 1, 0],  # in:  0┬1
+            [0, 0, 0],  # out:  0
+            [1, 0, 0],  # in:  1┬0
+            [0, 0, 0],  # out:  0
+            [1, 1, 0],  # in:  1┬1
+            [0, 0, 1],  # out:  1
+        ]
+        assert and_gate.ispikes.astype(int).tolist() == expected_spike_train
 
-		print("test_and completed successfully")
+    def test_or(self):
+        # OR GATE
+        print("\nOR GATE")
+        or_gate = self.snn
 
+        # Create neurons
+        a = or_gate.create_neuron()
+        b = or_gate.create_neuron()
+        c = or_gate.create_neuron()
 
-	def test_or(self):
-		""" OR gate
+        # Create synapses
+        or_gate.create_synapse(a, c, weight=1.0)
+        or_gate.create_synapse(b, c, weight=1.0)
 
-		"""
+        # Add spikes: [0,0]
+        or_gate.add_spike(0, a, 0.0)
+        or_gate.add_spike(0, b, 0.0)
 
-		print("\nOR GATE")
-		or_gate = SNN()
+        # Add spikes: [0,1]
+        or_gate.add_spike(2, a, 0.0)
+        or_gate.add_spike(2, b, 1.0)
 
-		# Create neurons
-		a_id = or_gate.create_neuron()
-		b_id = or_gate.create_neuron()
-		c_id = or_gate.create_neuron()
+        # Add spikes: [1,0]
+        or_gate.add_spike(4, a, 1.0)
+        or_gate.add_spike(4, b, 0.0)
 
-		# Create synapses
-		or_gate.create_synapse(a_id, c_id, weight=1.0)
-		or_gate.create_synapse(b_id, c_id, weight=1.0)
+        # Add spikes: [1,1]
+        or_gate.add_spike(6, a, 1.0)
+        or_gate.add_spike(6, b, 1.0)
 
-		# Add spikes: [0,0]
-		or_gate.add_spike(0, a_id, 0.0)
-		or_gate.add_spike(0, b_id, 0.0)
+        # Setup and simulate
+        # or_gate.setup()
+        or_gate.simulate(8)
 
-		# # Add spikes: [0,11]
-		or_gate.add_spike(2, a_id, 0.0)
-		or_gate.add_spike(2, b_id, 1.0)
+        # Print spike train and neuromorphic model
+        or_gate.print_spike_train()
+        print(or_gate)
 
-		# Add spikes: [1,0]
-		or_gate.add_spike(4, a_id, 1.0)
-		or_gate.add_spike(4, b_id, 0.0)
-
-		# Add spikes: [1,1]
-		or_gate.add_spike(6, a_id, 1.0)
-		or_gate.add_spike(6, b_id, 1.0)
-
-		# Setup and simulate
-		or_gate.setup()
-		or_gate.simulate(8)
-
-		# Print spike train and neuromorphic model
-		or_gate.print_spike_train()
-		
-		assert (np.array_equal(np.array(or_gate.spike_train), np.array([	[0,0,0],
-																			[0,0,0],
-																			[0,1,0],
-																			[0,0,1],
-																			[1,0,0],
-																			[0,0,1],
-																			[1,1,0],
-																			[0,0,1]
-																		])))
-
-		print("test_or completed successfully")
-
+        expected_spike_train = [
+            [0, 0, 0],  # in:  0┬0
+            [0, 0, 0],  # out:  0
+            [0, 1, 0],  # in:  0┬1
+            [0, 0, 1],  # out:  1
+            [1, 0, 0],  # in:  1┬0
+            [0, 0, 1],  # out:  1
+            [1, 1, 0],  # in:  1┬1
+            [0, 0, 1],  # out:  1
+        ]
+        assert or_gate.ispikes.astype(int).tolist() == expected_spike_train
 
 
 if __name__ == "__main__":
-	unittest.main()
+    unittest.main()

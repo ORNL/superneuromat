@@ -1,209 +1,155 @@
 import unittest
-import numpy as np 
+import numpy as np
 
-import sys 
+import sys
 sys.path.insert(0, "../src/")
 
 from superneuromat import SNN
 
 
+npfloat_attrs = [
+        # post_synapse = cuda.to_device(np.zeros(self.num_neurons, self.dd))
+        '_internal_states',
+        '_neuron_thresholds',
+        '_neuron_leaks',
+        '_neuron_reset_states',
+        '_neuron_refractory_periods',
+        '_neuron_refractory_periods_original',
+        '_weights',
+        '_stdp_Apos',
+        '_stdp_Aneg',
+        '_input_spikes',
+]
+
+boollike_attrs = [
+    '_stdp_enabled_synapses',
+    '_spikes',
+]
+
+
+def verify_dtypes(snn, float_dtypes, boollike_dtypes):
+    for attr in npfloat_attrs:
+        arr = getattr(snn, attr)
+        assert arr.dtype in float_dtypes, f"{attr}: is {arr.dtype} instead of {float_dtypes}"
+    for attr in boollike_attrs:
+        arr = getattr(snn, attr)
+        assert arr.dtype in boollike_dtypes, f"{attr}: is {arr.dtype} instead of {boollike_dtypes}"
+
+
 class DtypeTest(unittest.TestCase):
-	""" Test if the datatypes are working properly
+    """ Test if the datatypes are working properly
 
-	"""
+    """
 
-	def test_dtype_64(self):
-		""" Test if data types are working properly for ping-pong SNN with double precision
+    def setUp(self):
+        # Create SNN, neurons, and synapses
+        snn = SNN()
 
-		"""
+        a = snn.create_neuron()
+        b = snn.create_neuron()
 
-		# Create SNN, neurons, and synapses
-		snn = SNN()
+        snn.create_synapse(a, b, stdp_enabled=True)
+        snn.create_synapse(b, a)
 
-		a = snn.create_neuron()
-		b = snn.create_neuron()
+        # Add spikes
+        snn.add_spike(0, a, 1)
 
-		snn.create_synapse(a, b, stdp_enabled=True)
-		snn.create_synapse(b, a)
+        # Setup and simulate
+        snn.stdp_setup(Aneg=[-0.1, -0.05, -0.025])
 
+        self.snn = snn
+        return super().setUp()
 
-		# Add spikes
-		snn.add_spike(0, a, 1)
+    def test_dtype_64(self):
+        """ Test if data types are working properly for ping-pong SNN with double precision
 
+        """
 
-		# Setup and simulate
-		snn.stdp_setup(Aneg=[0.1, 0.05, 0.025])
-		snn.setup()
-		snn.simulate(10)
+        # Create SNN, neurons, and synapses
+        snn = self.snn
 
+        snn.simulate(10)
 
-		# Print SNN after simulation
-		print(snn)
+        # Print SNN after simulation
+        print(snn)
 
+        # Assertions
+        assert snn._do_stdp is True
+        assert snn.default_dtype == snn.dd == np.float64
+        assert snn.default_bool_dtype in [bool, np.bool_, np.int8]
+        verify_dtypes(snn, [np.float64], [bool, np.bool_, np.int8])
 
-		# Assertions
-		assert (isinstance(snn._neuron_thresholds[0], np.float64))
-		assert (isinstance(snn._neuron_leaks[0], np.float64))
-		assert (isinstance(snn._neuron_reset_states[0], np.float64))
-		assert (isinstance(snn._neuron_refractory_periods_original[0], np.float64))
-		assert (isinstance(snn._neuron_refractory_periods[0], np.float64))
-		assert (isinstance(snn._internal_states[0], np.float64))
-		assert (isinstance(snn._spikes[0], np.int64))		
-		assert (isinstance(snn._weights[0,0], np.float64))
-		assert (isinstance(snn._stdp_enabled_synapses[0,0], np.float64))
-		assert (isinstance(snn._input_spikes[0], np.float64))
+        print("test_dtype64 completed successfully")
 
-		
-		print("test_dtype64 completed successfully")
+    def test_dtype_32(self):
+        """ Test if data types are working properly for ping-pong SNN with single precision
 
+        """
 
+        # Create SNN, neurons, and synapses
+        snn = self.snn
 
+        snn.default_dtype = np.float32
+        snn.default_bool_dtype = np.int32
+        # Setup and simulate
+        snn.simulate(10)
 
-	def test_dtype_32(self):
-		""" Test if data types are working properly for ping-pong SNN with single precision
+        # Print SNN after simulation
+        print(snn)
 
-		"""
+        # Assertions
+        assert snn.default_dtype == snn.dd == np.float32
+        assert snn.default_bool_dtype == snn.dbin == np.int32
+        verify_dtypes(snn, [np.float32], [np.int32])
 
-		# Create SNN, neurons, and synapses
-		snn = SNN()
+        print("test_dtype32 completed successfully")
 
-		a = snn.create_neuron()
-		b = snn.create_neuron()
+    def test_dtype_32_with_reset(self):
+        """ Test if data types are working properly for ping-pong SNN with single precision with reset
 
-		snn.create_synapse(a, b, stdp_enabled=True)
-		snn.create_synapse(b, a)
+        """
 
+        # Create SNN, neurons, and synapses
+        snn = self.snn
 
-		# Add spikes
-		snn.add_spike(0, a, 1)
+        snn.default_dtype = np.float32
+        snn.default_bool_dtype = np.int32
+        snn.simulate(10)
 
+        # Reset
+        snn.reset()
 
-		# Setup and simulate
-		snn.stdp_setup(Aneg=[0.1, 0.05, 0.025])
-		snn.setup(dtype=32)
-		snn.simulate(10)
+        # Print SNN after simulation
+        print(snn)
 
+        # Assertions
+        assert snn.default_dtype == snn.dd == np.float32
+        assert snn.default_bool_dtype == snn.dbin == np.int32
+        verify_dtypes(snn, [np.float32], [np.int32])
 
-		# Print SNN after simulation
-		print(snn)
+        print("test_dtype32_with_reset completed successfully")
 
+    def test_dtype_32_sparse(self):
+        """ Test if data types are working properly for ping-pong SNN with single precision with sparse operations enabled
 
-		# Assertions
-		assert (isinstance(snn._neuron_thresholds[0], np.float32))
-		assert (isinstance(snn._neuron_leaks[0], np.float32))
-		assert (isinstance(snn._neuron_reset_states[0], np.float32))
-		assert (isinstance(snn._neuron_refractory_periods_original[0], np.float32))
-		assert (isinstance(snn._neuron_refractory_periods[0], np.float32))
-		assert (isinstance(snn._internal_states[0], np.float32))
-		assert (isinstance(snn._spikes[0], np.int32))		
-		assert (isinstance(snn._weights[0,0], np.float32))
-		assert (isinstance(snn._stdp_enabled_synapses[0,0], np.float32))
-		assert (isinstance(snn._input_spikes[0], np.float32))
+        """
+        snn = self.snn
 
-		
-		print("test_dtype32 completed successfully")
+        snn.default_dtype = np.float32
+        snn.default_bool_dtype = np.int32
+        snn.sparse = True
+        snn.simulate(10)
 
+        # Print SNN after simulation
+        print(snn)
 
+        # Assertions
+        assert snn.default_dtype == snn.dd == np.float32
+        assert snn.default_bool_dtype == snn.dbin == np.int32
+        verify_dtypes(snn, [np.float32], [np.int32])
 
-
-	def test_dtype_32_with_reset(self):
-		""" Test if data types are working properly for ping-pong SNN with single precision with reset
-
-		"""
-
-		# Create SNN, neurons, and synapses
-		snn = SNN()
-
-		a = snn.create_neuron()
-		b = snn.create_neuron()
-
-		snn.create_synapse(a, b, stdp_enabled=True)
-		snn.create_synapse(b, a)
-
-
-		# Add spikes
-		snn.add_spike(0, a, 1)
-
-
-		# Setup and simulate
-		snn.stdp_setup(Aneg=[0.1, 0.05, 0.025])
-		snn.setup(dtype=32)
-		snn.simulate(10)
-
-
-		# Reset
-		snn.reset()
-
-
-		# Print SNN after simulation
-		print(snn)
-
-
-		# Assertions
-		assert (isinstance(snn._neuron_thresholds[0], np.float32))
-		assert (isinstance(snn._neuron_leaks[0], np.float32))
-		assert (isinstance(snn._neuron_reset_states[0], np.float32))
-		assert (isinstance(snn._neuron_refractory_periods_original[0], np.float32))
-		assert (isinstance(snn._neuron_refractory_periods[0], np.float32))
-		assert (isinstance(snn._internal_states[0], np.float32))
-		assert (isinstance(snn._spikes[0], np.float32))		
-		assert (isinstance(snn._weights[0,0], np.float32))
-		assert (isinstance(snn._stdp_enabled_synapses[0,0], np.float32))
-		assert (isinstance(snn._input_spikes[0], np.float32))
-
-		
-		print("test_dtype32_with_reset completed successfully")
-
-
-
-
-	def test_dtype_32_sparse(self):
-		""" Test if data types are working properly for ping-pong SNN with single precision with sparse operations enabled
-
-		"""
-
-		# Create SNN, neurons, and synapses
-		snn = SNN()
-
-		a = snn.create_neuron()
-		b = snn.create_neuron()
-
-		snn.create_synapse(a, b, stdp_enabled=True)
-		snn.create_synapse(b, a)
-
-
-		# Add spikes
-		snn.add_spike(0, a, 1)
-
-
-		# Setup and simulate
-		snn.stdp_setup(Aneg=[0.1, 0.05, 0.025])
-		snn.setup(dtype=32, sparse=True)
-		snn.simulate(10)
-
-
-		# Print SNN after simulation
-		print(snn)
-
-
-		# Assertions
-		assert (isinstance(snn._neuron_thresholds[0], np.float32))
-		assert (isinstance(snn._neuron_leaks[0], np.float32))
-		assert (isinstance(snn._neuron_reset_states[0], np.float32))
-		assert (isinstance(snn._neuron_refractory_periods_original[0], np.float32))
-		assert (isinstance(snn._neuron_refractory_periods[0], np.float32))
-		assert (isinstance(snn._internal_states[0], np.float32))
-		assert (isinstance(snn._spikes[0], np.int32))		
-		assert (isinstance(snn._weights[0,0], np.float32))
-		assert (isinstance(snn._stdp_enabled_synapses[0,0], np.float32))
-		assert (isinstance(snn._input_spikes[0], np.float32))
-
-		
-		print("test_dtype32_sparse completed successfully")
-
-
-
+        print("test_dtype32_sparse completed successfully")
 
 
 if __name__ == "__main__":
-	unittest.main()
+    unittest.main()

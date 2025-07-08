@@ -4,37 +4,172 @@ build-backend = "hatchling.build"
 
 [project]
 name = "superneuromat"
-version = "2.0.1"
-authors = [
-	{name="Prasanna Date"}, 
-	{name="Chathika Gunaratne"}, 
-	{name="Shruti Kulkarni"}, 
-	{name="Robert Patton"}, 
-	{name="Mark Coletti"}
-]
-description = "A fast and scalable matrix-based simulator for spiking neural networks (SNNs)."
-readme = "README.md"
-requires-python = ">=3.0"
+version = "3.1.0"
+requires-python = ">=3.9"
 dependencies = [
-	"numpy",
-	"scipy",
-	"pandas",
+    "numpy>=1.24.0",
+    "scipy"
+]
+authors = [
+    {name="Prasanna Date", email="datepa@ornl.gov"},
+    {name="Chathika Gunaratne"},
+    {name="Shruti Kulkarni"},
+    {name="Robert Patton"},
+    {name="Mark Coletti"},
+]
+maintainers = [{name="Prasanna Date", email="datepa@ornl.gov"}]
+readme = {file = "README.md", content-type = "text/markdown"}
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+description = "A fast and scalable matrix-based simulator for Spiking Neural Networks (SNNs)."
+keywords = [
+    "Neuromorphic Computing",
+    "Neuromorphic Simulator",
+    "Neuromorphic Algorithms",
+    "Fast Neuromorphic Simulator",
+    "Matrix-Based Neuromorphic Simulator",
+    "Numpy Neuromorphic Simulator",
 ]
 classifiers = [
-	"Programming Language :: Python :: 3",
-	"Programming Language :: C",
-	"License :: OSI Approved :: BSD License",
-	"Operating System :: OS Independent",
-	"Development Status :: 5 - Production/Stable",
-	"License :: OSI Approved :: BSD License",
-	"Topic :: Scientific/Engineering",
-	"Topic :: Scientific/Engineering :: Artificial Intelligence"
+    "Programming Language :: Python :: 3",
+    "Development Status :: 3 - Alpha",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence"
 ]
 
-[project.license]
-file = "LICENSE"
-
 [project.urls]
-Homepage = "https://github.com/ORNL/superneuromat"
-Issues = "https://github.com/ORNL/superneuromat/issues"
-Documentation = "https://app.readthedocs.org/projects/superneuromat/"
+    url = "https://github.com/ORNL/superneuromat"
+    Repository = "https://github.com/ORNL/superneuromat"
+    Download = "https://pypi.org/project/ini2toml/#files"
+
+[project.optional-dependencies]
+jit = [
+    "numba"
+]
+cuda = [
+    "numba-cuda",
+    "numba~=0.61.0",
+    "numpy<2.2.0"
+]
+docs = [
+    "pydata-sphinx-theme~=0.16.1",
+    "sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinx-copybutton",
+    "sphinx-togglebutton",
+    "sphinx-design",
+    "numpydoc",
+    "myst-parser",
+]
+
+#
+# Environment Testing
+#
+
+[tool.tox]
+env_list = [
+    'py39',
+    # 'jit_py39',
+    'py313',
+    'pandas',
+    'jit',
+    'numpy126',
+    'numpy20',
+]
+
+[tool.tox.gh.python]
+"3.9" = ['py39',]
+"3.10" = ['py310',]
+"3.13" = ['py313', 'pandas', 'jit']
+
+[tool.tox.env_run_base]
+description = "Run tests under {base_python}"
+change_dir = "tests"
+commands = [
+    ["python", "test_cpu.py",],
+    ["python", "test_neuron.py",],
+    ["python", "test_synapse.py",],
+    ["python", "test_spikes.py",],
+    ["python", "test_sparse.py",],
+    ["python", "test_display.py",],
+    ["python", "test_reset.py",],
+    ["python", "test_dtype.py",],
+]
+
+[tool.tox.env.jit]
+description = "Run jit test"
+base_python = ["python3.13"]
+change_dir = "tests"
+extras = ["jit"]
+commands = [
+    ["python", "test_cpu.py",],
+    ["python", "test_jit.py",],
+]
+
+[tool.tox.env.jit_py39]
+description = "Run jit test"
+base_python = ["python3.9"]
+change_dir = "tests"
+extras = ["jit"]
+commands = [
+    ["python", "test_cpu.py",],
+    ["python", "test_jit.py",],
+]
+
+[tool.tox.env.cuda]
+description = "Run cuda test"
+base_python = ["python3.13"]
+change_dir = "tests"
+pass_env = [
+    "CUDA_PATH",
+    "CUDA_PATH_V11_8",
+]
+extras = ["cuda"]
+commands = [
+    ["python", "test_cpu.py",],
+    ["python", "test_jit.py",],
+    ["python", "test_gpu.py",],
+]
+
+[tool.tox.env.pandas]
+description = "Run tests for pandas"
+base_python = ["python3.13"]
+change_dir = "tests"
+deps = ["pandas"]
+commands = [
+
+    ["python", "test_display.py",],
+    ["python", "test_df.py",],
+]
+
+[tool.tox.env.numpy126]
+description = "Run tests for numpy 1.26.0"
+change_dir = "tests"
+deps = ["numpy<2.0.0"]
+# extras = ["jit"]
+commands = [
+    ["python", "test_cpu.py",],
+    # ["python", "test_jit.py",],
+    ["python", "test_neuron.py"],
+    ["python", "test_synapse.py",],
+    ["python", "test_sparse.py",],
+    ["python", "test_display.py",],
+    ["python", "test_reset.py",],
+    ["python", "test_dtype.py",],
+    ["python", "test_spikes.py",],
+]
+
+[tool.tox.env.numpy20]
+description = "Run tests for numpy 2.0 for np.bool check"
+change_dir = "tests"
+deps = ["numpy~=2.0.0"]
+commands = [
+    ["python", "test_cpu.py",],
+    ["python", "test_neuron.py"],
+    ["python", "test_synapse.py",],
+    ["python", "test_sparse.py",],
+    ["python", "test_display.py",],
+    ["python", "test_reset.py",],
+    ["python", "test_dtype.py",],
+    ["python", "test_spikes.py",],
+]

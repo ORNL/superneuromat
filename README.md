@@ -1,34 +1,60 @@
-# SuperNeuroMAT v2.0.0
+<div align="center" style="text-align: center;">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./docs/source/_static/superneuro-pcg-arrow-dark-tag.svg">
+  <img alt="SuperNeuroMAT Logo" src="./docs/source/_static/superneuro-pcg-arrow-blue-tag.svg" width='600rem'>
+</picture>
 
-SuperNeuroMAT is a matrix-based simulator for simulating spiking neural networks, which are used in neuromorphic computing. It is one of the fastest, if not the fastest, simlators for simulating spiking neural networks.
+The Super Speedy Spike Simulator.
+</div>
 
-Some salient features of SuperNeuroMAT are:
-1. Support for leaky integrate and fire neuron model with the following parameters: neuron threshold, neuron leak, and neuron refractory period
-2. Support for Spiking-Time-Dependent Plasticity (STDP) synapses with weights and delays
-3. No restrictions on connectivity of the neurons, all-to-all connections as well as self connections possible
-4. Constant leak supported
-5. STDP learning can be configured to turn on/off positive updates and negative updates
-6. Excessive synaptic delay can slow down the execution of the simulation, so try to avoid as much as possible
-7. Leak refers to the constant amount by which the internal state (membrane potential) of a neuron changes in each time step of the simulation; therefore, zero leak means the neuron fully retains the value in its internal state, and infinite leak means the neuron never retains the value in its internal state
-8. STDP implementation is extremely fast
-9. The model of neuromorphic computing supported in SuperNeuroMAT is Turing-complete
-10. All underlying computational operations are matrix-based and currently supported on CPUs
+# SuperNeuroMAT
+
+SuperNeuroMAT is a Python package for simulating and analyzing spiking neural networks.
+
+[![Tox: Selected Tests](https://github.com/ORNL/superneuromat/actions/workflows/test.yaml/badge.svg)](https://github.com/ORNL/superneuromat/actions/workflows/test.yaml)
+[![Sphinx: Build HTML](https://github.com/ORNL/superneuromat/actions/workflows/pages-build.yaml/badge.svg)](https://github.com/ORNL/superneuromat/actions/workflows/pages-build.yaml)
+
+Documentation available: https://ORNL.github.io/superneuromat/
+
+[<img src="https://gist.githubusercontent.com/cxmeel/0dbc95191f239b631c3874f4ccf114e2/raw/documentation.svg" alt="Documentation" height="40" />](https://ORNL.github.io/superneuromat/)
+
+Unlike its sister package, [SuperNeuroABM](https://github.com/ORNL/superneuroabm), SuperNeuroMAT uses a matrix-based representation
+of the network, which allows for more efficient simulation and GPU acceleration.
+
+SuperNeuroMAT focuses on super-fast computation of Leaky Integrate and Fire **(LIF)** spiking neuron models with STDP.
+
+It provides:
+1. Support for leaky integrate and fire neuron model with the following parameters:
+  * neuron threshold
+  * neuron leak
+  * neuron refractory period
+2. Support for Spiking-Time-Dependent Plasticity (STDP) on synapses with:
+  * weight
+  * delay
+  * per-synapse disabling of learning
+3. Support for all-to-all connections as well as self connections
+4. A turing-complete model of neuromorphic computing
+5. Optional GPU acceleration or Optional Sparse computation
+
+* Note that long delays may impact performance. Consider using an agent-based simulator
+such as [SuperNeuroABM](https://github.com/ORNL/superneuroabm) for longer delays.
 
 
 ## Installation
 1. Install using `pip install superneuromat`
 2. Update/upgrade using `pip install superneuromat --upgrade`
 
+The [installation guide](https://ORNL.github.io/superneuromat/guide/install.html)
+covers virtual environments, faster installation with uv, installing support for CUDA GPU acceleration, and more.
 
 ## Usage
-1. In a Python script or on a Python interpreter, do `import superneuromat as snm`
-2. The main class can be accessed by `snn = snm.SNN()`
-3. Refer to docstrings in the source code or on the [readthedocs](https://superneuromat.readthedocs.io/en/latest/) page for the API
+Import the spiking neural network class: 
 
+```python
+from superneuromat import SNN
+```
 
-## Documentation
-Documentation available at: https://superneuromat.readthedocs.io/en/latest/
-
+See the [tutorial](https://ORNL.github.io/superneuromat/guide/firstrun.html) for more.
 
 ## Citation
 1. Please cite SuperNeuroMAT using:
@@ -45,17 +71,3 @@ Documentation available at: https://superneuromat.readthedocs.io/en/latest/
 	- [SuperNeuro: A Fast and Scalable Simulator for Neuromorphic Computing](https://dl.acm.org/doi/abs/10.1145/3589737.3606000)
 	- [Neuromorphic Computing is Turing-Complete](https://dl.acm.org/doi/abs/10.1145/3546790.3546806)
 	- [Computational Complexity of Neuromorphic Algorithms](https://dl.acm.org/doi/abs/10.1145/3477145.3477154)
-
-
-
-## For Development
-1. Clone the `superneuromat` repo: `git clone https://github.com/ORNL/superneuromat.git`
-2. Add the path to `superneuromat` to your `$PYTHONPATH`: `export PYTHONPATH=$PYTHONPATH:/path/to/superneuromat`. 
-3. You may want to update the `$PYTHONPATH` in your `.bash_profile` or `.bashrc`.
-
-
-## Directory Info
-1. `superneuromat`: This contains the source code for `superneuromat`
-2. `tests`: This contains unittests for development purposes. Please ignore!
-
-

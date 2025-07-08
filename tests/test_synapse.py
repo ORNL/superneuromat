@@ -1,39 +1,184 @@
 import unittest
-import numpy as np 
+import numpy as np
 
-import sys 
+import sys
 sys.path.insert(0, "../src/")
 
 from superneuromat import SNN
 
 
 class SynapseTest(unittest.TestCase):
-	""" Test if the create_synapse functionality is working properly
+    """ Test if the create_synapse functionality is working properly
 
-	"""
+    """
 
-	def test_multiple_synapses(self):
-		""" Test if multiple synapses from a neuron to another neuron are possible.
-			This test shoud throw an error as multiple synapses between the same 2 neurons are not allowed.
+    def test_create_synapse_errors(self):
+        """ Test input validation for create_synapse()
 
-		"""
+        """
 
-		# Create SNN, neurons, and synapses
-		snn = SNN()
+        snn = SNN()
+        n0 = snn.create_neuron()
+        n1 = snn.create_neuron()
 
-		a = snn.create_neuron()
-		b = snn.create_neuron()
+        with self.assertRaises(ValueError):
+            snn.create_synapse(-1, n1)
 
-		snn.create_synapse(a, b, delay=1, stdp_enabled=True)
+        with self.assertRaises(ValueError):
+            snn.create_synapse(n0, -1)
 
-		try:
-			snn.create_synapse(a, b, delay=2)
+        with self.assertRaises(ValueError):
+            snn.create_synapse(n0, n1, delay=-2)
 
-		except RuntimeError:
-			print("test_multiple_synapses completed successfully")
+        with self.assertRaises(ValueError):
+            snn.create_synapse(-1.0, n1)  # pyright: ignore[reportArgumentType]
 
+        with self.assertRaises(TypeError):
+            snn.create_synapse(n0, [])  # pyright: ignore[reportArgumentType]
+
+        with self.assertRaises(ValueError):
+            snn.create_synapse(n0, n1, weight="something")  # pyright: ignore[reportArgumentType]
+
+        with self.assertRaises(TypeError):
+            snn.create_synapse(n0, n1, weight=snn)  # pyright: ignore[reportArgumentType]
+
+        with self.assertRaises(ValueError):
+            snn.create_synapse(n0, n1, weight=1.0, delay=-5.4)  # pyright: ignore[reportArgumentType]
+
+        with self.assertWarns(UserWarning):
+            snn.create_synapse(n0, n1, stdp_enabled='True')
+
+    def test_multiple_synapses(self):
+        """ Test if multiple synapses from a neuron to another neuron are possible.
+            This test shoud throw an error as multiple synapses between the same 2 neurons are not allowed.
+        """
+
+        # Create SNN, neurons, and synapses
+        snn = SNN()
+
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+
+        snn.create_synapse(a, b, delay=1, stdp_enabled=True)
+
+        assert snn.num_synapses == 1
+
+        # test exist options
+        with self.assertRaises(RuntimeError):
+            snn.create_synapse(a, b)
+
+        s = snn.create_synapse(a, b, exist='dontadd')
+        assert s.idx == 0
+        assert snn.num_synapses == 1
+
+        s = snn.create_synapse(a, b, weight=9, exist='overwrite')
+        assert s.idx == 0
+        assert snn.num_synapses == 1
+        assert snn.synapses[0].weight == snn.synaptic_weights[0] == 9.0
+
+    def test_synapse_exist_values(self):
+        """ Test for input validation of create_synapse() exist parameter
+        """
+
+        # Create SNN, neurons, and synapses
+        snn = SNN()
+
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+
+        snn.create_synapse(a, b, delay=1, stdp_enabled=True)
+
+        # input validation
+        with self.assertRaises(ValueError):
+            snn.create_synapse(a, b, exist='oops')
+
+        with self.assertRaises(ValueError):
+            snn.create_synapse(a, b, delay=2, exist='overwrite')
+
+        with self.assertRaises(TypeError):
+            snn.create_synapse(a, b, exist=1)  # pyright: ignore[reportArgumentType]
+
+    def test_get_synapses(self):
+        """ Test if the get_synapses functions are working properly.
+
+        """
+        # Create SNN, neurons, and synapses
+        snn = SNN()
+
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+        c = snn.create_neuron()
+
+        snn.create_synapse(a, b, delay=1, stdp_enabled=True)
+        snn.create_synapse(a, c, delay=2, stdp_enabled=True)
+
+        synapses = snn.get_synapses_by_pre(a)
+        self.assertEqual(len(synapses), 2)
+
+        synapses = snn.get_synapses_by_post(b)
+        self.assertEqual(len(synapses), 1)
+
+        assert snn.get_synaptic_ids_by_pre(a) == [0, 1]
+        assert snn.get_synaptic_ids_by_post(b) == [0]
+
+        assert snn.get_synaptic_ids_by_pre(c) == []
+
+        assert snn.get_synaptic_ids_by_pre(0) == [0, 1]
+        assert snn.get_synaptic_ids_by_post(1.0) == [0]  # pyright: ignore[reportArgumentType]
+        self.assertRaises(TypeError, snn.get_synapses_by_pre, "I'm not an int or a Neuron")
+
+        assert snn.get_synapse(a, b).idx == 0
+        assert snn.get_synapse_id(a, b) == 0
+        assert snn.get_synapse_id(0, 1) == 0
+        assert snn.get_synapse_id(0.0, 1.0) == 0  # pyright: ignore[reportArgumentType]
+        self.assertRaises(IndexError, snn.get_synapse, b, a)
+        try:
+            snn.get_synapse(b, a)
+        except IndexError as e:
+            print(e)
+        self.assertRaises(TypeError, snn.get_synapse, a, "I'm not an int or a Neuron")
+        self.assertRaises(TypeError, snn.get_synapse, "I'm not an int or a Neuron", a)
+
+        print("test_get_synapses completed successfully")
+
+    def test_synapse_change_chained_delay(self):
+        """ Test if error raised when changing delay on chained synapse
+
+        """
+        # Create SNN, neurons, and synapses
+        snn = SNN()
+
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+
+        syn = snn.create_synapse(a, b, delay=2, stdp_enabled=True)  # a -> _ -> b  (hidden neuron created)
+        snn.create_synapse(a, b, delay=1, stdp_enabled=True)  # this is fine because a -> b doesn't exist yet
+        with self.assertRaises(ValueError):
+            snn.create_synapse(syn.pre, syn.post, delay=1, stdp_enabled=True, exist='overwrite')
+        with self.assertRaises(ValueError):
+            syn.delay = 1
+
+    def test_synapse_get_delay_chain(self):
+        """ Test if synapse delay chain properties work as expected
+
+        """
+        # Create SNN, neurons, and synapses
+        snn = SNN()
+
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+
+        syn = snn.create_synapse(a, b, delay=3, stdp_enabled=True)  # a -> _ -> b  (hidden neuron created)
+        neuron_chain = syn.delay_chain
+        synapse_chain = syn.delay_chain_synapses
+        print(snn)
+        print(neuron_chain)
+        print(*(syn.info_row() for syn in synapse_chain), sep='\n')
+        assert [int(n.idx) for n in neuron_chain] == [0, 2, 3, 1]
+        assert [int(s.idx) for s in synapse_chain] == [0, 1, 2]
+        assert snn.synapses[0].delay_chain == []
 
 
 
 if __name__ == "__main__":
-	unittest.main()
+    unittest.main()

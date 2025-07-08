@@ -1,0 +1,68 @@
+
+blockquote.highlights {  /* style highlights like dropdowns */
+    padding: .5em .6em .5em 1em;
+    font-weight: var(--sd-fontweight-dropdown-title);
+    border-left: .2rem solid var(--pst-gray-500) !important;
+    box-shadow: 0 .2rem .5rem var(--pst-color-shadow),0 0 .0625rem var(--pst-color-shadow) !important;
+}
+
+.float-right {
+    float: right;
+}
+
+.font-size-2em {
+    font-size: 2em;
+}
+
+.font-size-1_9em {
+    font-size: 1.9em;
+}
+
+.font-size-1_8em {
+    font-size: 1.8em;
+}
+
+.font-size-1_7em {
+    font-size: 1.7em;
+}
+
+.font-size-1_6em {
+    font-size: 1.6em;
+}
+
+.font-size-1_5em {
+    font-size: 1.5em;
+}
+
+.font-size-1_4em {
+    font-size: 1.4em;
+}
+
+.font-size-1_3em {
+    font-size: 1.3em;
+}
+
+.font-size-1_2em {
+    font-size: 1.2em;
+}
+
+.font-size-1_1em {
+    font-size: 1.1em;
+}
+
+.font-size-1em {
+    font-size: 1em;
+}
+
+.font-size-_9em {
+    font-size: .9em;
+}
+
+.font-size-_8em {
+    font-size: .8em;
+}
+
+#superneuromat\.SNN\.eqvars>.property>span.pre,
+#superneuromat\.SNN\._internal_vars>.property>span.pre {
+    display: block;
+}

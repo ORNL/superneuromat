@@ -1,79 +1,79 @@
 import unittest
 import numpy as np
 
-import sys 
-sys.path.insert(0,"../src/")
+import sys
+sys.path.insert(0, "../src/")
 
 from superneuromat import SNN
 
 
-
 class RefractoryTest(unittest.TestCase):
-	""" Test refractory period
+    """ Test refractory period
 
-	"""
+    """
 
-	def test_refractory_one(self):
-		""" Test refractory period for 1 neuron
+    use = 'cpu'
+    sparse = False
 
-		"""
+    def setUp(self):
+        self.snn = SNN()
+        self.snn.backend = self.use
+        self.snn.sparse = self.sparse
 
-		print("One neuron refractory period test")
+    def test_refractory_one(self):
+        print("One neuron refractory period test")
 
-		snn = SNN()
+        snn = self.snn
 
-		n = snn.create_neuron(refractory_period=2)
+        n_id = snn.create_neuron(refractory_period=2).idx
 
-		snn.add_spike(1, n, 1)
-		snn.add_spike(2, n, 3)
-		snn.add_spike(3, n, 4)
-		snn.add_spike(4, n, 1)
+        snn.add_spike(1, n_id, 1)
+        snn.add_spike(2, n_id, 3)
+        snn.add_spike(3, n_id, 4)
+        snn.add_spike(4, n_id, 1)
 
+        snn.simulate(10)
 
-		snn.setup()
-		snn.simulate(10)
+        snn.print_spike_train()
+        print()
 
-		snn.print_spike_train()
+        expected_spike_train = [0, 1, 0, 0, 1, 0, 0, 0, 0, 0]
+        expected_spike_train = np.reshape(expected_spike_train, (-1, 1)).tolist()
+        assert snn.ispikes.tolist() == expected_spike_train
 
-		assert (np.array_equal(np.array(snn.spike_train), np.array([[0],[1],[0],[0],[1],[0],[0],[0],[0],[0]])))
+    def test_refractory_two(self):
+        print("Two neuron refractory period test")
 
-		print("test_refractory_one completed successfully")
+        snn = self.snn
 
+        n1 = snn.create_neuron(threshold=-1.0, reset_state=-1.0, refractory_period=2)
+        n2 = snn.create_neuron(refractory_period=1000000)
 
+        snn.create_synapse(n1, n2, weight=2.0, delay=2)
 
+        snn.add_spike(1, n2, -1.0)
+        snn.add_spike(2, n1, 10.0)
+        snn.add_spike(3, n1, 10.0)
+        snn.add_spike(5, n1, 10.0)
 
-	def test_refractory_two(self):
-		""" Test refractory period for 2 neurons
-		
-		"""
+        snn.simulate(10)
 
-		print("Two neuron refractory period test")
+        snn.print_spike_train()
 
-		snn = SNN()
-
-		n0 = snn.create_neuron(threshold=-1.0, reset_state=-1.0, refractory_period=2)
-		n1 = snn.create_neuron(refractory_period=1000000)
-
-		snn.create_synapse(n0, n1, weight=2.0, delay=2)
-
-		snn.add_spike(1, n1, -1.0)
-		snn.add_spike(2, n0, 10.0)
-		snn.add_spike(3, n0, 10.0)
-		snn.add_spike(5, n0, 10.0)
-
-		snn.setup()
-		snn.simulate(10)
-
-		snn.print_spike_train()
-
-		assert (np.array_equal(np.array(snn.spike_train), np.array([[0,0,0],[0,0,0],[1,0,0],[0,0,1],[0,1,0],[1,0,0],[0,0,1],[0,0,0],[0,0,0],[0,0,0]])))
-
-		print("test_refractory_one completed successfully")
-
-
-	
+        expected_spike_train = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [1, 0, 0],
+            [0, 0, 1],
+            [0, 1, 0],
+            [1, 0, 0],
+            [0, 0, 1],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+        ]
+        assert snn.ispikes.tolist() == expected_spike_train
 
 
 if __name__ == "__main__":
-	unittest.main()
-
+    unittest.main()
