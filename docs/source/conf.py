@@ -120,8 +120,8 @@ html_theme_options = {
         # Because the logo is also a homepage link, including "home" in the
         # alt text is good practice
         "alt_text": "SuperNeuroMAT Documentation",
-        "image_light": "superneuro-pcg-stacked.svg",
-        "image_dark": "superneuro-pcg-stacked-stroke.svg",
+        "image_light": "superneuro-pcg-arrow.svg",
+        "image_dark": "superneuro-pcg-arrow.svg",
     },
     # "search_as_you_type": True,
 }
