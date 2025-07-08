@@ -1,7 +1,7 @@
 <div align="center" style="text-align: center;">
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./docs/source/_static/superneuro_wm_sm_white.svg">
-  <img alt="SuperNeuroMAT Logo" src="./docs/source/_static/superneuro_wm_sm_black.svg" width='600rem'>
+  <source media="(prefers-color-scheme: dark)" srcset="./docs/source/_static/superneuro-pcg-motion-white-tag.svg">
+  <img alt="SuperNeuroMAT Logo" src="./docs/source/_static/superneuro-pcg-motion-tag.svg" width='600rem'>
 </picture>
 
 The Super Speedy Spike Simulator.
