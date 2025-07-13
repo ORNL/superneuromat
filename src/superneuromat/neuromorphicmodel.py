@@ -1,6 +1,7 @@
 """Spiking Neural Network model implementing LIF and STDP using matrix representations."""
 
 from __future__ import annotations
+import sys
 import math
 import copy
 import warnings
@@ -9,6 +10,7 @@ from numpy import typing as npt
 from textwrap import dedent
 from scipy.sparse import csc_array  # scipy is also used for BLAS + numpy (dense matrix)
 from .util import getenv, getenvbool, is_intlike_catch, pretty_spike_train, int_err, float_err
+from . import json
 from .accessor_classes import Neuron, Synapse, NeuronList, SynapseList
 
 from typing import Any, TYPE_CHECKING
@@ -1971,6 +1973,8 @@ class SNN:
         'input_spikes',
         'stdp', 'apos', 'aneg',
         'stdp_positive_update', 'stdp_negative_update',
+        'allow_incorrect_stdp_sign',
+        'allow_signed_leak',
         '_sparse',
         '_backend',
         'manual_setup',
@@ -1985,8 +1989,20 @@ class SNN:
     names of variables which can be memoized.
     """
 
-    def __eq__(self, other):
+    def __eq__(self, other, ignore_vars=None, mismatch='ignore'):
         """Checks if two SNNs are equal."""
+
+        ignore_vars = ignore_vars if ignore_vars is not None else []
+
+        def raise_mismatch(key, a, b):
+            if mismatch == 'raise':
+                msg = f"SNNs are not equal. Attribute {key} has different values: {a} != {b}"
+                raise ValueError(msg)
+
+        if mismatch not in ['ignore', 'raise']:
+            msg = f"Invalid value for mismatch: {mismatch}"
+            raise ValueError(msg)
+
         if not isinstance(other, SNN):
             return False
         for var in self.eqvars:
@@ -1994,16 +2010,21 @@ class SNN:
             b = getattr(other, var)
             if isinstance(a, (np.ndarray, csc_array)):
                 if not np.array_equal(a, b):  # pyright: ignore[reportArgumentType]
+                    raise_mismatch(var, a, b)
                     return False
             else:
                 try:
                     if a != b:
+                        raise_mismatch(var, a, b)
                         return False
                 except ValueError as err:
                     try:
                         if np.any(np.asarray(a) != np.asarray(b)):
+                            raise_mismatch(var, a, b)
                             return False
-                    except Exception:
+                    except ValueError as err:
+                        raise
+                    except Exception as err:
                         msg = f"Failed to compare {var}"
                         raise RuntimeError(msg) from err
         # must ensure all other code paths are covered by return False.
@@ -2105,3 +2126,236 @@ class SNN:
         """
         del self.memoized
         self.memoized = {}
+
+    def _to_json_dict(self, array_representation="json-native", skipkeys=None,
+                      net_name=None, extra=None):
+        """Exports the SNN to a dictionary.
+
+        Parameters
+        ----------
+        vars : str | list[str], default=None
+            The variables to export. Can be None to export all variables,
+            or a list of variable names to export.
+
+        array_representation : str, default="json-native"
+            The representation to use for arrays.
+            Can be "json-native" or "repr" or "base85".
+
+        Returns
+        -------
+        dict
+            The SNN as a dictionary.
+        """
+        from . import __version__ as snm_version
+        skipkeys = [] if skipkeys is None else skipkeys
+        varnames = set(self.eqvars) - set(skipkeys)
+        arep = array_representation
+
+        def is_numeric_array(o):
+            is_np = isinstance(o, np.ndarray) and o.dtype.kind in 'iuf'
+            is_py = isinstance(o, (tuple, list)) and all([isinstance(x, (int, float, bool)) for x in o])
+            return is_np or is_py
+
+        def is_bool_array(o):
+            if isinstance(o, np.ndarray):
+                try:
+                    return np.issubdtype(o.dtype, np.bool)
+                except AttributeError:
+                    return issubclass(o.dtype.type, np.bool_)
+            else:
+                return all([isinstance(x, bool) for x in o])
+
+        def default(self, o):
+            if isinstance(o, np.ndarray):
+                if is_bool_array(o):
+                    return o.astype(np.int_).tolist()
+                return o.tolist()
+            if issubclass(o, np.generic):
+                return o.__name__
+            msg = f'Object of type {o.__class__.__name__} is not JSON serializable'
+            raise TypeError(msg)
+
+        def get_dtype(o):
+            byteorder = o.dtype.byteorder
+            if byteorder == '=':
+                if sys.byteorder == 'little':
+                    byteorder = '<'
+                elif sys.byteorder == 'big':
+                    byteorder = '>'
+                else:
+                    byteorder = sys.byteorder
+            if byteorder not in ['<', '>', '|']:
+                msg = f"Unknown byteorder {byteorder}"
+                raise RuntimeError(msg)
+            return byteorder + o.dtype.char
+
+        if arep == "json-native":
+            data = {var: getattr(self, var) for var in varnames}
+
+            for k, v in data.items():
+                if is_numeric_array(v) and is_bool_array(v):
+                    data[k] = np.asarray(v, dtype=np.int_).tolist()
+        elif arep in ["base85", "base64"]:
+            from base64 import b85encode, b64encode
+            encode = b85encode if arep == "base85" else b64encode
+            data = {var: getattr(self, var) for var in varnames}
+            for k, v in data.items():
+                if is_numeric_array(v):
+                    dtype = self.dbin if is_bool_array(v) else self.dd
+                    arr = np.asarray(v, dtype=dtype)
+                    data[k] = {
+                        "dtype": get_dtype(arr),
+                        "original_type": v.__class__.__name__,
+                        arep: encode(arr.tobytes()).decode('utf-8')
+                    }
+        else:
+            raise ValueError("array_representation must be 'json-native' or 'base85'.")
+
+        json.JSONEncoder.default = default
+
+        d = {
+            "$schema": "https://ornl.github.io/superneuromat/schema/0.1.0/snn.json",
+            "version": "0.1.0",
+            "networks": [],
+        }
+        networkd = {
+            "meta": {
+                "array_representation": arep,
+                "from": {
+                    "module": "superneuromat",
+                    "version": snm_version,
+                },
+                "format": "snm",
+                "format_version": "0.1.0",
+            },
+            "data": data,
+        }
+        if net_name is not None:
+            networkd["name"] = net_name
+        if extra is not None and isinstance(extra, dict):
+            d["extra"] = extra
+        d["networks"].append(networkd)
+        return d
+
+    def to_json(self, array_representation="json-native", skipkeys=None, indent=2, **kwargs):
+        """Exports the SNN to a JSON string.
+
+        Parameters
+        ----------
+        skipkeys : list[str], default=None
+            The variables to skip exporting.
+            Can be None or empty list ``[]`` to export all variables.
+
+        array_representation : str, default="json-native"
+            The representation to use for arrays.
+            Can be "json-native" or "repr" or "base85".
+
+
+        This function also accepts the same arguments as :py:meth:`json.dumps`.
+
+        Returns
+        -------
+        str
+            The SNN as a JSON string.
+        """
+        d = self._to_json_dict(array_representation, skipkeys=skipkeys)
+        return json.dumps(d, indent=indent, **kwargs)
+
+    def saveas_json(self, fp,
+                    array_representation="json-native", skipkeys=None, indent=2, **kwargs):
+        """Exports the SNN to a JSON file.
+
+        Parameters
+        ----------
+        file_path : str | PathLike
+            The path to the file to save the SNN to.
+
+        skipkeys : list[str], default=None
+            The variables to skip exporting.
+            Can be None or empty list ``[]`` to export all variables.
+
+        array_representation : str, default="json-native"
+            The representation to use for arrays.
+            Can be "json-native" or "repr" or "base85".
+
+
+        This function also accepts the same arguments as :py:meth:`json.dump`.
+        """
+        d = self._to_json_dict(array_representation, skipkeys=skipkeys)
+        return json.dump(d, fp, indent=indent, **kwargs)
+
+    def from_jsons(self, json_str: str, net_id: int | str | list[int | str] = 0,
+                   skipkeys: list[str] | tuple[str] | None = None):
+        """Create a SNN from a SuperNeuroMat JSON string."""
+        from . import json
+        from base64 import b85decode, b64decode
+
+        j = json.loads(json_str)
+
+        skipkeys = list(skipkeys) if skipkeys is not None else []
+
+        nets = j["networks"]
+        if isinstance(net_id, int):
+            net_dict = nets[net_id]
+        elif isinstance(net_id, str):
+            net_dicts = [net for net in nets if net.get("name", None) == net_id]
+            if len(net_dicts) == 0:
+                msg = f"No network with name {net_id} found."
+                raise ValueError(msg)
+            elif len(net_dicts) > 1:
+                msg = f"Multiple networks with name {net_id} found."
+                raise ValueError(msg)
+            net_dict = net_dicts[0]
+            if net_dict["meta"]["format"] != "snm":
+                msg = f"Could not import network with format {net_dict['meta']['format']}. "
+                msg += "Only networks in the snm format are supported."
+                raise NotImplementedError(msg)
+        else:
+            raise NotImplementedError("net_id must be int or str. Importing multiple networks is not supported yet.")
+
+        def is_encoded_dict(d) -> bool | str:
+            # return the encoding type if it's a dict with a base85 or base64 key
+            if isinstance(d, dict):
+                for k in ("base85", "base64"):
+                    if k in d:
+                        return k
+            return False
+
+        data = net_dict["data"]
+
+        special_vars = ["default_dtype", "spike_train"]
+
+        skipkeys += special_vars
+
+        if "default_dtype" in data:
+            # test if dtype is valid
+            np.dtype(data["default_dtype"])
+            # set dtype
+            self.default_dtype = getattr(np, data["default_dtype"])
+
+        for key, value in data.items():
+            if key in skipkeys:
+                continue
+            else:
+                if (arep := is_encoded_dict(value)):
+                    bdict = {"dtype": np.dtype(self.dd), "original_type": "list"}
+                    bdict.update(value)
+                    decode = b85decode if arep == "base85" else b64decode
+                    value = np.frombuffer(decode(value[arep]), dtype=bdict["dtype"])
+                    if bdict["original_type"] == "list":
+                        value = value.tolist()
+                try:
+                    setattr(self, key, value)
+                except AttributeError as err:
+                    if key not in self.eqvars:
+                        msg = f"Invalid key: {key}"
+                        raise ValueError(msg) from err
+
+        if "spike_train" in data:
+            self.spike_train = np.asarray(data["spike_train"], dtype=self.dbin)
+        if "input_spikes" in data:
+            self.input_spikes = {int(k): v for k, v in self.input_spikes.items()}
+        if "enable_stdp" in data and not is_encoded_dict(data["enable_stdp"]):
+            self.enable_stdp = np.asarray(self.enable_stdp, dtype=self.dbin).tolist()
+
+        return self
