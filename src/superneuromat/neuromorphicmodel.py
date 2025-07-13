@@ -1967,6 +1967,7 @@ class SNN:
         'post_synaptic_neuron_ids',
         'synaptic_weights',
         'synaptic_delays',
+        'connection_ids',
         'default_dtype',
         'enable_stdp',
         'spike_train',
@@ -2148,6 +2149,7 @@ class SNN:
         """
         from . import __version__ as snm_version
         skipkeys = [] if skipkeys is None else skipkeys
+        skipkeys += ["connection_ids"]
         varnames = set(self.eqvars) - set(skipkeys)
         arep = array_representation
 
@@ -2227,6 +2229,7 @@ class SNN:
                 },
                 "format": "snm",
                 "format_version": "0.1.0",
+                "type": self.__class__.__name__,
             },
             "data": data,
         }
@@ -2284,11 +2287,78 @@ class SNN:
         d = self._to_json_dict(array_representation, skipkeys=skipkeys)
         return json.dump(d, fp, indent=indent, **kwargs)
 
+    def from_json_network(self, net_dict: dict, skipkeys: list[str] | tuple[str] | None = None):
+        from base64 import b85decode, b64decode
+        if net_dict["meta"]["format"] != "snm" or net_dict["meta"]["type"] != self.__class__.__name__:
+            msg = f"Could not import network with format {net_dict['meta']['format']}. "
+            msg += "Only networks in the snm format are supported."
+            raise NotImplementedError(msg)
+
+        def is_encoded_dict(d) -> bool | str:
+            # return the encoding type if it's a dict with a base85 or base64 key
+            if isinstance(d, dict):
+                for k in ("base85", "base64"):
+                    if k in d:
+                        return k
+            return False
+
+        data = net_dict["data"]
+
+        skipkeys = set(skipkeys) if skipkeys is not None else set()
+        should_modify = set(data.keys()) - skipkeys  # self variables to modify
+
+        # set our default dtype before setting the arrays
+        if "default_dtype" in should_modify:
+            np.dtype(data["default_dtype"])  # test if dtype is valid
+            self.default_dtype = getattr(np, data["default_dtype"])
+
+        # variables which we'll take care of outside of the loop
+        special_vars = {"default_dtype", "spike_train", "connection_ids", "num_neurons", "num_synapses"}
+
+        # set most of our properties
+        for key in should_modify - special_vars:
+            value = data[key]
+            if (arep := is_encoded_dict(value)):
+                bdict = {"dtype": np.dtype(self.dd), "original_type": "list"}
+                bdict.update(value)
+                decode = b85decode if arep == "base85" else b64decode
+                value = np.frombuffer(decode(value[arep]), dtype=bdict["dtype"])
+                if bdict["original_type"] == "list":
+                    value = value.tolist()
+            try:
+                setattr(self, key, value)
+            except AttributeError as err:
+                if key not in self.eqvars:
+                    msg = f"Invalid key: {key}"
+                    raise ValueError(msg) from err
+
+        # deal with importing special variables
+        if "spike_train" in should_modify:
+            self.spike_train = np.asarray(data["spike_train"], dtype=self.dbin)
+        if "input_spikes" in should_modify:
+            self.input_spikes = {int(k): v for k, v in self.input_spikes.items()}
+        if "enable_stdp" in should_modify and not is_encoded_dict(data["enable_stdp"]):
+            self.enable_stdp = np.asarray(self.enable_stdp, dtype=self.dbin).tolist()
+
+        # deal with variables which derive from other variables (not set from the JSON)
+        if "connection_ids" not in skipkeys:
+            self.rebuild_connection_ids()
+            if "num_synapses" in should_modify:  # if num_synapses is in the JSON, verify it
+                if data["num_synapses"] != len(self.connection_ids):
+                    msg = f"num_synapses ({data['num_synapses']}) does not match the number of synapses"
+                    msg += f"in the network ({len(self.connection_ids)})."
+                    raise RuntimeError(msg)
+
+        return self
+
+    def rebuild_connection_ids(self):
+        self.connection_ids = {(a, b): i for i, (a, b) in
+                               enumerate(zip(self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids))}
+
     def from_jsons(self, json_str: str, net_id: int | str | list[int | str] = 0,
                    skipkeys: list[str] | tuple[str] | None = None):
         """Create a SNN from a SuperNeuroMat JSON string."""
         from . import json
-        from base64 import b85decode, b64decode
 
         j = json.loads(json_str)
 
@@ -2306,56 +2376,7 @@ class SNN:
                 msg = f"Multiple networks with name {net_id} found."
                 raise ValueError(msg)
             net_dict = net_dicts[0]
-            if net_dict["meta"]["format"] != "snm":
-                msg = f"Could not import network with format {net_dict['meta']['format']}. "
-                msg += "Only networks in the snm format are supported."
-                raise NotImplementedError(msg)
         else:
             raise NotImplementedError("net_id must be int or str. Importing multiple networks is not supported yet.")
 
-        def is_encoded_dict(d) -> bool | str:
-            # return the encoding type if it's a dict with a base85 or base64 key
-            if isinstance(d, dict):
-                for k in ("base85", "base64"):
-                    if k in d:
-                        return k
-            return False
-
-        data = net_dict["data"]
-
-        special_vars = ["default_dtype", "spike_train"]
-
-        skipkeys += special_vars
-
-        if "default_dtype" in data:
-            # test if dtype is valid
-            np.dtype(data["default_dtype"])
-            # set dtype
-            self.default_dtype = getattr(np, data["default_dtype"])
-
-        for key, value in data.items():
-            if key in skipkeys:
-                continue
-            else:
-                if (arep := is_encoded_dict(value)):
-                    bdict = {"dtype": np.dtype(self.dd), "original_type": "list"}
-                    bdict.update(value)
-                    decode = b85decode if arep == "base85" else b64decode
-                    value = np.frombuffer(decode(value[arep]), dtype=bdict["dtype"])
-                    if bdict["original_type"] == "list":
-                        value = value.tolist()
-                try:
-                    setattr(self, key, value)
-                except AttributeError as err:
-                    if key not in self.eqvars:
-                        msg = f"Invalid key: {key}"
-                        raise ValueError(msg) from err
-
-        if "spike_train" in data:
-            self.spike_train = np.asarray(data["spike_train"], dtype=self.dbin)
-        if "input_spikes" in data:
-            self.input_spikes = {int(k): v for k, v in self.input_spikes.items()}
-        if "enable_stdp" in data and not is_encoded_dict(data["enable_stdp"]):
-            self.enable_stdp = np.asarray(self.enable_stdp, dtype=self.dbin).tolist()
-
-        return self
+        return self.from_json_network(net_dict, skipkeys=skipkeys)

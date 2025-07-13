@@ -71,6 +71,6 @@
     },
   },
   "required": ["version", "networks"],
-  "additionalProperties": false,
+  "additionalProperties": false
 }
 
