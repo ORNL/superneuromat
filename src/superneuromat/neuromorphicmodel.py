@@ -2227,7 +2227,7 @@ class SNN:
         json.JSONEncoder.default = default
 
         d = {
-            "$schema": "https://ornl.github.io/superneuromat/schema/0.1.0/snn.json",
+            "$schema": "https://ornl.github.io/superneuromat/schema/0.1/snn.json",
             "version": "0.1",
             "networks": [],
         }
@@ -2284,7 +2284,7 @@ class SNN:
         Examples
         --------
         >>> snn.to_json(net_name="My SNN", indent=None)
-        {"$schema": "https://ornl.github.io/superneuromat/schema/0.1.0/snn.json", "version": "0.1", "networks": [{"meta": {"array_representation": "json-native", "from": {"module": "superneuromat", "version": "3.1.0"}, "format": "snm", "format_version": "0.1", "type": "SNN"}, "data": {"neuron_refractory_periods": [0, 0], "neuron_states": [0.0, 0.0], "num_synapses": 2, "post_synaptic_neuron_ids": [1, 0], "aneg": [], "enable_stdp": [0, 0], "pre_synaptic_neuron_ids": [0, 1], "neuron_thresholds": [3.141592653589793115997963468544185161590576171875, 0.0], "neuron_refractory_periods_state": [0.0, 0.0], "neuron_reset_states": [0.0, 0.0], "stdp_positive_update": true, "input_spikes": {"3": {"nids": [1], "values": [1.0]}}, "synaptic_delays": [1, 1], "allow_signed_leak": false, "num_neurons": 2, "_sparse": "auto", "_backend": "auto", "apos": [], "manual_setup": false, "spike_train": [[1, 0], [0, 1], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], "neuron_leaks": [Infinity, Infinity], "allow_incorrect_stdp_sign": false, "stdp": true, "synaptic_weights": [1.0, 1.0], "default_dtype": "float64", "stdp_negative_update": true}}]}
+        {"$schema": "https://ornl.github.io/superneuromat/schema/0.1/snn.json", "version": "0.1", "networks": [{"meta": {"array_representation": "json-native", "from": {"module": "superneuromat", "version": "3.1.0"}, "format": "snm", "format_version": "0.1", "type": "SNN"}, "data": {"neuron_refractory_periods": [0, 0], "neuron_states": [0.0, 0.0], "num_synapses": 2, "post_synaptic_neuron_ids": [1, 0], "aneg": [], "enable_stdp": [0, 0], "pre_synaptic_neuron_ids": [0, 1], "neuron_thresholds": [3.141592653589793115997963468544185161590576171875, 0.0], "neuron_refractory_periods_state": [0.0, 0.0], "neuron_reset_states": [0.0, 0.0], "stdp_positive_update": true, "input_spikes": {"3": {"nids": [1], "values": [1.0]}}, "synaptic_delays": [1, 1], "allow_signed_leak": false, "num_neurons": 2, "_sparse": "auto", "_backend": "auto", "apos": [], "manual_setup": false, "spike_train": [[1, 0], [0, 1], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], "neuron_leaks": [Infinity, Infinity], "allow_incorrect_stdp_sign": false, "stdp": true, "synaptic_weights": [1.0, 1.0], "default_dtype": "float64", "stdp_negative_update": true}}]}
         """  # noqa: E501 (line length)
         d = self._to_json_dict(array_representation, skipkeys=skipkeys, net_name=net_name, extra=extra)
         return json.dumps(d, indent=indent, **kwargs)

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://ornl.github.io/superneuromat/schema/0.1.0/snn.json",
+  "$id": "https://ornl.github.io/superneuromat/schema/0.1/snn.json",
   "title": "SuperNeuroMAT Networks Schema",
   "description": "JSON file containing a list of networks for use with SuperNeuroMAT",
   "type": "object",
@@ -8,7 +8,7 @@
     "version": {
       "description": "The version of the schema",
       "type": "string",
-      "const": "0.1.0"
+      "const": "0.1"
     },
     "networks": {
       "description": "A list of networks",
@@ -66,7 +66,7 @@
             "type": "object"
           }
         },
-        "required": ["name", "meta", "data"]
+        "required": ["meta", "data"]
       }
     },
   },
