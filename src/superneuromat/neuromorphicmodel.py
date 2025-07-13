@@ -2223,13 +2223,13 @@ class SNN:
         networkd = {
             "meta": {
                 "array_representation": arep,
-                "from": {
+                "from": {  # We don't validate this right now.
                     "module": "superneuromat",
                     "version": snm_version,
                 },
                 "format": "snm",
-                "format_version": "0.1.0",
-                "type": self.__class__.__name__,
+                "format_version": "0.1.0",  # Not currently validating this
+                "type": self.__class__.__name__,  # differentiate from other snm network types
             },
             "data": data,
         }
