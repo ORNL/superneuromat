@@ -161,6 +161,9 @@ class Neuron:
 
            :py:meth:`Neuron.add_spike`
            :py:meth:`SNN.add_spike`
+
+        .. versionchanged:: v3.2.0
+            Returns the :py:class:`Synapse` object created.
         """
         if not isinstance(exist, str):
             raise TypeError("exist must be a string")
@@ -174,7 +177,7 @@ class Neuron:
                 self.add_spike(time + time_offset, value, exist=exist)
 
     def connect_child(self, child, weight: float = 1.0, delay: int = 1, stdp_enabled: bool = False,
-                      exist='error'):
+                      exist='error') -> Synapse:
         """Connect this neuron to a child neuron.
 
         Parameters
@@ -188,18 +191,25 @@ class Neuron:
         stdp_enabled : bool, default=False
             If ``True``, enable STDP learning on the synapse connecting this neuron to the child.
 
+        Returns
+        -------
+        Synapse
+
         .. seealso::
 
            :py:meth:`Neuron.connect_parent`
            :py:meth:`SNN.create_synapse`
+
+        .. versionchanged:: v3.2.0
+            Returns the :py:class:`Synapse` object created.
         """
         if isinstance(child, Neuron):
             child = child.idx
-        self.m.create_synapse(self.idx, child, weight=weight, delay=delay, stdp_enabled=stdp_enabled,
-                              exist=exist)
+        return self.m.create_synapse(self.idx, child, weight=weight, delay=delay,
+                                     stdp_enabled=stdp_enabled, exist=exist)
 
     def connect_parent(self, parent, weight: float = 1.0, delay: int = 1, stdp_enabled: bool = False,
-                       exist='error'):
+                       exist='error') -> Synapse:
         """Connect this neuron to a parent neuron.
 
         Parameters
@@ -213,6 +223,10 @@ class Neuron:
         stdp_enabled : bool, default=False
             If ``True``, enable STDP learning on the synapse connecting the parent to this neuron.
 
+        Returns
+        -------
+        Synapse
+
         .. seealso::
 
            :py:meth:`Neuron.connect_child`
@@ -220,8 +234,8 @@ class Neuron:
         """
         if isinstance(parent, Neuron):
             parent = parent.idx
-        self.m.create_synapse(parent, self.idx, weight=weight, delay=delay, stdp_enabled=stdp_enabled,
-                              exist=exist)
+        return self.m.create_synapse(parent, self.idx, weight=weight, delay=delay,
+                                     stdp_enabled=stdp_enabled, exist=exist)
 
     def spikes_str(self, max_steps=10, use_unicode=True):
         """Returns a pretty string of the spikes that have been emitted by this neuron.
