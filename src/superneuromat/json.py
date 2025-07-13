@@ -15,7 +15,7 @@ SIMPLE_LIST_ALLOWED_TYPES = (int, float)
 def _make_iterencode(markers, _default, _encoder, _indent, _floatstr,
         _key_separator, _item_separator, _sort_keys, _skipkeys, _one_shot,
         _simple_list_allowed_types,
-        ## HACK: hand-optimized bytecode; turn globals into locals
+        # HACK: hand-optimized bytecode; turn globals into locals
         ValueError=ValueError,
         dict=dict,
         float=float,
@@ -139,8 +139,11 @@ def _make_iterencode(markers, _default, _encoder, _indent, _floatstr,
             elif _skipkeys:
                 continue
             else:
-                raise TypeError(f'keys must be str, int, float, bool or None, '
-                                f'not {key.__class__.__name__}')
+                msg = (
+                    f'keys must be str, int, float, bool or None, '
+                    f'not {key.__class__.__name__}'
+                )
+                raise TypeError(msg)
             if first:
                 first = False
             else:
@@ -330,7 +333,7 @@ class JSONEncoder(_j.JSONEncoder):
         else:
             _encoder = _j.encoder.encode_basestring
 
-        c_make_encoder = _j.encoder.c_make_encoder
+        # c_make_encoder = _j.encoder.c_make_encoder
 
         if self.indent is None or isinstance(self.indent, str):
             indent = self.indent
@@ -347,6 +350,19 @@ class JSONEncoder(_j.JSONEncoder):
             self.key_separator, self.item_separator, self.sort_keys,
             self.skipkeys, _one_shot, self.compact_list_types)
         return _iterencode(o, 0)
+
+
+_default_encoder = JSONEncoder(
+    skipkeys=False,
+    ensure_ascii=True,
+    check_circular=True,
+    allow_nan=True,
+    indent=None,
+    separators=None,
+    default=None,
+    sort_keys=False,
+    compact_list_types=SIMPLE_LIST_ALLOWED_TYPES,
+)
 
 
 # from json, but with our new args added to docstring
@@ -402,7 +418,8 @@ def dump(obj, fp, *, skipkeys=False, ensure_ascii=True, check_circular=True,
     if (not skipkeys and ensure_ascii and
         check_circular and allow_nan and
         cls is None and indent is None and separators is None and
-        default is None and not sort_keys and not kw):
+        default is None and not sort_keys and compact_list_types == SIMPLE_LIST_ALLOWED_TYPES
+        and not kw):
         iterable = _default_encoder.iterencode(obj)
     else:
         if cls is None:
@@ -469,7 +486,8 @@ def dumps(obj, *, skipkeys=False, ensure_ascii=True, check_circular=True,
     if (not skipkeys and ensure_ascii and
         check_circular and allow_nan and
         cls is None and indent is None and separators is None and
-        default is None and not sort_keys and not kw):
+        default is None and not sort_keys and compact_list_types == SIMPLE_LIST_ALLOWED_TYPES
+        and not kw):
         return _default_encoder.encode(obj)
     if cls is None:
         cls = JSONEncoder

@@ -1988,6 +1988,11 @@ class SNN:
 
     For memoization (:py:meth:`SNN.memoize()`), this list gives the
     names of variables which can be memoized.
+
+    .. versionchanged:: v3.2.0
+
+        Added ``'connection_ids'`` to the list of public variables.
+
     """
 
     def __eq__(self, other, ignore_vars=None, mismatch='ignore'):
@@ -2134,13 +2139,19 @@ class SNN:
 
         Parameters
         ----------
-        vars : str | list[str], default=None
-            The variables to export. Can be None to export all variables,
-            or a list of variable names to export.
-
         array_representation : str, default="json-native"
             The representation to use for arrays.
-            Can be "json-native" or "repr" or "base85".
+            Can be "json-native", "base64", or "base85".
+        skipkeys : list[str] | None, default=None
+            The names of variables to omit from the export.
+            Can contain any key from :py:attr:`eqvars`.
+            Can also be None or empty list ``[]`` to export all variables.
+        net_name : str | None, default=None
+            The name of the network to export.
+            If None, the resulting JSON will not have a ``"name"`` key.
+        extra : dict | None, default=None
+            User-defined data to include in the exported JSON.
+            If None, the resulting JSON will not have an ``"extra"`` key.
 
         Returns
         -------
@@ -2217,7 +2228,7 @@ class SNN:
 
         d = {
             "$schema": "https://ornl.github.io/superneuromat/schema/0.1.0/snn.json",
-            "version": "0.1.0",
+            "version": "0.1",
             "networks": [],
         }
         networkd = {
@@ -2228,7 +2239,7 @@ class SNN:
                     "version": snm_version,
                 },
                 "format": "snm",
-                "format_version": "0.1.0",  # Not currently validating this
+                "format_version": "0.1",  # Not currently validating this
                 "type": self.__class__.__name__,  # differentiate from other snm network types
             },
             "data": data,
@@ -2240,51 +2251,76 @@ class SNN:
         d["networks"].append(networkd)
         return d
 
-    def to_json(self, array_representation="json-native", skipkeys=None, indent=2, **kwargs):
+    def to_json(self, array_representation="json-native", skipkeys: list[str] | None = None,
+                net_name: str | None = None, extra: dict | None = None, indent=2, **kwargs):
         """Exports the SNN to a JSON string.
 
         Parameters
         ----------
-        skipkeys : list[str], default=None
-            The variables to skip exporting.
-            Can be None or empty list ``[]`` to export all variables.
-
         array_representation : str, default="json-native"
             The representation to use for arrays.
-            Can be "json-native" or "repr" or "base85".
+            Can be "json-native", "base64", or "base85".
+        skipkeys : list[str] | None, default=None
+            The names of variables to omit from the export.
+            Can contain any key from :py:attr:`eqvars`.
+            Can also be None or empty list ``[]`` to export all variables.
+        net_name : str | None, default=None
+            The name of the network to export.
+            If None, the resulting JSON will not have a ``"name"`` key.
+        extra : dict | None, default=None
+            User-defined data to include in the exported JSON.
+            If None, the resulting JSON will not have an ``"extra"`` key.
+        indent : int, default=2
+            The indentation to use for the JSON.
+            Set to ``None`` to get a compact JSON string.
 
-
-        This function also accepts the same arguments as :py:meth:`json.dumps`.
+        This function additionally accepts the same arguments as :py:meth:`json.dumps`.
 
         Returns
         -------
         str
             The SNN as a JSON string.
-        """
-        d = self._to_json_dict(array_representation, skipkeys=skipkeys)
+
+        Examples
+        --------
+        >>> snn.to_json(net_name="My SNN", indent=None)
+        {"$schema": "https://ornl.github.io/superneuromat/schema/0.1.0/snn.json", "version": "0.1", "networks": [{"meta": {"array_representation": "json-native", "from": {"module": "superneuromat", "version": "3.1.0"}, "format": "snm", "format_version": "0.1", "type": "SNN"}, "data": {"neuron_refractory_periods": [0, 0], "neuron_states": [0.0, 0.0], "num_synapses": 2, "post_synaptic_neuron_ids": [1, 0], "aneg": [], "enable_stdp": [0, 0], "pre_synaptic_neuron_ids": [0, 1], "neuron_thresholds": [3.141592653589793115997963468544185161590576171875, 0.0], "neuron_refractory_periods_state": [0.0, 0.0], "neuron_reset_states": [0.0, 0.0], "stdp_positive_update": true, "input_spikes": {"3": {"nids": [1], "values": [1.0]}}, "synaptic_delays": [1, 1], "allow_signed_leak": false, "num_neurons": 2, "_sparse": "auto", "_backend": "auto", "apos": [], "manual_setup": false, "spike_train": [[1, 0], [0, 1], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], "neuron_leaks": [Infinity, Infinity], "allow_incorrect_stdp_sign": false, "stdp": true, "synaptic_weights": [1.0, 1.0], "default_dtype": "float64", "stdp_negative_update": true}}]}
+        """  # noqa: E501 (line length)
+        d = self._to_json_dict(array_representation, skipkeys=skipkeys, net_name=net_name, extra=extra)
         return json.dumps(d, indent=indent, **kwargs)
 
     def saveas_json(self, fp,
-                    array_representation="json-native", skipkeys=None, indent=2, **kwargs):
+                    array_representation="json-native", skipkeys: list[str] | None = None,
+                    net_name: str | None = None, extra: dict | None = None, indent=2, **kwargs):
         """Exports the SNN to a JSON file.
 
         Parameters
         ----------
-        file_path : str | PathLike
-            The path to the file to save the SNN to.
-
-        skipkeys : list[str], default=None
-            The variables to skip exporting.
-            Can be None or empty list ``[]`` to export all variables.
-
         array_representation : str, default="json-native"
             The representation to use for arrays.
-            Can be "json-native" or "repr" or "base85".
+            Can be "json-native", "base64", or "base85".
+        skipkeys : list[str] | None, default=None
+            The names of variables to omit from the export.
+            Can contain any key from :py:attr:`eqvars`.
+            Can also be None or empty list ``[]`` to export all variables.
+        net_name : str | None, default=None
+            The name of the network to export.
+            If None, the resulting JSON will not have a ``"name"`` key.
+        extra : dict | None, default=None
+            User-defined data to include in the exported JSON.
+            If None, the resulting JSON will not have an ``"extra"`` key.
+        indent : int, default=2
+            The indentation to use for the JSON.
+            Set to ``None`` to get a compact JSON string.
 
+        This function additionally accepts the same arguments as :py:meth:`json.dump`.
 
-        This function also accepts the same arguments as :py:meth:`json.dump`.
+        Examples
+        --------
+        >>> with open('my_model.snn.json', 'w') as f:
+        >>>     snn.saveas_json(f, net_name="My SNN")
         """
-        d = self._to_json_dict(array_representation, skipkeys=skipkeys)
+        d = self._to_json_dict(array_representation, skipkeys=skipkeys, net_name=net_name, extra=extra)
         return json.dump(d, fp, indent=indent, **kwargs)
 
     def from_json_network(self, net_dict: dict, skipkeys: list[str] | tuple[str] | None = None):
@@ -2355,9 +2391,30 @@ class SNN:
         self.connection_ids = {(a, b): i for i, (a, b) in
                                enumerate(zip(self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids))}
 
-    def from_jsons(self, json_str: str, net_id: int | str | list[int | str] = 0,
+    def from_jsons(self, json_str: str, net_id: int | str = 0,
                    skipkeys: list[str] | tuple[str] | None = None):
-        """Create a SNN from a SuperNeuroMat JSON string."""
+        """Create a SNN from a SuperNeuroMat JSON string.
+
+        Parameters
+        ----------
+        json_str : str
+            _description_
+        net_id : int | str (default: 0)
+            ID of the network to load. Can be an integer, which represents its index in the JSON network list,
+            or a string, which represents the name of the network stored in ``json_dict["networks"]["meta"]["name"]``.
+        skipkeys : list[str] | tuple[str] | None (default: None)
+            Keys from ``json_dict["networks"]["data"]`` to skip when loading the network.
+
+        Returns
+        -------
+        self
+            This SNN will be updated with the specified network data from the JSON string.
+
+        Raises
+        ------
+        ValueError
+            If network with given ID not found, or if multiple networks with the given ID are found.
+        """
         from . import json
 
         j = json.loads(json_str)

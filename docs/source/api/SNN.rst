@@ -211,6 +211,10 @@ Methods
    ~SNN.unmemoize
    ~SNN.zero_neuron_states
    ~SNN.zero_refractory_periods
+   ~SNN.rebuild_connection_ids
+   ~SNN.to_json
+   ~SNN.saveas_json
+   ~SNN.from_jsons
 
 
 Attributes

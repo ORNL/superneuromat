@@ -15,14 +15,16 @@ class JSONTest(unittest.TestCase):
 
     """
 
-    def export_array(self, do_print=False):
+    def export_array(self, do_print=False, **kwargs):
         from superneuromat import json
         from math import pi
 
         a = [1.0, 2, 3.3]
         b = [True, False]
         d = {'a': a, 'b': b, 'c': [b, b, pi]}
-        j = json.dumps(d, indent=4, separators=(', ', ': '))
+        kwargs.setdefault('indent', 4)
+        kwargs.setdefault('separators', (', ', ': '))
+        j = json.dumps(d, **kwargs)
         if do_print:
             print()
             print(j)
@@ -51,7 +53,7 @@ class JSONTest(unittest.TestCase):
 class JSONSNNTest(unittest.TestCase):
     array_representation = "json-native"
 
-    def export_snn(self, do_print=False):
+    def export_snn(self, do_print=False, **kwargs):
         """Test exporting a SNN to JSON"""
 
         snn = SNN()
@@ -69,7 +71,7 @@ class JSONSNNTest(unittest.TestCase):
 
         b.add_spike(3, 1)
 
-        s = snn.to_json(array_representation=self.array_representation)
+        s = snn.to_json(array_representation=self.array_representation, **kwargs)
 
         if do_print:
             print()
@@ -83,6 +85,12 @@ class JSONSNNTest(unittest.TestCase):
         print("begin test_export_snn_str")
         self.export_snn(do_print=True)
 
+    def test_export_snn_str_indent_none(self):
+        """Test exporting a SNN to JSON"""
+        print()
+        print("begin test_export_snn_str_indent_none")
+        self.export_snn(do_print=True, indent=None)
+
     def test_import_snn_str(self):
         """Test importing a SNN from JSON
 
@@ -91,7 +99,7 @@ class JSONSNNTest(unittest.TestCase):
         print("begin test_import_snn_str")
         from superneuromat import json, SNN
 
-        snn, s = self.export_snn(do_print=False)
+        snn, s = self.export_snn(do_print=False, net_name="My SNN")
 
         _j = json.loads(s)
 
@@ -103,6 +111,12 @@ class JSONSNNTest(unittest.TestCase):
         new = new.from_jsons(s)
 
         assert snn.__eq__(new, mismatch='raise')
+
+        # test name
+        new = SNN().from_jsons(s, net_id="My SNN")
+        assert snn.__eq__(new, mismatch='raise')
+        self.assertRaises(ValueError, SNN().from_jsons, s, net_id="other")
+        self.assertRaises(IndexError, SNN().from_jsons, s, net_id=1)
 
 
 class JSONBase85SNNTest(JSONSNNTest):
