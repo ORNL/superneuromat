@@ -2274,6 +2274,7 @@ class SNN:
             The indentation to use for the JSON.
             Set to ``None`` to get a compact JSON string.
 
+
         This function additionally accepts the same arguments as :py:meth:`json.dumps`.
 
         Returns
@@ -2312,6 +2313,7 @@ class SNN:
         indent : int, default=2
             The indentation to use for the JSON.
             Set to ``None`` to get a compact JSON string.
+
 
         This function additionally accepts the same arguments as :py:meth:`json.dump`.
 
@@ -2393,7 +2395,7 @@ class SNN:
 
     def from_jsons(self, json_str: str, net_id: int | str = 0,
                    skipkeys: list[str] | tuple[str] | None = None):
-        """Create a SNN from a SuperNeuroMat JSON string.
+        """Update this SNN from a SuperNeuroMat JSON string.
 
         Parameters
         ----------
@@ -2414,6 +2416,12 @@ class SNN:
         ------
         ValueError
             If network with given ID not found, or if multiple networks with the given ID are found.
+
+        Examples
+        --------
+        >>> snn = SNN()
+        >>> with open('my_model.snn.json', 'r') as f:
+        >>>     snn.from_jsons(f.read(), net_id="My SNN")
         """
         from . import json
 
