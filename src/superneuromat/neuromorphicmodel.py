@@ -2378,7 +2378,7 @@ class SNN:
 
         # deal with importing special variables
         if "spike_train" in should_modify:
-            self.spike_train = np.asarray(data["spike_train"], dtype=self.dbin)
+            self.spike_train = [spikes for spikes in np.asarray(data["spike_train"], dtype=self.dbin)]
         if "input_spikes" in should_modify:
             self.input_spikes = {int(k): v for k, v in self.input_spikes.items()}
         if "enable_stdp" in should_modify and not is_encoded_dict(data["enable_stdp"]):
