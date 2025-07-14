@@ -13,6 +13,7 @@ SuperNeuroMAT is a Python package for simulating and analyzing spiking neural ne
 
 [![Tox: Selected Tests](https://github.com/ORNL/superneuromat/actions/workflows/test.yaml/badge.svg)](https://github.com/ORNL/superneuromat/actions/workflows/test.yaml)
 [![Sphinx: Build HTML](https://github.com/ORNL/superneuromat/actions/workflows/pages-build.yaml/badge.svg)](https://github.com/ORNL/superneuromat/actions/workflows/pages-build.yaml)
+[![Build & Upload Python Package](https://github.com/ORNL/superneuromat/actions/workflows/pypi-release.yml/badge.svg)](https://github.com/ORNL/superneuromat/actions/workflows/pypi-release.yml)
 
 Documentation available: https://ORNL.github.io/superneuromat/
 
