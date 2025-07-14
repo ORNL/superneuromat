@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ornl.github.io/superneuromat/schema/0.1/snn.json",
+  "title": "SuperNeuroMAT Networks Schema",
+  "description": "JSON file containing a list of networks for use with SuperNeuroMAT",
+  "type": "object",
+  "properties": {
+    "version": {
+      "description": "The version of the schema",
+      "type": "string",
+      "const": "0.1"
+    },
+    "networks": {
+      "description": "A list of networks",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "The name of the network",
+            "type": "string"
+          },
+          "meta": {
+            "description": "Metadata about the network",
+            "type": "object",
+            "properties": {
+              "array_representation": {
+                "description": "The representation of the network data in the SNN",
+                "type": "string",
+                "enum": ["json-native", "base85", "base64"]
+              },
+              "from": {
+                "description": "The module and version used to create the network",
+                "type": "object",
+                "properties": {
+                  "module": {
+                    "description": "The module used to create the network",
+                    "type": "string"
+                  },
+                  "version": {
+                    "description": "The version of the module used to create the network",
+                    "type": "string"
+                  }
+                },
+                "required": ["module", "version"]
+              },
+              "format": {
+                "description": "The format of the network",
+                "type": "string",
+                "enum": ["snm"]
+              },
+              "format_version": {
+                "description": "The version of the format of the network",
+                "type": "string",
+                "const": "0.1.0"
+              }
+            },
+            "required": ["array_representation", "from", "format", "format_version"]
+          },
+          "data": {
+            "description": "The data of the network",
+            "type": "object"
+          },
+          "extra": {
+            "description": "Extra data about the network",
+            "type": "object"
+          }
+        },
+        "required": ["meta", "data"]
+      }
+    },
+  },
+  "required": ["version", "networks"],
+  "additionalProperties": false
+}
+

@@ -94,6 +94,7 @@ commands = [
     ["python", "test_display.py",],
     ["python", "test_reset.py",],
     ["python", "test_dtype.py",],
+    ["python", "test_json.py",],
 ]
 
 [tool.tox.env.jit]
@@ -157,6 +158,7 @@ commands = [
     ["python", "test_reset.py",],
     ["python", "test_dtype.py",],
     ["python", "test_spikes.py",],
+    ["python", "test_json.py",],
 ]
 
 [tool.tox.env.numpy20]
@@ -172,4 +174,5 @@ commands = [
     ["python", "test_reset.py",],
     ["python", "test_dtype.py",],
     ["python", "test_spikes.py",],
+    ["python", "test_json.py",],
 ]

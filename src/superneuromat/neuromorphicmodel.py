@@ -1,6 +1,7 @@
 """Spiking Neural Network model implementing LIF and STDP using matrix representations."""
 
 from __future__ import annotations
+import sys
 import math
 import copy
 import warnings
@@ -9,6 +10,7 @@ from numpy import typing as npt
 from textwrap import dedent
 from scipy.sparse import csc_array  # scipy is also used for BLAS + numpy (dense matrix)
 from .util import getenv, getenvbool, is_intlike_catch, pretty_spike_train, int_err, float_err
+from . import json
 from .accessor_classes import Neuron, Synapse, NeuronList, SynapseList
 
 from typing import Any, TYPE_CHECKING
@@ -1965,12 +1967,15 @@ class SNN:
         'post_synaptic_neuron_ids',
         'synaptic_weights',
         'synaptic_delays',
+        'connection_ids',
         'default_dtype',
         'enable_stdp',
         'spike_train',
         'input_spikes',
         'stdp', 'apos', 'aneg',
         'stdp_positive_update', 'stdp_negative_update',
+        'allow_incorrect_stdp_sign',
+        'allow_signed_leak',
         '_sparse',
         '_backend',
         'manual_setup',
@@ -1983,10 +1988,27 @@ class SNN:
 
     For memoization (:py:meth:`SNN.memoize()`), this list gives the
     names of variables which can be memoized.
+
+    .. versionchanged:: v3.2.0
+
+        Added ``'connection_ids'`` to the list of public variables.
+
     """
 
-    def __eq__(self, other):
+    def __eq__(self, other, ignore_vars=None, mismatch='ignore'):
         """Checks if two SNNs are equal."""
+
+        ignore_vars = ignore_vars if ignore_vars is not None else []
+
+        def raise_mismatch(key, a, b):
+            if mismatch == 'raise':
+                msg = f"SNNs are not equal. Attribute {key} has different values: {a} != {b}"
+                raise ValueError(msg)
+
+        if mismatch not in ['ignore', 'raise']:
+            msg = f"Invalid value for mismatch: {mismatch}"
+            raise ValueError(msg)
+
         if not isinstance(other, SNN):
             return False
         for var in self.eqvars:
@@ -1994,16 +2016,21 @@ class SNN:
             b = getattr(other, var)
             if isinstance(a, (np.ndarray, csc_array)):
                 if not np.array_equal(a, b):  # pyright: ignore[reportArgumentType]
+                    raise_mismatch(var, a, b)
                     return False
             else:
                 try:
                     if a != b:
+                        raise_mismatch(var, a, b)
                         return False
                 except ValueError as err:
                     try:
                         if np.any(np.asarray(a) != np.asarray(b)):
+                            raise_mismatch(var, a, b)
                             return False
-                    except Exception:
+                    except ValueError as err:
+                        raise
+                    except Exception as err:
                         msg = f"Failed to compare {var}"
                         raise RuntimeError(msg) from err
         # must ensure all other code paths are covered by return False.
@@ -2105,3 +2132,316 @@ class SNN:
         """
         del self.memoized
         self.memoized = {}
+
+    def _to_json_dict(self, array_representation="json-native", skipkeys=None,
+                      net_name=None, extra=None):
+        """Exports the SNN to a dictionary.
+
+        Parameters
+        ----------
+        array_representation : str, default="json-native"
+            The representation to use for arrays.
+            Can be "json-native", "base64", or "base85".
+        skipkeys : list[str] | None, default=None
+            The names of variables to omit from the export.
+            Can contain any key from :py:attr:`eqvars`.
+            Can also be None or empty list ``[]`` to export all variables.
+        net_name : str | None, default=None
+            The name of the network to export.
+            If None, the resulting JSON will not have a ``"name"`` key.
+        extra : dict | None, default=None
+            User-defined data to include in the exported JSON.
+            If None, the resulting JSON will not have an ``"extra"`` key.
+
+        Returns
+        -------
+        dict
+            The SNN as a dictionary.
+        """
+        from . import __version__ as snm_version
+        skipkeys = [] if skipkeys is None else skipkeys
+        skipkeys += ["connection_ids"]
+        varnames = set(self.eqvars) - set(skipkeys)
+        arep = array_representation
+
+        def is_numeric_array(o):
+            is_np = isinstance(o, np.ndarray) and o.dtype.kind in 'iuf'
+            is_py = isinstance(o, (tuple, list)) and all([isinstance(x, (int, float, bool)) for x in o])
+            return is_np or is_py
+
+        def is_bool_array(o):
+            if isinstance(o, np.ndarray):
+                try:
+                    return np.issubdtype(o.dtype, np.bool)
+                except AttributeError:
+                    return issubclass(o.dtype.type, np.bool_)
+            else:
+                return all([isinstance(x, bool) for x in o])
+
+        def default(self, o):
+            if isinstance(o, np.ndarray):
+                if is_bool_array(o):
+                    return o.astype(np.int_).tolist()
+                return o.tolist()
+            if issubclass(o, np.generic):
+                return o.__name__
+            msg = f'Object of type {o.__class__.__name__} is not JSON serializable'
+            raise TypeError(msg)
+
+        def get_dtype(o):
+            byteorder = o.dtype.byteorder
+            if byteorder == '=':
+                if sys.byteorder == 'little':
+                    byteorder = '<'
+                elif sys.byteorder == 'big':
+                    byteorder = '>'
+                else:
+                    byteorder = sys.byteorder
+            if byteorder not in ['<', '>', '|']:
+                msg = f"Unknown byteorder {byteorder}"
+                raise RuntimeError(msg)
+            return byteorder + o.dtype.char
+
+        if arep == "json-native":
+            data = {var: getattr(self, var) for var in varnames}
+
+            for k, v in data.items():
+                if is_numeric_array(v) and is_bool_array(v):
+                    data[k] = np.asarray(v, dtype=np.int_).tolist()
+        elif arep in ["base85", "base64"]:
+            from base64 import b85encode, b64encode
+            encode = b85encode if arep == "base85" else b64encode
+            data = {var: getattr(self, var) for var in varnames}
+            for k, v in data.items():
+                if is_numeric_array(v):
+                    dtype = self.dbin if is_bool_array(v) else self.dd
+                    arr = np.asarray(v, dtype=dtype)
+                    data[k] = {
+                        "dtype": get_dtype(arr),
+                        "original_type": v.__class__.__name__,
+                        arep: encode(arr.tobytes()).decode('utf-8')
+                    }
+        else:
+            raise ValueError("array_representation must be 'json-native' or 'base85'.")
+
+        json.JSONEncoder.default = default
+
+        d = {
+            "$schema": "https://ornl.github.io/superneuromat/schema/0.1/snn.json",
+            "version": "0.1",
+            "networks": [],
+        }
+        networkd = {
+            "meta": {
+                "array_representation": arep,
+                "from": {  # We don't validate this right now.
+                    "module": "superneuromat",
+                    "version": snm_version,
+                },
+                "format": "snm",
+                "format_version": "0.1",  # Not currently validating this
+                "type": self.__class__.__name__,  # differentiate from other snm network types
+            },
+            "data": data,
+        }
+        if net_name is not None:
+            networkd["name"] = net_name
+        if extra is not None and isinstance(extra, dict):
+            d["extra"] = extra
+        d["networks"].append(networkd)
+        return d
+
+    def to_json(self, array_representation="json-native", skipkeys: list[str] | None = None,
+                net_name: str | None = None, extra: dict | None = None, indent=2, **kwargs):
+        """Exports the SNN to a JSON string.
+
+        Parameters
+        ----------
+        array_representation : str, default="json-native"
+            The representation to use for arrays.
+            Can be "json-native", "base64", or "base85".
+        skipkeys : list[str] | None, default=None
+            The names of variables to omit from the export.
+            Can contain any key from :py:attr:`eqvars`.
+            Can also be None or empty list ``[]`` to export all variables.
+        net_name : str | None, default=None
+            The name of the network to export.
+            If None, the resulting JSON will not have a ``"name"`` key.
+        extra : dict | None, default=None
+            User-defined data to include in the exported JSON.
+            If None, the resulting JSON will not have an ``"extra"`` key.
+        indent : int, default=2
+            The indentation to use for the JSON.
+            Set to ``None`` to get a compact JSON string.
+
+
+        This function additionally accepts the same arguments as :py:meth:`json.dumps`.
+
+        Returns
+        -------
+        str
+            The SNN as a JSON string.
+
+        Examples
+        --------
+        >>> snn.to_json(net_name="My SNN", indent=None)
+        {"$schema": "https://ornl.github.io/superneuromat/schema/0.1/snn.json", "version": "0.1", "networks": [{"meta": {"array_representation": "json-native", "from": {"module": "superneuromat", "version": "3.1.0"}, "format": "snm", "format_version": "0.1", "type": "SNN"}, "data": {"neuron_refractory_periods": [0, 0], "neuron_states": [0.0, 0.0], "num_synapses": 2, "post_synaptic_neuron_ids": [1, 0], "aneg": [], "enable_stdp": [0, 0], "pre_synaptic_neuron_ids": [0, 1], "neuron_thresholds": [3.141592653589793115997963468544185161590576171875, 0.0], "neuron_refractory_periods_state": [0.0, 0.0], "neuron_reset_states": [0.0, 0.0], "stdp_positive_update": true, "input_spikes": {"3": {"nids": [1], "values": [1.0]}}, "synaptic_delays": [1, 1], "allow_signed_leak": false, "num_neurons": 2, "_sparse": "auto", "_backend": "auto", "apos": [], "manual_setup": false, "spike_train": [[1, 0], [0, 1], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], "neuron_leaks": [Infinity, Infinity], "allow_incorrect_stdp_sign": false, "stdp": true, "synaptic_weights": [1.0, 1.0], "default_dtype": "float64", "stdp_negative_update": true}}]}
+        """  # noqa: E501 (line length)
+        d = self._to_json_dict(array_representation, skipkeys=skipkeys, net_name=net_name, extra=extra)
+        return json.dumps(d, indent=indent, **kwargs)
+
+    def saveas_json(self, fp,
+                    array_representation="json-native", skipkeys: list[str] | None = None,
+                    net_name: str | None = None, extra: dict | None = None, indent=2, **kwargs):
+        """Exports the SNN to a JSON file.
+
+        Parameters
+        ----------
+        array_representation : str, default="json-native"
+            The representation to use for arrays.
+            Can be "json-native", "base64", or "base85".
+        skipkeys : list[str] | None, default=None
+            The names of variables to omit from the export.
+            Can contain any key from :py:attr:`eqvars`.
+            Can also be None or empty list ``[]`` to export all variables.
+        net_name : str | None, default=None
+            The name of the network to export.
+            If None, the resulting JSON will not have a ``"name"`` key.
+        extra : dict | None, default=None
+            User-defined data to include in the exported JSON.
+            If None, the resulting JSON will not have an ``"extra"`` key.
+        indent : int, default=2
+            The indentation to use for the JSON.
+            Set to ``None`` to get a compact JSON string.
+
+
+        This function additionally accepts the same arguments as :py:meth:`json.dump`.
+
+        Examples
+        --------
+        >>> with open('my_model.snn.json', 'w') as f:
+        >>>     snn.saveas_json(f, net_name="My SNN")
+        """
+        d = self._to_json_dict(array_representation, skipkeys=skipkeys, net_name=net_name, extra=extra)
+        return json.dump(d, fp, indent=indent, **kwargs)
+
+    def from_json_network(self, net_dict: dict, skipkeys: list[str] | tuple[str] | None = None):
+        from base64 import b85decode, b64decode
+        if net_dict["meta"]["format"] != "snm" or net_dict["meta"]["type"] != self.__class__.__name__:
+            msg = f"Could not import network with format {net_dict['meta']['format']}. "
+            msg += "Only networks in the snm format are supported."
+            raise NotImplementedError(msg)
+
+        def is_encoded_dict(d) -> bool | str:
+            # return the encoding type if it's a dict with a base85 or base64 key
+            if isinstance(d, dict):
+                for k in ("base85", "base64"):
+                    if k in d:
+                        return k
+            return False
+
+        data = net_dict["data"]
+
+        skipkeys = set(skipkeys) if skipkeys is not None else set()
+        should_modify = set(data.keys()) - skipkeys  # self variables to modify
+
+        # set our default dtype before setting the arrays
+        if "default_dtype" in should_modify:
+            np.dtype(data["default_dtype"])  # test if dtype is valid
+            self.default_dtype = getattr(np, data["default_dtype"])
+
+        # variables which we'll take care of outside of the loop
+        special_vars = {"default_dtype", "spike_train", "connection_ids", "num_neurons", "num_synapses"}
+
+        # set most of our properties
+        for key in should_modify - special_vars:
+            value = data[key]
+            if (arep := is_encoded_dict(value)):
+                bdict = {"dtype": np.dtype(self.dd), "original_type": "list"}
+                bdict.update(value)
+                decode = b85decode if arep == "base85" else b64decode
+                value = np.frombuffer(decode(value[arep]), dtype=bdict["dtype"])
+                if bdict["original_type"] == "list":
+                    value = value.tolist()
+            try:
+                setattr(self, key, value)
+            except AttributeError as err:
+                if key not in self.eqvars:
+                    msg = f"Invalid key: {key}"
+                    raise ValueError(msg) from err
+
+        # deal with importing special variables
+        if "spike_train" in should_modify:
+            self.spike_train = np.asarray(data["spike_train"], dtype=self.dbin)
+        if "input_spikes" in should_modify:
+            self.input_spikes = {int(k): v for k, v in self.input_spikes.items()}
+        if "enable_stdp" in should_modify and not is_encoded_dict(data["enable_stdp"]):
+            self.enable_stdp = np.asarray(self.enable_stdp, dtype=self.dbin).tolist()
+
+        # deal with variables which derive from other variables (not set from the JSON)
+        if "connection_ids" not in skipkeys:
+            self.rebuild_connection_ids()
+            if "num_synapses" in should_modify:  # if num_synapses is in the JSON, verify it
+                if data["num_synapses"] != len(self.connection_ids):
+                    msg = f"num_synapses ({data['num_synapses']}) does not match the number of synapses"
+                    msg += f"in the network ({len(self.connection_ids)})."
+                    raise RuntimeError(msg)
+
+        return self
+
+    def rebuild_connection_ids(self):
+        self.connection_ids = {(a, b): i for i, (a, b) in
+                               enumerate(zip(self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids))}
+
+    def from_jsons(self, json_str: str, net_id: int | str = 0,
+                   skipkeys: list[str] | tuple[str] | None = None):
+        """Update this SNN from a SuperNeuroMat JSON string.
+
+        Parameters
+        ----------
+        json_str : str
+            _description_
+        net_id : int | str (default: 0)
+            ID of the network to load. Can be an integer, which represents its index in the JSON network list,
+            or a string, which represents the name of the network stored in ``json_dict["networks"]["meta"]["name"]``.
+        skipkeys : list[str] | tuple[str] | None (default: None)
+            Keys from ``json_dict["networks"]["data"]`` to skip when loading the network.
+
+        Returns
+        -------
+        self
+            This SNN will be updated with the specified network data from the JSON string.
+
+        Raises
+        ------
+        ValueError
+            If network with given ID not found, or if multiple networks with the given ID are found.
+
+        Examples
+        --------
+        >>> snn = SNN()
+        >>> with open('my_model.snn.json', 'r') as f:
+        >>>     snn.from_jsons(f.read(), net_id="My SNN")
+        """
+        from . import json
+
+        j = json.loads(json_str)
+
+        skipkeys = list(skipkeys) if skipkeys is not None else []
+
+        nets = j["networks"]
+        if isinstance(net_id, int):
+            net_dict = nets[net_id]
+        elif isinstance(net_id, str):
+            net_dicts = [net for net in nets if net.get("name", None) == net_id]
+            if len(net_dicts) == 0:
+                msg = f"No network with name {net_id} found."
+                raise ValueError(msg)
+            elif len(net_dicts) > 1:
+                msg = f"Multiple networks with name {net_id} found."
+                raise ValueError(msg)
+            net_dict = net_dicts[0]
+        else:
+            raise NotImplementedError("net_id must be int or str. Importing multiple networks is not supported yet.")
+
+        return self.from_json_network(net_dict, skipkeys=skipkeys)
