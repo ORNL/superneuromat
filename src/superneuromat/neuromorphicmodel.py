@@ -2133,7 +2133,8 @@ class SNN:
         del self.memoized
         self.memoized = {}
 
-    def _to_json_dict(self, array_representation="json-native", skipkeys=None,
+    def _to_json_dict(self, array_representation="json-native",
+                      skipkeys: list[str] | tuple[str] | set[str] | None = None,
                       net_name=None, extra=None):
         """Exports the SNN to a dictionary.
 
@@ -2251,7 +2252,8 @@ class SNN:
         d["networks"].append(networkd)
         return d
 
-    def to_json(self, array_representation="json-native", skipkeys: list[str] | None = None,
+    def to_json(self, array_representation="json-native",
+                skipkeys: list[str] | tuple[str] | set[str] | None = None,
                 net_name: str | None = None, extra: dict | None = None, indent=2, **kwargs):
         """Exports the SNN to a JSON string.
 
@@ -2291,7 +2293,8 @@ class SNN:
         return json.dumps(d, indent=indent, **kwargs)
 
     def saveas_json(self, fp,
-                    array_representation="json-native", skipkeys: list[str] | None = None,
+                    array_representation="json-native",
+                    skipkeys: list[str] | tuple[str] | set[str] | None = None,
                     net_name: str | None = None, extra: dict | None = None, indent=2, **kwargs):
         """Exports the SNN to a JSON file.
 
