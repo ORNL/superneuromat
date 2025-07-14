@@ -86,10 +86,22 @@ class JSONSNNTest(unittest.TestCase):
         self.export_snn(do_print=True)
 
     def test_export_snn_str_indent_none(self):
-        """Test exporting a SNN to JSON"""
+        """Test exporting a SNN to JSON with no indents"""
         print()
         print("begin test_export_snn_str_indent_none")
         self.export_snn(do_print=True, indent=None)
+
+    def test_export_snn_str_skipkeys(self):
+        """Test exporting a SNN to JSON while skipping keys"""
+        print()
+        print("begin test_export_snn_str_skipvars")
+        _snn, s = self.export_snn(do_print=False)
+        eqvars = set(SNN.eqvars)
+        eqvars.discard('connection_ids')
+        for key in eqvars:
+            assert key in s
+        _snn, s = self.export_snn(do_print=False, skipkeys=["synaptic_weights"])
+        assert "synaptic_weights" not in s
 
     def test_import_snn_str(self):
         """Test importing a SNN from JSON
@@ -117,6 +129,23 @@ class JSONSNNTest(unittest.TestCase):
         assert snn.__eq__(new, mismatch='raise')
         self.assertRaises(ValueError, SNN().from_jsons, s, net_id="other")
         self.assertRaises(IndexError, SNN().from_jsons, s, net_id=1)
+
+    def test_import_snn_skipkeys(self):
+        """Test importing a SNN from JSON
+
+        verify skipping keys does not import them
+        """
+        print("begin test_import_snn_str")
+        from superneuromat import json, SNN
+
+        snn, s = self.export_snn(do_print=False)
+
+        new = SNN()
+
+        new = new.from_jsons(s, skipkeys=["synaptic_weights"])
+
+        assert snn.synaptic_weights
+        assert not new.synaptic_weights
 
 
 class JSONBase85SNNTest(JSONSNNTest):

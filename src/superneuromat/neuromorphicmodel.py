@@ -2325,7 +2325,7 @@ class SNN:
         d = self._to_json_dict(array_representation, skipkeys=skipkeys, net_name=net_name, extra=extra)
         return json.dump(d, fp, indent=indent, **kwargs)
 
-    def from_json_network(self, net_dict: dict, skipkeys: list[str] | tuple[str] | None = None):
+    def from_json_network(self, net_dict: dict, skipkeys: list[str] | tuple[str] | set[str] | None = None):
         from base64 import b85decode, b64decode
         if net_dict["meta"]["format"] != "snm" or net_dict["meta"]["type"] != self.__class__.__name__:
             msg = f"Could not import network with format {net_dict['meta']['format']}. "
@@ -2342,7 +2342,13 @@ class SNN:
 
         data = net_dict["data"]
 
-        skipkeys = set(skipkeys) if skipkeys is not None else set()
+        if skipkeys is None:
+            skipkeys = set()
+        else:
+            if isinstance(skipkeys, str):
+                raise TypeError("from_json_network() received a string for parameter `skipkeys`, "
+                                "but a list, tuple, set, or None was expected.")
+            skipkeys = set(skipkeys)
         should_modify = set(data.keys()) - skipkeys  # self variables to modify
 
         # set our default dtype before setting the arrays
@@ -2426,8 +2432,6 @@ class SNN:
         from . import json
 
         j = json.loads(json_str)
-
-        skipkeys = list(skipkeys) if skipkeys is not None else []
 
         nets = j["networks"]
         if isinstance(net_id, int):
