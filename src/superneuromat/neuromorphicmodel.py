@@ -71,6 +71,17 @@ def check_gpu():
             raise ImportError(msg) from err
 
 
+def normalize_skipkeys(skipkeys, function_name: str = '') -> set:
+    """Normalize skipkeys to a set of strings"""
+    if skipkeys is None:
+        return set()
+    else:
+        if isinstance(skipkeys, str):
+            raise TypeError("from_json_network() received a string for parameter `skipkeys`, "
+                            "but a list, tuple, set, or None was expected.")
+        return set(skipkeys)
+
+
 class SNN:
     """Defines a spiking neural network with neurons and synapses"""
 
@@ -2160,9 +2171,9 @@ class SNN:
             The SNN as a dictionary.
         """
         from . import __version__ as snm_version
-        skipkeys = [] if skipkeys is None else skipkeys
-        skipkeys += ["connection_ids"]
-        varnames = set(self.eqvars) - set(skipkeys)
+        skipkeys = normalize_skipkeys(skipkeys, function_name="_to_json_dict()")
+        skipkeys |= {"connection_ids"}
+        varnames = set(self.eqvars) - skipkeys
         arep = array_representation
 
         def is_numeric_array(o):
@@ -2345,13 +2356,7 @@ class SNN:
 
         data = net_dict["data"]
 
-        if skipkeys is None:
-            skipkeys = set()
-        else:
-            if isinstance(skipkeys, str):
-                raise TypeError("from_json_network() received a string for parameter `skipkeys`, "
-                                "but a list, tuple, set, or None was expected.")
-            skipkeys = set(skipkeys)
+        skipkeys = normalize_skipkeys(skipkeys, function_name="from_json_network()")
         should_modify = set(data.keys()) - skipkeys  # self variables to modify
 
         # set our default dtype before setting the arrays
