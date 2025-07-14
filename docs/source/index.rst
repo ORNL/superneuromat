@@ -47,6 +47,7 @@ Then, you can import the :py:mod:`superneuromat` package:
 
    from superneuromat import SNN
 
+For those coming from older versions of SuperNeuroMAT, see the :doc:`migration guide <guide/migration2>`.
 
 Cite SuperNeuroMAT
 ------------------

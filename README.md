@@ -3,11 +3,11 @@
   <source media="(prefers-color-scheme: dark)" srcset="./docs/source/_static/superneuro-pcg-arrow-dark-tag.svg">
   <img alt="SuperNeuroMAT Logo" src="./docs/source/_static/superneuro-pcg-arrow-blue-tag.svg" width='600rem'>
 </picture>
-
-The Super Speedy Spike Simulator.
 </div>
 
 # SuperNeuroMAT
+
+### The Super Speedy Spike Simulator.
 
 SuperNeuroMAT is a Python package for simulating and analyzing spiking neural networks.
 
@@ -55,6 +55,8 @@ from superneuromat import SNN
 ```
 
 See the [tutorial](https://ORNL.github.io/superneuromat/guide/firstrun.html) for more.
+
+Additionally, the [migration guide](https://ornl.github.io/superneuromat/guide/migration2.html) may be of use to those coming from older versions of SuperNeuroMAT.
 
 ## Citation
 1. Please cite SuperNeuroMAT using:

@@ -5,9 +5,11 @@ Migrating from older versions of SuperNeuroMAT
 .. currentmodule:: superneuromat
 
 
-This page describes the necessary changes to migrate your code from SuperNeuroMAT v1.x.x to v2.1.0.
+This page describes the necessary changes to migrate your code from SuperNeuroMAT v1.x.x to the latest version, v\ |release|.
 
-Only breaking changes are covered here.
+Only breaking changes are covered on this page.
+
+For more information on the changes, see the GitHub release notes: https://github.com/ORNL/superneuromat/releases.
 
 
 ``2.0.x`` to ``3.x.x``
