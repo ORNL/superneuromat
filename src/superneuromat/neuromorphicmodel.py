@@ -807,7 +807,7 @@ class SNN:
         for time, spikes in self.input_spikes.items():
             for neuron, value in zip(spikes["nids"], spikes["values"]):
                 all_spikes.append((time, neuron, value))
-        if max_entries is None or len(self.input_spikes) <= max_entries:
+        if max_entries is None or len(all_spikes) <= max_entries:
             rows = (row(time, nid, value) for time, nid, value in all_spikes)
         else:
             fi = max_entries // 2
