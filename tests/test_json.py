@@ -103,6 +103,18 @@ class JSONSNNTest(unittest.TestCase):
         _snn, s = self.export_snn(do_print=False, skipkeys=["synaptic_weights"])
         assert "synaptic_weights" not in s
 
+    def test_export_snn_str_extra(self):
+        """Test exporting a SNN to JSON with extra parameters."""
+        print()
+        print("begin test_export_snn_str_extra")
+        _snn, s = self.export_snn(do_print=False)
+        assert "foo" not in s
+        assert "extra" not in s
+        _snn, s = self.export_snn(do_print=False, extra={"foo": "bar"})
+        print(s)
+        assert "foo" in s
+        assert "extra" in s
+
     def test_import_snn_str(self):
         """Test importing a SNN from JSON
 
