@@ -176,6 +176,132 @@ class Neuron:
             if value != 0.0 or exist == 'overwrite':
                 self.add_spike(time + time_offset, value, exist=exist)
 
+    @property
+    def incoming_synapses(self) -> list[Synapse]:
+        """Returns a list of the synapses that have this neuron as their post-synaptic neuron."""
+        return self.m.get_synapses_by_post(self.idx)
+
+    @property
+    def incoming_synaptic_ids(self) -> list[int]:
+        """Returns a list of the synaptic ids of the synapses that have this neuron as their post-synaptic neuron."""
+        return self.m.get_synaptic_ids_by_post(self.idx)
+
+    @property
+    def outgoing_synapses(self) -> list[Synapse]:
+        """Returns a list of the synapses that have this neuron as their pre-synaptic neuron."""
+        return self.m.get_synapses_by_pre(self.idx)
+
+    @property
+    def outgoing_synaptic_ids(self) -> list[int]:
+        """Returns a list of the synaptic ids of the synapses that have this neuron as their pre-synaptic neuron."""
+        return self.m.get_synaptic_ids_by_pre(self.idx)
+
+    @property
+    def parents(self) -> list[Neuron]:
+        """Returns a list of the parent neurons of this neuron."""
+        return [syn.pre for syn in self.incoming_synapses]
+
+    @property
+    def parent_ids(self) -> list[int]:
+        """Returns a list of the IDs of the parent neurons of this neuron."""
+        return [syn.pre_id for syn in self.incoming_synapses]
+
+    @property
+    def children(self) -> list[Neuron]:
+        """Returns a list of the child neurons of this neuron."""
+        return [syn.post for syn in self.outgoing_synapses]
+
+    @property
+    def child_ids(self) -> list[int]:
+        """Returns a list of the IDs of the child neurons of this neuron."""
+        return [syn.post_id for syn in self.outgoing_synapses]
+
+    def get_synapse_to(self, neuron: int | Neuron) -> Synapse:
+        """Returns the synapse connecting this neuron to the given neuron (directional).
+
+        Parameters
+        ----------
+        neuron : Neuron | int
+            The neuron to which this neuron is connected.
+
+        Returns
+        -------
+        Synapse
+            The synapse connecting this neuron to the given neuron.
+
+        Raises
+        ------
+        TypeError
+            If `neuron` is not a Neuron or neuron ID (int).
+        IndexError
+            If no matching synapse is found.
+        """
+        return self.m.get_synapse(self.idx, neuron)
+
+    def get_synaptic_id_to(self, neuron: int | Neuron) -> int | None:
+        """Returns the synaptic id of the synapse connecting this neuron to the given neuron (directional).
+
+        Parameters
+        ----------
+        neuron : Neuron | int
+            The neuron to which this neuron is connected.
+
+        Returns
+        -------
+        int | None
+            The synaptic id of the synapse connecting this neuron to the given neuron.
+
+        Raises
+        ------
+        TypeError
+            If `neuron` is not a Neuron or neuron ID (int).
+        IndexError
+            If no matching synapse is found.
+        """
+        return self.m.get_synapse_id(self.idx, neuron)
+
+    def get_synapse_from(self, neuron: int | Neuron) -> Synapse:
+        """Returns the synapse connecting the given neuron to this neuron (directional).
+
+        Parameters
+        ----------
+        neuron : Neuron | int
+            The neuron which sends spikes to this neuron.
+
+        Returns
+        -------
+        Synapse
+            The synapse connecting the given neuron to this neuron.
+
+        Raises
+        ------
+        TypeError
+            If `neuron` is not a Neuron or neuron ID (int).
+        IndexError
+            If no matching synapse is found.
+        """
+        return self.m.get_synapse(neuron, self.idx)
+
+    def get_synaptic_id_from(self, neuron: int | Neuron) -> int | None:
+        """Returns the synaptic id of the synapse connecting the given neuron to this neuron (directional).
+
+        Parameters
+        ----------
+        neuron : Neuron | int
+            The neuron which sends spikes to this neuron.
+
+        Returns
+        -------
+        int | None
+            The synaptic id of the synapse connecting the given neuron to this neuron.
+
+        Raises
+        ------
+        TypeError
+            If `neuron` is not a Neuron or neuron ID (int).
+        """
+        return self.m.get_synaptic_id(neuron, self.idx)
+
     def connect_child(self, child, weight: float = 1.0, delay: int = 1, stdp_enabled: bool = False,
                       exist='error') -> Synapse:
         """Connect this neuron to a child neuron.
