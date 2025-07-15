@@ -68,8 +68,9 @@ intersphinx_mapping = {
 
 
 html_theme = 'pydata_sphinx_theme'
-html_static_path = ['_static', 'schema']
+html_static_path = ['_static']
 html_title = "SuperNeuroMAT"
+html_extra_path = ['includeroot/']
 
 github_version = "main"
 
