@@ -68,7 +68,7 @@
         },
         "required": ["meta", "data"]
       }
-    },
+    }
   },
   "required": ["version", "networks"],
   "additionalProperties": false
