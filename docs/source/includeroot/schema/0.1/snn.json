@@ -52,7 +52,7 @@
               "format_version": {
                 "description": "The version of the format of the network",
                 "type": "string",
-                "const": "0.1.0"
+                "const": "0.1"
               }
             },
             "required": ["array_representation", "from", "format", "format_version"]
