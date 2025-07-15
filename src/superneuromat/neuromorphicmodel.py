@@ -395,7 +395,7 @@ class SNN:
         msg = f"Synapse not found between neurons {pre_id} and {post_id}."
         raise IndexError(msg)
 
-    def get_synapse_id(self, pre_id: int | Neuron, post_id: int | Neuron) -> int | None:
+    def get_synaptic_id(self, pre_id: int | Neuron, post_id: int | Neuron) -> int | None:
         """Returns the id of the synapse connecting the given pre- and post-synaptic neurons.
 
         Parameters
@@ -421,6 +421,10 @@ class SNN:
         if not (is_intlike_catch(pre_id) and is_intlike_catch(post_id)):
             raise TypeError("pre_id and post_id must be int or Neuron.")
         return self.connection_ids.get((pre_id, post_id), None)
+
+    def get_synapse_id(self, pre_id: int | Neuron, post_id: int | Neuron) -> int | None:
+        """Alias to get_synaptic_id"""
+        return self.get_synaptic_id(pre_id, post_id)
 
     @property
     def stdp_time_steps(self) -> int:

@@ -159,7 +159,7 @@ Methods
    ~SNN.get_synapse_df
    ~SNN.get_synapses_by_post
    ~SNN.get_synapses_by_pre
-   ~SNN.get_synapse_id
+   ~SNN.get_synaptic_id
    ~SNN.get_synaptic_ids_by_post
    ~SNN.get_synaptic_ids_by_pre
    ~SNN.get_weights_df
