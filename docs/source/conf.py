@@ -107,7 +107,14 @@ def linkcode_resolve(domain, info):
     else:
         module = inspect.getmodule(obj)
     abspath = pl.Path(module.__file__)
-    filepath = abspath.relative_to(project_root).as_posix()
+    parts = abspath.parts
+    if 'site-packages' in parts:
+        package_parts = parts[parts.index('site-packages'):]
+        package_path = pl.Path(*package_parts)
+        filepath = 'src' / package_path.relative_to('site-packages')
+        filepath = filepath.as_posix()
+    else:
+        filepath = abspath.relative_to(project_root).as_posix()
 
     name_parts = fullname.split('.')
     # antecedents = [module]
@@ -125,7 +132,7 @@ def linkcode_resolve(domain, info):
             break
         try:
             lineno = inspect.getsourcelines(child)[1]
-        except TypeError as err:
+        except TypeError:
             break
         obj = child
 
