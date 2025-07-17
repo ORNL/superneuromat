@@ -86,12 +86,51 @@ github_project_url = "https://github.com/ORNL/superneuromat"
 
 
 def linkcode_resolve(domain, info):
+    import importlib as il
+    import inspect
+    import pathlib as pl
+    import itertools as it
+    this_dir = pl.Path(__file__).parent
+    project_root = this_dir.parent.parent
     if domain != 'py':
         return None
-    if not info['module']:
+    modulename, fullname = info.get('module', None), info.get('fullname', None)
+    if modulename is None or fullname is None:
         return None
-    filename = info['module'].replace('.', '/')
-    return f"{github_project_url}/blob/{github_version}/src/{filename}.py"
+
+    module = il.import_module(modulename)
+
+    objname = fullname.split('.')[0]
+    obj = getattr(module, objname)
+    if inspect.ismodule(obj):
+        module = obj
+    else:
+        module = inspect.getmodule(obj)
+    abspath = pl.Path(module.__file__)
+    filepath = abspath.relative_to(project_root).as_posix()
+
+    name_parts = fullname.split('.')
+    # antecedents = [module]
+
+    obj = module
+    try:
+        lineno = inspect.getsourcelines(obj)[1]
+    except TypeError:
+        lineno = None
+    for child_name in name_parts:
+        try:
+            child = getattr(obj, child_name)
+        except AttributeError:
+            print(f"Failed to resolve {objname}.{child_name}")
+            break
+        try:
+            lineno = inspect.getsourcelines(child)[1]
+        except TypeError as err:
+            break
+        obj = child
+
+    suffix = f"#L{lineno}" if lineno else ""
+    return f"{github_project_url}/blob/{github_version}/{filepath}{suffix}"
 
 
 numpydoc_class_members_toctree = False
