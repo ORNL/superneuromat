@@ -51,7 +51,7 @@ jobs:
     - name: Verify installation
       run: |
         python -c "import sys; print(sys.exec_prefix)"
-        python -c "import superneuromat"
+        python -c "import superneuromat; print(superneuromat.__version__)"
         uv pip show superneuromat
     - name: Build HTML
       run: |
