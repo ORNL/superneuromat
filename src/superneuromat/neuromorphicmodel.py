@@ -1478,8 +1478,89 @@ class SNN:
     def clear_spike_train(self):
         self.spike_train = []
 
-    def clear_input_spikes(self):
-        self.input_spikes = {}
+    def clear_input_spikes(self, t: int | slice | list | np.ndarray | None = None,
+                           destination: int | Neuron | slice | list | np.ndarray | None = None,
+                           remove_empty: bool = True):
+        """Delete input spikes from the SNN.
+
+        Parameters
+        ----------
+        t : int | slice | list | np.ndarray | None, default=None
+            The time step(s) from which to delete input spikes.
+            If ``None``, delete all input spikes.
+        destination : int | Neuron | slice | list | np.ndarray | None, default=None
+            The neuron(s) from which to delete input spikes.
+            If ``None``, delete all input spikes from the given time step(s).
+
+        Examples
+        --------
+        >>> snn.clear_input_spikes(t=0, destination=0)
+        >>> snn.clear_input_spikes(t=slice(0, 10), destination=slice(0, 10))
+        >>> snn.clear_input_spikes(t=np.arange(0, 10), destination=np.arange(0, 10))
+        >>> snn.clear_input_spikes(t=slice(0, 10), destination=np.arange(0, 10))
+        >>> snn.clear_input_spikes(t=slice(0, 10), destination=Neuron(0))
+        """
+        if t is None and destination is None:
+            self.input_spikes = {}  # easy case. just delete all spikes.
+            return
+
+        # normalize times to delete
+        if isinstance(t, slice):
+            times_to_delete = set(self.input_spikes.keys()) & set(list(range(t.stop))[t])
+        elif isinstance(t, int):
+            times_to_delete = [t] if t in self.input_spikes else []
+        elif t is None:
+            times_to_delete = list(self.input_spikes.keys())
+        else:
+            if isinstance(t, np.ndarray):
+                times_to_delete = t.tolist()
+            else:
+                try:
+                    times_to_delete = list(t)
+                except (TypeError, ValueError) as err:
+                    msg = f"clear_input_spikes() expected int, slice, list, or None, but received {type(t)}"
+                    raise TypeError(msg) from err
+
+        def as_int(neuron: int | Neuron) -> int:
+            if isinstance(neuron, Neuron):
+                return neuron.idx
+            else:
+                return int(neuron)
+
+        def neuron_slice_indices(s: slice) -> list[int]:
+            start, stop, step = as_int(s.start), as_int(s.stop), as_int(s.step)
+            return list(range(start, stop, step))
+
+        # normalize destinations to delete
+        if isinstance(destination, (int, Neuron)):
+            destination = [as_int(destination)]
+        elif destination is None:
+            pass
+        elif isinstance(destination, slice):
+            destination = neuron_slice_indices(destination)
+        else:
+            if isinstance(destination, np.ndarray):
+                destination = destination.tolist()
+            else:
+                try:
+                    destination = [as_int(idx) for idx in destination]
+                except (TypeError, ValueError) as err:
+                    msg = f"clear_input_spikes() expected int, slice, list, or None, but received {type(destination)}"
+                    raise TypeError(msg) from err
+
+        for time in times_to_delete:
+            if destination is None:
+                del self.input_spikes[time]
+            else:
+                nids, values = self.input_spikes[time]["nids"], self.input_spikes[time]["values"]
+                for nid in destination:
+                    if nid in nids:
+                        idx = nids.index(nid)
+                        del nids[idx]
+                        del values[idx]
+
+        if remove_empty:
+            self.input_spikes = {k: v for k, v in self.input_spikes.items() if v['nids'] and v['values']}
 
     def reset(self):
         """Reset the SNN's neuron states, refractory periods, spike train, and input spikes.

@@ -146,6 +146,42 @@ class SpikeTest(unittest.TestCase):
 
         snn.print_spike_train()
 
+    def test_delete_spikes(self):
+        """Test the clear_input_spikes function"""
+
+        print("begin test_delete_spikes")
+
+        snn = SNN()
+
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+
+        b.add_spikes([1.0, 1.0])
+        a.add_spikes([
+            (5, 1.0),
+            (6, 1.0),
+            (7, 1.0),
+            (8, 1.0),
+            (9, 1.0),
+        ])
+        print(snn.input_spikes_info())
+        assert b.idx in snn.input_spikes[0]["nids"]
+
+        snn.clear_input_spikes(t=slice(3, 6))
+        snn.clear_input_spikes(t=8, destination=b)
+        snn.clear_input_spikes(t=[7])
+        snn.clear_input_spikes(t=np.array([6]), destination=[a])
+        snn.clear_input_spikes(destination=b)
+
+        def remove_empty(d: dict):
+            return {k: v for k, v in d.items() if v['nids'] and v['values']}
+
+        print(snn.input_spikes_info())
+        print(snn.input_spikes)
+        assert snn.input_spikes == {
+            8: {"nids": [0], "values": [1.0]},
+            9: {"nids": [0], "values": [1.0]},
+        }
 
 if __name__ == "__main__":
     unittest.main()
