@@ -25,6 +25,8 @@ jobs:
 
     - name: Install uv
       uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
 
     # - name: Setup Graphviz
     #   uses: ts-graphviz/setup-graphviz@v2
@@ -37,7 +39,7 @@ jobs:
         uv venv venv
         . venv/bin/activate
         echo PATH=$PATH >> $GITHUB_ENV
-        uv pip install .[docs]
+        uv pip install .[docs]  --reinstall-package superneuromat
         echo $PATH
       # note: need to modify GITHUB_ENV path for the new venv to be used
       # as each run step is a new shell
