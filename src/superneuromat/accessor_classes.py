@@ -15,7 +15,50 @@ else:
             return "SNN"
 
 
-class Neuron:
+class ModelAccessor:
+    """Accessor Class for SNNs"""
+
+    associated_type = ""
+
+    def __init__(self, snn, idx: int, check_index: bool = True):
+        self.m = snn
+        self.idx = int_err(idx, 'idx', f'{self.__class__.__name__}.__init__()')
+        self.associated_type = self.associated_type or self.__class__.__name__
+
+        if check_index:
+            self.check_index()
+
+    @property
+    def num_onmodel(self):
+        pass
+
+    def info(self):
+        pass
+
+    def check_index(self):
+        if not (0 <= self.idx < self.num_onmodel):
+            msg = (f"{self.associated_type} index {self.idx} is out of range for {self.m.__class__.__name__} at "
+                    f"{hex(id(self.m))} with {self.num_onmodel} {self.associated_type.lower()}s.")
+            raise IndexError(msg)
+
+    def __int__(self):
+        return self.idx
+
+    def __eq__(self, x):
+        """Check if two instances represent the same object in the same network."""
+        if isinstance(x, type(self)):
+            return self.idx == x.idx and self.m is x.m
+        else:
+            return False
+
+    def __repr__(self):
+        return f"<{self.associated_type} {self.idx} on {self.m.__class__.__name__} at {hex(id(self.m))}>"
+
+    def __str__(self):
+        return f"<{self.associated_type} {self.info()}>"
+
+
+class Neuron(ModelAccessor):
     """Accessor Class for Neurons in SNNs
 
 
@@ -26,18 +69,10 @@ class Neuron:
         To test for equality, use ``==`` instead of ``is``.
 
     """
-    def __init__(self, model: SNN, idx: int, check_index: bool = True):
-        self.m = model
-        #: The index of this neuron in the SNN.
-        self.idx = int_err(idx, 'idx', 'Neuron.__init__()')
 
-        if check_index and not (0 <= self.idx < self.m.num_neurons):
-            msg = (f"Neuron index {self.idx} is out of range for SNN at "
-                    f"{hex(id(self.m))} with {self.m.num_neurons} neurons.")
-            raise IndexError(msg)
-
-    def __int__(self):
-        return self.idx
+    @property
+    def num_onmodel(self):
+        return self.m.num_neurons
 
     @property
     def threshold(self) -> float:
@@ -401,16 +436,6 @@ class Neuron:
             s = sep.join([c1 if x else c0 for x in spikes])
         return f"[{s}]"
 
-    def __eq__(self, x):
-        """Check if two Neuron instances represent the same neuron in the SNN."""
-        if isinstance(x, Neuron):
-            return self.idx == x.idx and self.m is x.m
-        else:
-            return False
-
-    def __repr__(self):
-        return f"<Virtual Neuron {self.idx} on model at {hex(id(self.m))}>"
-
     def info(self):
         """Returns a string containing information about this neuron.
 
@@ -424,9 +449,6 @@ class Neuron:
             f"ref_state: {self.refractory_state:d}",
             f"ref_period: {self.refractory_period:d}",
         ])
-
-    def __str__(self):
-        return f"<Neuron {self.info()}>"
 
     def info_row(self):
         """Returns a string containing information about this neuron for use in a table.
@@ -675,7 +697,7 @@ class NeuronViewIterator(NeuronIterator):
         return NeuronViewIterator(self.m, self.indices)
 
 
-class Synapse:
+class Synapse(ModelAccessor):
     """Synapse accessor class for synapses in an SNN
 
 
@@ -686,18 +708,10 @@ class Synapse:
         To test for equality, use ``==`` instead of ``is``.
 
     """
-    def __init__(self, model: SNN, idx: int, check_index: bool = True):
-        self.m = model
-        #: The index of this synapse in the SNN.
-        self.idx = int_err(idx, 'idx', 'Synapse.__init__()')
 
-        if check_index and not (0 <= self.idx < self.m.num_synapses):
-            msg = (f"Synapse index {self.idx} is out of range for SNN at "
-                    f"{hex(id(self.m))} with {self.m.num_synapses} synapses.")
-            raise IndexError(msg)
-
-    def __int__(self):
-        return self.idx
+    @property
+    def num_onmodel(self):
+        return self.m.num_synapses
 
     @property
     def pre(self) -> Neuron:
@@ -777,16 +791,6 @@ class Synapse:
         first_syn = self.m.synapses[self.idx + self.delay + 1]
         return self.m.synapses[first_syn.idx:self.idx] + [self]
 
-    def __eq__(self, x):
-        """Check if two Synapse instances represent the same synapse in the SNN."""
-        if isinstance(x, Synapse):
-            return self.idx == x.idx and self.m is x.m
-        else:
-            return False
-
-    def __repr__(self):
-        return f"<Synapse {self.idx} on model at {hex(id(self.m))}>"
-
     def info(self):
         """Returns a string containing information about this synapse.
 
@@ -801,9 +805,6 @@ class Synapse:
             f"delay: {'- ' if self.delay < 1 else '  '}{abs(self.delay):d}",
             f"stdp {'en' if self.stdp_enabled else 'dis'}abled",
         ])
-
-    def __str__(self):
-        return f"<Synapse {self.info()}>"
 
     def info_row(self):
         """Returns a string containing information about this synapse for use in a table.
