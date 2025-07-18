@@ -9,7 +9,8 @@ import numpy as np
 from numpy import typing as npt
 from textwrap import dedent
 from scipy.sparse import csc_array  # scipy is also used for BLAS + numpy (dense matrix)
-from .util import getenv, getenvbool, is_intlike_catch, pretty_spike_train, int_err, float_err
+from .util import getenv, getenvbool, is_intlike_catch, int_err, float_err
+from .util import pretty_spike_train, slice_indices
 from . import json
 from .accessor_classes import Neuron, Synapse, NeuronList, SynapseList
 from .accessor_classes import NeuronListView, SynapseListView
@@ -1507,7 +1508,7 @@ class SNN:
 
         # normalize times to delete
         if isinstance(t, slice):
-            times_to_delete = set(self.input_spikes.keys()) & set(list(range(t.stop))[t])
+            times_to_delete = set(self.input_spikes.keys()) & set(slice_indices(t, max(self.input_spikes)))
         elif isinstance(t, int):
             times_to_delete = [t] if t in self.input_spikes else []
         elif t is None:
@@ -1522,29 +1523,19 @@ class SNN:
                     msg = f"clear_input_spikes() expected int, slice, list, or None, but received {type(t)}"
                     raise TypeError(msg) from err
 
-        def as_int(neuron: int | Neuron) -> int:
-            if isinstance(neuron, Neuron):
-                return neuron.idx
-            else:
-                return int(neuron)
-
-        def neuron_slice_indices(s: slice) -> list[int]:
-            start, stop, step = as_int(s.start), as_int(s.stop), as_int(s.step)
-            return list(range(start, stop, step))
-
         # normalize destinations to delete
         if isinstance(destination, (int, Neuron)):
-            destination = [as_int(destination)]
+            destination = [int(destination)]
         elif destination is None:
             pass
         elif isinstance(destination, slice):
-            destination = neuron_slice_indices(destination)
+            destination = slice_indices(destination, self.num_neurons)
         else:
             if isinstance(destination, np.ndarray):
                 destination = destination.tolist()
             else:
                 try:
-                    destination = [as_int(idx) for idx in destination]
+                    destination = [int(idx) for idx in destination]
                 except (TypeError, ValueError) as err:
                     msg = f"clear_input_spikes() expected int, slice, list, or None, but received {type(destination)}"
                     raise TypeError(msg) from err

@@ -137,6 +137,19 @@ def float_err(x, name='', fname='', msg=None):
         raise TypeError(msg) from e
 
 
+def accessor_slice(s: slice[Any, Any, Any]) -> slice:
+    start = int(s.start) if s.start is not None else None
+    stop = int(s.stop) if s.stop is not None else None
+    step = int(s.step) if s.step is not None else None
+    return slice(start, stop, step)
+
+
+def slice_indices(s: slice[Any, Any, Any], max_len: int = 0) -> list[int]:
+    s = accessor_slice(s)
+    stop = max_len if s.stop is None else s.stop
+    return list(range(stop))[s]
+
+
 def pretty_spike_train(
         spike_train: list[list[bool]] | list[np.ndarray] | np.ndarray,
         max_steps: int | None = 11,

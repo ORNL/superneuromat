@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .util import is_intlike
+from .util import is_intlike, accessor_slice, slice_indices
 
 from typing import TYPE_CHECKING, Any
 import numpy as np
@@ -13,19 +13,6 @@ else:
     class SNN:
         def __repr__(self):
             return "SNN"
-
-
-def accessor_slice(s: slice[Any, Any, Any]) -> slice:
-    start = int(s.start) if s.start is not None else None
-    stop = int(s.stop) if s.stop is not None else None
-    step = int(s.step) if s.step is not None else None
-    return slice(start, stop, step)
-
-
-def slice_indices(s: slice[Any, Any, Any], max_len: int = 0) -> list[int]:
-    s = accessor_slice(s)
-    stop = max_len if s.stop is None else s.stop
-    return list(range(stop))[s]
 
 
 class Neuron:
