@@ -39,6 +39,7 @@ jobs:
         uv venv venv
         . venv/bin/activate
         echo PATH=$PATH >> $GITHUB_ENV
+        echo VIRTUAL_ENV=$VIRTUAL_ENV >> $GITHUB_ENV
         uv cache clean superneuromat
         uv pip install .[docs] --reinstall-package superneuromat
         echo $PATH
