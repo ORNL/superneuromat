@@ -138,6 +138,9 @@ def float_err(x, name='', fname='', msg=None):
 
 
 def accessor_slice(s: slice[Any, Any, Any]) -> slice:
+    if not isinstance(s, slice):
+        msg = f"Expected slice, but received {type(s)}"
+        raise TypeError(msg)
     start = int(s.start) if s.start is not None else None
     stop = int(s.stop) if s.stop is not None else None
     step = int(s.step) if s.step is not None else None
@@ -146,7 +149,10 @@ def accessor_slice(s: slice[Any, Any, Any]) -> slice:
 
 def slice_indices(s: slice[Any, Any, Any], max_len: int = 0) -> list[int]:
     s = accessor_slice(s)
-    stop = max_len if s.stop is None else s.stop
+    if s.step is None or s.step >= 0 or s.stop is None:
+        stop = max_len if s.stop is None else min(s.stop, max_len)
+    else:  # step is negative, stop is not None. Ignore stop
+        stop = max_len
     return list(range(stop))[s]
 
 

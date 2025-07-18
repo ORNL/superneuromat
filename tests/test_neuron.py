@@ -50,6 +50,33 @@ class NeuronTest(unittest.TestCase):
 
         print("test_accessor_create_synapse completed successfully")
 
+    def test_neuronlist(self):
+        """ Test if NeuronList works as expected """
+        print("begin test_neuronlist")
+        snn = SNN()
+
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+        c = snn.create_neuron()
+
+        assert len(snn.neurons) == 3
+        assert snn.neurons[0] == a
+        assert snn.neurons[1] == b
+        assert snn.neurons[2] == c
+        with self.assertRaises(IndexError):
+            snn.neurons[3]
+        assert snn.neurons[2:4]
+        assert not snn.neurons[3:4]
+        assert snn.neurons == [a, b, c]
+        assert snn.neurons.tolist() == [a, b, c]
+        assert snn.neurons[:] == [a, b, c]
+        assert snn.neurons[:0:-1] == [c, b]
+        assert snn.neurons[:].indices == snn.neurons.indices
+        with self.assertRaises(ValueError):
+            snn.neurons[0.001]  # pyright: ignore[reportArgumentType]
+        with self.assertRaises(TypeError):
+            snn.neurons[None]  # pyright: ignore[reportArgumentType]
+
     def test_neuronlistview(self):
         """ Test if NeuronListView works as expected """
         print("begin test_neuronlistview")
@@ -70,6 +97,8 @@ class NeuronTest(unittest.TestCase):
         assert a in snn.neurons
         assert b in snn.neurons[0:3]
         print(snn.neurons[0::2][-2:-1])
+        with self.assertRaises(IndexError):
+            snn.neurons[6]
 
 
 
