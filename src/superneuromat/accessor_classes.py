@@ -524,6 +524,20 @@ class NeuronListView(list):
 
         snn.neurons[0]
         snn.neurons[1:10]
+
+    You can take a view of a view:
+
+    .. code-block:: python
+
+        snn.neurons[0:10][-5:]
+
+    You can add two views together. This will return a view of the concatenation of the two views.
+
+    However, if you add a view and something containing neurons from another model, or some
+    other type of object,the result will be a list.
+
+    Equivalence checking can be done between views and views, or views and an iterable.
+    In the latter case, element-wise equality is used.
     """
     def __init__(self, model: SNN, indices: list[int] | slice, max_len: int | None = None):
         self.m = model
@@ -590,7 +604,7 @@ class NeuronListView(list):
             last = [neuron.info_row() for neuron in self[-fi:]]
             rows = first + [Neuron.row_cont()] + last
         return '\n'.join([
-            f"Neuron Info ({len(self)}):",
+            f"NeuronListView on model at {hex(id(self.m))} ({len(self)}):",
             Neuron.row_header(),
             '\n'.join(rows),
         ])
@@ -799,6 +813,12 @@ class SynapseList:
 
         snn.synapses[0]
         snn.synapses[1:10]
+
+    You can take a view of a view:
+
+    .. code-block:: python
+
+        snn.synapses[0:10][-5:]
     """
     def __init__(self, model: SNN):
         self.m = model
@@ -816,6 +836,7 @@ class SynapseList:
             return SynapseListView(self.m, slice_indices(idx, self.m.num_synapses))
 
     def tolist(self):
+        """Convert the view to a list of synapses"""
         return list(self)
 
     def info(self, max_synapses=None):
@@ -852,6 +873,20 @@ class SynapseListView(list):
 
         snn.synapses[0]
         snn.synapses[1:10]
+
+    You can take a view of a view:
+
+    .. code-block:: python
+
+        snn.synapses[0:10][-5:]
+
+    You can add two views together. This will return a view of the concatenation of the two views.
+
+    However, if you add a view and something containing synapses from another model, or some
+    other type of object,the result will be a list.
+
+    Equivalence checking can be done between views and views, or views and an iterable.
+    In the latter case, element-wise equality is used.
     """
     def __init__(self, model: SNN, indices: list[int] | slice, max_len: int | None = None):
         self.m = model
@@ -918,7 +953,7 @@ class SynapseListView(list):
             last = [synapse.info_row() for synapse in self[-fi:]]
             rows = first + [Synapse.row_cont()] + last
         return '\n'.join([
-            f"Synapse Info ({len(self)}):",
+            f"SynapseListView on model at {hex(id(self.m))} ({len(self)}):",
             Synapse.row_header(),
             '\n'.join(rows),
         ])
