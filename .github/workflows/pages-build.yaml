@@ -40,8 +40,7 @@ jobs:
         . venv/bin/activate
         echo PATH=$PATH >> $GITHUB_ENV
         echo VIRTUAL_ENV=$VIRTUAL_ENV >> $GITHUB_ENV
-        uv cache clean superneuromat
-        uv pip install .[docs] --reinstall-package superneuromat
+        uv pip install .[docs]
         echo $PATH
       # note: need to modify GITHUB_ENV path for the new venv to be used
       # as each run step is a new shell
