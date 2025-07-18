@@ -50,6 +50,29 @@ class NeuronTest(unittest.TestCase):
 
         print("test_accessor_create_synapse completed successfully")
 
+    def test_neuronlistview(self):
+        """ Test if NeuronListView works as expected """
+        print("begin test_neuronlistview")
+
+        snn = SNN()
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+        c = snn.create_neuron()
+        d = snn.create_neuron()
+        e = snn.create_neuron()
+
+        print(snn.neurons[1:2])
+        assert len(snn.neurons[1:2]) == 1
+        assert snn.neurons[1:2][0] == b
+        assert snn.neurons[-3:].indices == [c.idx, d.idx, e.idx]
+        print(snn.neurons[a:b].indices)
+        assert snn.neurons[a:b] == [a]
+        assert a in snn.neurons
+        assert b in snn.neurons[0:3]
+        print(snn.neurons[0::2][-2:-1])
+
+
+
 
 if __name__ == "__main__":
     unittest.main()

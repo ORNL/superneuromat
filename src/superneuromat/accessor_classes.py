@@ -1,7 +1,7 @@
 from __future__ import annotations
 from .util import is_intlike
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 import numpy as np
 from numpy import dtype
 
@@ -13,6 +13,19 @@ else:
     class SNN:
         def __repr__(self):
             return "SNN"
+
+
+def accessor_slice(s: slice[Any, Any, Any]) -> slice:
+    start = int(s.start) if s.start is not None else None
+    stop = int(s.stop) if s.stop is not None else None
+    step = int(s.step) if s.step is not None else None
+    return slice(start, stop, step)
+
+
+def slice_indices(s: slice[Any, Any, Any], max_len: int = 0) -> list[int]:
+    s = accessor_slice(s)
+    stop = max_len if s.stop is None else s.stop
+    return list(range(stop))[s]
 
 
 class Neuron:
@@ -30,6 +43,9 @@ class Neuron:
         self.m = model
         #: The index of this neuron in the SNN.
         self.idx = idx
+
+    def __int__(self):
+        return self.idx
 
     @property
     def threshold(self) -> float:
@@ -462,18 +478,14 @@ class NeuronList:
 
     if TYPE_CHECKING:
         @overload
-        def __getitem__(self, idx: int) -> Neuron: ...
+        def __getitem__(self, idx: int | Neuron) -> Neuron: ...
         @overload
-        def __getitem__(self, idx: slice) -> list[Neuron]: ...
+        def __getitem__(self, idx: slice | list[int | Neuron] | np.ndarray) -> NeuronListView: ...
 
     def __getitem__(self, idx):
-        if isinstance(idx, int):
-            return Neuron(self.m, idx)
-        elif isinstance(idx, slice):
-            indices = list(range(self.m.num_neurons))[idx]
-            return [Neuron(self.m, i) for i in indices]
-        else:
-            raise TypeError("Invalid index type")
+        if isinstance(idx, (int, Neuron)):
+            return Neuron(self.m, int(idx))
+        return NeuronListView(self.m, idx)
 
     def info(self, max_neurons=None):
         return self.m.neuron_info(max_neurons)
@@ -490,6 +502,118 @@ class NeuronList:
     def __repr__(self):
         return f"<NeuronList on model at {hex(id(self.m))} with {len(self)} neurons>"
 
+    def __contains__(self, item):
+        if isinstance(item, Neuron):
+            return 0 <= item.idx < self.m.num_neurons and self.m is item.m
+        elif isinstance(item, int):
+            return 0 <= item < self.m.num_neurons
+        return False
+
+    def tolist(self):
+        return list(self)
+
+
+class NeuronListView(list):
+    """Redirects indexing to the SNN's neurons.
+
+    Returns a :py:class:`Neuron` or a list of Neurons.
+
+    This is used to allow for the following syntax:
+
+    .. code-block:: python
+
+        snn.neurons[0]
+        snn.neurons[1:10]
+    """
+    def __init__(self, model: SNN, indices: list[int] | slice, max_len: int | None = None):
+        self.m = model
+        if isinstance(indices, slice):
+            max_len = self.m.num_neurons if max_len is None else max_len
+            self.indices = slice_indices(indices, max_len)
+        elif isinstance(indices, (list, tuple, np.ndarray)):
+            self.indices = [int(i) for i in indices]
+        else:
+            self.indices = indices
+
+    if TYPE_CHECKING:
+        @overload
+        def __getitem__(self, idx: int | Neuron) -> Neuron: ...
+        @overload
+        def __getitem__(self, idx: slice | list[int | Neuron] | np.ndarray) -> NeuronListView: ...
+
+    def __getitem__(self, idx) -> Neuron | list[Neuron]:
+        if isinstance(idx, int):
+            return Neuron(self.m, self.indices[idx])
+        elif isinstance(idx, Neuron) and idx.m is self.m:
+            return idx
+        elif isinstance(idx, slice):
+            return NeuronListView(self.m, self.indices[accessor_slice(idx)], len(self))
+        else:
+            try:
+                idx = [int(i) for i in idx]
+            except (TypeError, ValueError) as err:
+                msg = f"Invalid index type: {type(idx)}"
+                raise TypeError(msg) from err
+            return NeuronListView(self.m, self.indices[idx])
+
+    def __iter__(self):
+        return NeuronViewIterator(self.m, self.indices)
+
+    def __eq__(self, x):
+        if isinstance(x, NeuronListView):
+            return self.indices == x.indices and self.m is x.m
+        else:
+            return all(a == b for a, b in zip(self, x))
+
+    def __contains__(self, idx):
+        if isinstance(idx, Neuron):
+            return idx.idx in self.indices and self.m is idx.m
+        elif isinstance(idx, int):
+            return idx in self.indices
+        return False
+
+    def __len__(self):
+        return len(self.indices)
+
+    def tolist(self):
+        return list(self)
+
+    def __repr__(self):
+        return f"<NeuronListView on model at {hex(id(self.m))} with {len(self)} neurons>"
+
+    def info(self, max_neurons: int | None = 30):
+        if max_neurons is None or len(self) <= max_neurons:
+            rows = (neuron.info_row() for neuron in self)
+        else:
+            fi = max_neurons // 2
+            first = [neuron.info_row() for neuron in self[:fi]]
+            last = [neuron.info_row() for neuron in self[-fi:]]
+            rows = first + [Neuron.row_cont()] + last
+        return '\n'.join([
+            f"Neuron Info ({len(self)}):",
+            Neuron.row_header(),
+            '\n'.join(rows),
+        ])
+
+    def __str__(self):
+        return self.info(None)
+
+    def __add__(self, other, right=False):
+        if isinstance(other, NeuronListView):
+            other = other.indices
+            me = self.indices
+            view = True
+        else:
+            all_neurons = all(isinstance(i, Neuron) for i in other)
+            same_model = all_neurons and all(i.m is self.m for i in other)
+            view = all_neurons and same_model
+            me = list(self)
+        indices = other + me if right else me + other
+        return NeuronListView(self.m, indices) if view else list(indices)
+
+    def __radd__(self, other):
+        return self.__add__(other, right=True)
+
 
 class NeuronIterator:
     def __init__(self, model: SNN):
@@ -502,6 +626,16 @@ class NeuronIterator:
     def __next__(self):
         next_idx = next(self.iter)
         return Neuron(self.m, next_idx)
+
+
+class NeuronViewIterator(NeuronIterator):
+    def __init__(self, model: SNN, indices: list[int]):
+        self.m = model
+        self.iter = iter(indices)
+        self.indices = indices
+
+    def __iter__(self):
+        return NeuronViewIterator(self.m, self.indices)
 
 
 class Synapse:
@@ -519,6 +653,9 @@ class Synapse:
         self.m = model
         #: The index of this synapse in the SNN.
         self.idx = idx
+
+    def __int__(self):
+        return self.idx
 
     @property
     def pre(self) -> Neuron:
@@ -605,6 +742,9 @@ class Synapse:
         else:
             return False
 
+    def __repr__(self):
+        return f"<Synapse {self.idx} on model at {hex(id(self.m))}>"
+
     def info(self):
         """Returns a string containing information about this synapse.
 
@@ -665,18 +805,18 @@ class SynapseList:
 
     if TYPE_CHECKING:
         @overload
-        def __getitem__(self, idx: int) -> Synapse: ...
+        def __getitem__(self, idx: int | Synapse) -> Synapse: ...
         @overload
-        def __getitem__(self, idx: slice) -> list[Synapse]: ...
+        def __getitem__(self, idx: slice | list[int | Synapse]) -> list[Synapse]: ...
 
     def __getitem__(self, idx):
         if isinstance(idx, int):
-            return Synapse(self.m, idx)
+            return Synapse(self.m, int(idx))
         elif isinstance(idx, slice):
-            indices = list(range(self.m.num_synapses))[idx]
-            return [Synapse(self.m, i) for i in indices]
-        else:
-            raise TypeError("Invalid index type")
+            return SynapseListView(self.m, slice_indices(idx, self.m.num_synapses))
+
+    def tolist(self):
+        return list(self)
 
     def info(self, max_synapses=None):
         return self.m.synapse_info(max_synapses)
@@ -693,6 +833,115 @@ class SynapseList:
     def __str__(self):
         return self.info(30)
 
+    def __contains__(self, item):
+        if isinstance(item, Synapse):
+            return 0 <= item.idx < self.m.num_synapses and self.m is item.m
+        elif isinstance(item, int):
+            return 0 <= item < self.m.num_synapses
+        return False
+
+
+class SynapseListView(list):
+    """Redirects indexing to the SNN's synapses.
+
+    Returns a :py:class:`Synapse` or a list of Synapses.
+
+    This is used to allow for the following syntax:
+
+    .. code-block:: python
+
+        snn.synapses[0]
+        snn.synapses[1:10]
+    """
+    def __init__(self, model: SNN, indices: list[int] | slice, max_len: int | None = None):
+        self.m = model
+        if isinstance(indices, slice):
+            max_len = self.m.num_synapses if max_len is None else max_len
+            self.indices = slice_indices(indices, max_len)
+        elif isinstance(indices, (list, tuple, np.ndarray)):
+            self.indices = [int(i) for i in indices]
+        else:
+            self.indices = indices
+
+    if TYPE_CHECKING:
+        @overload
+        def __getitem__(self, idx: int | Synapse) -> Synapse: ...
+        @overload
+        def __getitem__(self, idx: slice | list[int | Synapse]) -> SynapseListView: ...
+
+    def __getitem__(self, idx) -> Synapse | list[Synapse]:
+        if isinstance(idx, int):
+            return Synapse(self.m, self.indices[idx])
+        elif isinstance(idx, Synapse) and idx.m is self.m:
+            return idx
+        elif isinstance(idx, slice):
+            return SynapseListView(self.m, self.indices[accessor_slice(idx)], len(self))
+        else:
+            try:
+                idx = [int(i) for i in idx]
+            except (TypeError, ValueError) as err:
+                msg = f"Invalid index type: {type(idx)}"
+                raise TypeError(msg) from err
+            return SynapseListView(self.m, self.indices[idx])
+
+    def __iter__(self):
+        return SynapseViewIterator(self.m, self.indices)
+
+    def tolist(self):
+        return list(self)
+
+    def __eq__(self, x):
+        if isinstance(x, SynapseListView):
+            return self.indices == x.indices and self.m is x.m
+        else:
+            return all(a == b for a, b in zip(self, x))
+
+    def __contains__(self, idx):
+        if isinstance(idx, Synapse):
+            return idx.idx in self.indices and self.m is idx.m
+        elif isinstance(idx, int):
+            return idx in self.indices
+        return False
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __repr__(self):
+        return f"<SynapseListView on model at {hex(id(self.m))} with {len(self)} synapses>"
+
+    def info(self, max_synapses: int | None = 30):
+        if max_synapses is None or len(self) <= max_synapses:
+            rows = (synapse.info_row() for synapse in self)
+        else:
+            fi = max_synapses // 2
+            first = [synapse.info_row() for synapse in self[:fi]]
+            last = [synapse.info_row() for synapse in self[-fi:]]
+            rows = first + [Synapse.row_cont()] + last
+        return '\n'.join([
+            f"Synapse Info ({len(self)}):",
+            Synapse.row_header(),
+            '\n'.join(rows),
+        ])
+
+    def __str__(self):
+        return self.info(None)
+
+    def __add__(self, other, right=False):
+        if isinstance(other, SynapseListView):
+            other = other.indices
+            me = self.indices
+            view = True
+        else:
+            all_synapses = all(isinstance(i, Synapse) for i in other)
+            same_model = all_synapses and all(i.m is self.m for i in other)
+            view = all_synapses and same_model
+            me = list(self)
+        indices = other + me if right else me + other
+        return SynapseListView(self.m, indices) if view else list(indices)
+
+    def __radd__(self, other):
+        return self.__add__(other, right=True)
+
 
 class SynapseIterator:
     def __init__(self, model: SNN):
@@ -705,3 +954,13 @@ class SynapseIterator:
     def __next__(self):
         next_idx = next(self.iter)
         return Synapse(self.m, next_idx)
+
+
+class SynapseViewIterator(SynapseIterator):
+    def __init__(self, model: SNN, indices: list[int]):
+        self.m = model
+        self.iter = iter(indices)
+        self.indices = indices
+
+    def __iter__(self):
+        return SynapseViewIterator(self.m, self.indices)

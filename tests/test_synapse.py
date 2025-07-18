@@ -141,6 +141,27 @@ class SynapseTest(unittest.TestCase):
 
         print("test_get_synapses completed successfully")
 
+    def test_neuron_get_synapses(self):
+        """ Test if the get_synapses functions are working properly. """
+        snn = SNN()
+
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+        c = snn.create_neuron()
+
+        ab = snn.create_synapse(a, b, delay=1, stdp_enabled=True)
+        ac = snn.create_synapse(a, c, delay=2, stdp_enabled=True)
+
+        assert a.incoming_synapses == []
+        assert all([x == y for x, y in zip(a.incoming_synapses, snn.get_synapses_by_post(a))])
+        assert all([x == y for x, y in zip(a.outgoing_synapses, snn.get_synapses_by_pre(a))])
+        assert a.incoming_synapses == snn.get_synapses_by_post(a) == []
+        assert a.outgoing_synapses == snn.get_synapses_by_pre(a) == [ab, ac.delay_chain_synapses[0]]
+        assert b.parents == [a]
+        assert a.children == [b, ac.delay_chain[1]]
+        assert a.get_synapse_to(b) == ab
+        assert b.get_synapse_from(a) == ab
+
     def test_synapse_change_chained_delay(self):
         """ Test if error raised when changing delay on chained synapse
 
@@ -162,6 +183,7 @@ class SynapseTest(unittest.TestCase):
         """ Test if synapse delay chain properties work as expected
 
         """
+        print("begin test_synapse_get_delay_chain")
         # Create SNN, neurons, and synapses
         snn = SNN()
 
@@ -172,10 +194,10 @@ class SynapseTest(unittest.TestCase):
         neuron_chain = syn.delay_chain
         synapse_chain = syn.delay_chain_synapses
         print(snn)
-        print(neuron_chain)
+        print("neuron_chain: ", neuron_chain)
         print(*(syn.info_row() for syn in synapse_chain), sep='\n')
-        assert [int(n.idx) for n in neuron_chain] == [0, 2, 3, 1]
-        assert [int(s.idx) for s in synapse_chain] == [0, 1, 2]
+        assert [int(n) for n in neuron_chain] == [0, 2, 3, 1]
+        assert [int(s) for s in synapse_chain] == [0, 1, 2]
         assert snn.synapses[0].delay_chain == []
 
 

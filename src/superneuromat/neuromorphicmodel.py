@@ -12,6 +12,7 @@ from scipy.sparse import csc_array  # scipy is also used for BLAS + numpy (dense
 from .util import getenv, getenvbool, is_intlike_catch, pretty_spike_train, int_err, float_err
 from . import json
 from .accessor_classes import Neuron, Synapse, NeuronList, SynapseList
+from .accessor_classes import NeuronListView, SynapseListView
 
 from typing import Any, TYPE_CHECKING
 
@@ -319,7 +320,7 @@ class SNN:
         list
             A list of :py:class:`Synapse`\\ s with the given pre-synaptic neuron. May be empty.
         """
-        return [self.synapses[i] for i in self.get_synaptic_ids_by_pre(pre_id)]
+        return SynapseListView(self, self.get_synaptic_ids_by_pre(pre_id))
 
     def get_synaptic_ids_by_post(self, post_id: int | Neuron) -> list[int]:
         """Returns a list of synapse ids with the given post-synaptic neuron.
@@ -363,7 +364,7 @@ class SNN:
         list
             A list of :py:class:`Synapse`\\ s with the given post-synaptic neuron. May be empty.
         """
-        return [self.synapses[i] for i in self.get_synaptic_ids_by_post(post_id)]
+        return SynapseListView(self, self.get_synaptic_ids_by_post(post_id))
 
     def get_synapse(self, pre_id: int | Neuron, post_id: int | Neuron) -> Synapse:
         """Returns the synapse that connects the given pre- and post-synaptic neurons.
