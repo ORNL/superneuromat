@@ -131,6 +131,18 @@ class NeuronTest(unittest.TestCase):
         assert vl == [c, d]
         vl.clear()
         assert vl == []
+        vl[:] = [a, b]
+        assert vl == [a, b]
+        vl = snn.neurons[:]
+        vl[1:2] = [b]
+        assert vl == snn.neurons[:]
+        vl[::2] = [b, d, e]
+        print(vl)
+        assert vl == [b, b, d, d, e]
+        vl[0, 2] = [a, c]
+        assert vl == snn.neurons[:]
+        vl[:6] = []
+        assert vl == []
 
     def test_create_listview(self):
         """ Test if creating listview works as expected """

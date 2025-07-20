@@ -217,8 +217,8 @@ class ModelListView(list):
         else:
             new_indices = [check_value(x) for x in value]
         if isinstance(idx, slice):
-            _start, _stop, step = accessor_slice(idx)
-            if step is not None or step != 1:
+            sl = accessor_slice(idx)
+            if sl.step not in (None, 1):
                 # Extended slice
                 indices = slice_indices(idx, len(self))
                 if len(indices) != len(new_indices):
@@ -230,13 +230,13 @@ class ModelListView(list):
                 self.indices[idx] = new_indices
                 return
         else:
-            indices = list(indices)
+            indices = list(idx)
             if len(indices) != len(new_indices):
                 msg = (f"attept to assign sequence of {len(new_indices)} {self.accessor_typename}s "
                        f"to {len(indices)} indices.")
                 raise ValueError(msg)
-            if any(i < 0 for i in indices):
-                raise ValueError("indices must be greater than or equal to zero.")
+            if any(not (0 <= i < len(self)) for i in indices):
+                raise ValueError("Received indices out of range.")
         for idx, x in zip(indices, new_indices):
             self.indices[idx] = x
 
@@ -273,6 +273,10 @@ class ModelListView(list):
 
     def tolist(self):
         return list(self)
+
+    def using_model(self, model):
+        """Returns a copy of the listview using the given model."""
+        return self.copy(model)
 
     def __repr__(self):
         if self.m is None:
@@ -393,8 +397,8 @@ class ModelListView(list):
         else:
             raise ValueError(self._verb_error("count", self.accessor_typename, badtype=type(value).__name__))
 
-    def copy(self):
-        return type(self)(self.m, self.indices.copy())
+    def copy(self, model=None):
+        return type(self)(model or self.m, self.indices.copy())
 
     def reverse(self):
         self._check_modify()
