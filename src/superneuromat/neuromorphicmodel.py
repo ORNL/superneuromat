@@ -821,7 +821,7 @@ class SNN:
             last = [row(time, nid, value) for time, nid, value in all_spikes[-fi:]]
             rows = first + [f"  ...   {len(all_spikes) - (fi * 2)} rows hidden    ..."] + last
         return '\n'.join([
-            f"Input Spikes ({len(self.input_spikes)}):",
+            f"Input Spikes ({len(all_spikes)}) for {len(self.input_spikes)} time steps:",
             f" Time:  {'Spike-value':>11s}    Destination",
             '\n'.join(rows),
         ])
