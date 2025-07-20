@@ -4,7 +4,7 @@ import unittest
 import sys
 sys.path.insert(0, "../src/")
 
-from superneuromat import SNN
+from superneuromat import SNN, mlist, asmlist
 
 
 class NeuronTest(unittest.TestCase):
@@ -100,7 +100,57 @@ class NeuronTest(unittest.TestCase):
         with self.assertRaises(IndexError):
             snn.neurons[6]
 
+    def test_neuronlistview_modify(self):
+        """ Test if NeuronListView works as expected """
+        print("begin test_neuronlistview_modify")
 
+        snn = SNN()
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+        c = snn.create_neuron()
+        d = snn.create_neuron()
+        e = snn.create_neuron()
+
+        vl = snn.neurons[:2]
+        vl.append(c)
+        assert vl == [a, b, c]
+        vl.extend([d, e])
+        assert vl == [a, b, c, d, e]
+        vl.insert(1, b)
+        assert vl == [a, b, b, c, d, e]
+        vl.remove(b)
+        assert vl == [a, b, c, d, e]
+        vl.remove(b)
+        vl.pop()
+        assert vl == [a, c, d]
+        vl.pop(0)
+        assert vl == [c, d]
+        vl.reverse()
+        assert vl == [d, c]
+        vl.sort()
+        assert vl == [c, d]
+        vl.clear()
+        assert vl == []
+
+    def test_create_listview(self):
+        """ Test if creating listview works as expected """
+        print("begin test_create_listview")
+
+        empty = mlist([])
+        assert empty == []
+
+        snn = SNN()
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+
+        vl = mlist([a, b])
+
+        assert snn.neurons == [a, b]
+        assert snn.neurons[:] == [a, b]
+
+        vl2 = asmlist(vl)
+
+        assert vl2 is vl
 
 
 if __name__ == "__main__":

@@ -71,6 +71,8 @@ class ModelAccessorList(list):
     def __getitem__(self, idx):
         if isinstance(idx, (int, self.accessor_type)):
             return self.accessor_type(self.m, int(idx))
+        if idx is None:
+            raise TypeError("list indices cannot be NoneType.")
         try:
             return self.listview_type(self.m, idx)
         except TypeError:
@@ -125,14 +127,24 @@ class ModelListView(list):
     accessor_type: type
     list_type: type
 
-    def __init__(self, model: SNN, indices: list[int] | slice, max_len: int | None = None):
+    def __new__(cls, *args, **kwargs):
+        if args and isinstance(args[0], ModelListView):
+            return args[0].copy()
+        return super().__new__(cls, *args, **kwargs)
+
+    def __init__(self, model: SNN | None = None, indices: list[int] | slice | None = None, max_len: int | None = None):
         self.m = model
+        self.indices: list[int]
         self.listview_type = type(self)
+        if model is None and indices:
+            msg = f"Attempt to create {type(self).__name__} with non-empty indices but no model."
         if isinstance(indices, slice):
             max_len = self.num_onmodel if max_len is None else max_len
             self.indices = slice_indices(indices, max_len)
         elif isinstance(indices, (list, tuple, np.ndarray)):
             self.indices = [int(i) for i in indices]
+        elif indices is None:
+            self.indices = []
         else:
             try:
                 iter(indices)
@@ -145,18 +157,30 @@ class ModelListView(list):
             msg = (f"{type(self)}.__init__() received {type(indices)} containing indices out of range "
                     f"for SNN at {hex(id(self.m))} with {self.num_onmodel} neurons.")
             raise IndexError(msg)
-        self.accessor_typename = self.accessor_type.__name__
+        if model:
+            self.accessor_typename = self.accessor_type.__name__
 
     @property
     def num_onmodel(self) -> int:
         pass
+
+    def _check_modify(self):
+        if self.m is None:
+            msg = f"attempt to modify empty {type(self).__name__} not associated with a model."
+            msg += f" Try creating a new {type(self).__name__} using snm.mlist([...]) instead."
+            raise RuntimeError(msg)
+
+    def _check_access(self):
+        if self.m is None:
+            msg = f"attempt to index into empty {type(self).__name__} not associated with a model."
+            raise IndexError(msg)
 
     def __getitem__(self, idx):
         if isinstance(idx, int):
             return Neuron(self.m, self.indices[idx])
         elif isinstance(idx, self.accessor_type) and idx.m is self.m:
             return idx
-        elif isinstance(idx, slice):
+        elif isinstance(idx, slice) and self.m:
             return self.listview_type(self.m, self.indices[accessor_slice(idx)], len(self))
         else:
             try:
@@ -167,6 +191,8 @@ class ModelListView(list):
             return self.listview_type(self.m, self.indices[idx])
 
     def __setitem__(self, idx, value):
+        self._check_modify()
+
         def check_value(value):
             if not isinstance(value, self.accessor_type):
                 msg = (f"Type {type(value).__name__} is incompatible with {type(self).__name__}, "
@@ -214,6 +240,18 @@ class ModelListView(list):
         for idx, x in zip(indices, new_indices):
             self.indices[idx] = x
 
+    def __delitem__(self, idx):
+        self._check_modify()
+        if isinstance(idx, (int, self.accessor_type)):
+            del self.indices[int(idx)]
+        elif isinstance(idx, slice):
+            idx = slice_indices(idx, len(self))
+            for i in idx:
+                if i in self.indices:
+                    del self.indices[i]
+        else:
+            del self.indices[idx]  # raise error
+
     def __eq__(self, x):
         if isinstance(x, self.listview_type):
             return self.indices == x.indices and self.m is x.m
@@ -237,9 +275,13 @@ class ModelListView(list):
         return list(self)
 
     def __repr__(self):
-        return f"<{type(self)} of model at {hex(id(self.m))} with {len(self)} {self.accessor_typename.lower()}s>"
+        if self.m is None:
+            return f"<Empty, uninitialized {type(self).__name__}>"
+        return f"<{type(self).__name__} of model at {hex(id(self.m))} with {len(self)} {self.accessor_typename.lower()}s>"
 
     def info(self, max_entries: int | None = 30):
+        if self.m is None:
+            return f"<Empty, uninitialized {type(self).__name__}>"
         if max_entries is None or len(self) <= max_entries:
             rows = (obj.info_row() for obj in self)
         else:
@@ -248,7 +290,7 @@ class ModelListView(list):
             last = [obj.info_row() for obj in self[-fi:]]
             rows = first + [self.accessor_type.row_cont()] + last
         return '\n'.join([
-            f"{type(self)} into model at {hex(id(self.m))} ({len(self)}):",
+            f"{type(self).__name__} into model at {hex(id(self.m))} ({len(self)}):",
             self.accessor_type.row_header(),
             '\n'.join(rows),
         ])
@@ -282,30 +324,33 @@ class ModelListView(list):
             msg += f" Got {badtype} instead."
         hint = f"\nConsider converting me to a list first with {type(self).__name__}.tolist()"
         if wrongmodel:
-            msg += f"\nYour object is from model {x.m.__class__.__name__} but I "
+            msg += f"\nYour object(s) are from {type(wrongmodel).__name__} at {id(wrongmodel)} but I "
             msg += f"can only keep track of the {type(self).__name__} at {id(self.m)}."
         return msg + hint
 
     def append(self, x):
+        self._check_modify()
         if isinstance(x, self.accessor_type):
             if x.m is not self.m:
-                raise ValueError(self._verb_error("append", self.accessor_typename, wrongmodel=True))
+                raise ValueError(self._verb_error("append", self.accessor_typename, wrongmodel=x.m))
             self.indices.append(x.idx)
         else:
             raise ValueError(self._verb_error("append", self.accessor_typename, badtype=type(x).__name__))
 
     def insert(self, i, x):
+        self._check_modify()
         if isinstance(x, self.accessor_type):
             if x.m is not self.m:
-                raise ValueError(self._verb_error("insert", self.accessor_typename, wrongmodel=True))
+                raise ValueError(self._verb_error("insert", self.accessor_typename, wrongmodel=x.m))
             self.indices.insert(i, x.idx)
         else:
             raise ValueError(self._verb_error("insert", self.accessor_typename, badtype=type(x).__name__))
 
     def extend(self, li):
+        self._check_modify()
         if isinstance(li, (self.list_type, self.listview_type)):
             if li.m is not self.m:
-                raise ValueError(self._verb_error("extend", type(li).__name__, wrongmodel=True))
+                raise ValueError(self._verb_error("extend", type(li).__name__, wrongmodel=li.m))
             self.indices.extend(li.indices)
             return
         for x in li:
@@ -317,20 +362,21 @@ class ModelListView(list):
             self.indices.append(x.idx)
 
     def remove(self, value):
+        self._check_modify()
         if isinstance(value, self.accessor_type):
             if value.m is not self.m:
-                raise ValueError(self._verb_error("remove", self.accessor_typename, wrongmodel=True))
+                raise ValueError(self._verb_error("remove", self.accessor_typename, wrongmodel=value.m))
             self.indices.remove(value.idx)
         else:
             raise ValueError(self._verb_error("remove", self.accessor_typename, badtype=type(value).__name__))
 
     def pop(self, index=-1):
-        return self[self.indices.pop(index)]
+        return self.m.neurons[self.indices.pop(index)]
 
     def index(self, value, start=0, stop=-1):
         if isinstance(value, self.accessor_type):
             if value.m is not self.m:
-                raise ValueError(self._verb_error("index", self.accessor_typename, wrongmodel=True))
+                raise ValueError(self._verb_error("index", self.accessor_typename, wrongmodel=value.m))
             return self.indices.index(value.idx, start, stop)
         elif (x := int_err(value, 'value', fname='index()')):
             return self.indices.index(x, start, stop)
@@ -340,7 +386,7 @@ class ModelListView(list):
     def count(self, value):
         if isinstance(value, self.accessor_type):
             if value.m is not self.m:
-                raise ValueError(self._verb_error("count", self.accessor_typename, wrongmodel=True))
+                raise ValueError(self._verb_error("count", self.accessor_typename, wrongmodel=value.m))
             return self.indices.count(value.idx)
         elif (x := int_err(value, 'value', fname='count()')):
             return self.indices.count(x)
@@ -351,24 +397,15 @@ class ModelListView(list):
         return type(self)(self.m, self.indices.copy())
 
     def reverse(self):
+        self._check_modify()
         return self.indices.reverse()
 
     def sort(self, key=None, reverse=False):
+        self._check_modify()
         if callable(key):
             def key(idx):
                 return key(self[idx])
-        self.indices.sort(key, reverse)
-
-    def __del__(self, idx):
-        if isinstance(idx, (int, self.accessor_type)):
-            del self.indices[int(idx)]
-        elif isinstance(idx, slice):
-            idx = slice_indices(idx, len(self))
-            for i in idx:
-                if i in self.indices:
-                    del self.indices[i]
-        else:
-            del self.indices[idx]  # raise error
+        self.indices.sort(key=key, reverse=reverse)
 
 
 class Neuron(ModelAccessor):
@@ -1129,3 +1166,37 @@ class SynapseViewIterator(SynapseIterator):
 
     def __iter__(self):
         return SynapseViewIterator(self.m, self.indices)
+
+
+map_accessor_to_listview = {
+    Neuron: NeuronListView,
+    Synapse: SynapseListView,
+}
+
+
+def mlist(a: list[Neuron | Synapse] | ModelAccessorList | ModelListView):
+    """Convert a list of Neuron or Synapse objects to a ModelAccessorList or ModelListView"""
+    if not a:
+        return ModelListView()
+    elif isinstance(a, ModelAccessorList):
+        return a[:]
+    elif isinstance(a, ModelListView):
+        return a.copy()
+    a = list(a)
+    objtype = type(a[0])
+    if objtype not in map_accessor_to_listview:
+        msg = f"array contains object of type {type(a).__name__} which has no associated ListView type."
+        raise TypeError(msg)
+    m = a[0].m
+    if any(not isinstance(x, objtype) for x in a):
+        raise ValueError("cannot convert mixed-type list to ListView.")
+    if any(x.m is not m for x in a):
+        raise ValueError("cannot convert list with objects from different models to ListView.")
+    return map_accessor_to_listview[objtype](m, a)
+
+
+def asmlist(a: list[Neuron | Synapse] | ModelAccessorList | ModelListView):
+    """Convert a list of Neuron or Synapse objects to a ModelAccessorList or ModelListView"""
+    if isinstance(a, ModelListView):
+        return a
+    return mlist(a)
