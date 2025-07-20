@@ -113,6 +113,10 @@ def linkcode_resolve(domain, info):
     modulename, fullname = info.get('module', None), info.get('fullname', None)
     if not modulename and not fullname:
         return None
+    return linkcode_resolve_py(modulename, fullname)
+
+
+def linkcode_resolve_py(modulename, fullname):
     filepath = None
 
     # first, let's get the file where the object is defined
@@ -144,6 +148,10 @@ def linkcode_resolve(domain, info):
             filepath = abspath.relative_to(toplevel_path)
             break
 
+    if filepath is None:
+        print(f"Could not find {abspath} relative to {toplevel_paths}.")
+        return  # Comment this line out to find out what sphinx file causes a "Could not find" error
+
     # Now let's make it relative to the same directory in the correct src folder.
     for src_path in module_src_abs_paths:
         if not (src_path / filepath).exists():
@@ -166,16 +174,20 @@ def linkcode_resolve(domain, info):
         lineno = None  # default to no line number
     # try getting line number for each component and stop on failure
     for child_name in name_parts:
+        try:  # get the name of the object for error messages
+            name = obj.__name__
+        except AttributeError:
+            name = objname
         try:
             child = getattr(obj, child_name)  # get the next level object
         except AttributeError:
-            print(f"Failed to resolve {objname}.{child_name}")
-            break
+            print(f"Couldn't load {name}.{child_name} to get its line number; fallback to {name} at line {lineno}")
         try:
             lineno = inspect.getsourcelines(child)[1]  # getsourcelines returns [str, int]
         except Exception:
             # getsourcelines throws TypeError if the object is not a class, module, function, method
             # i.e. if it's a @property, float, etc.
+            print(f"{name}.{child_name} of type {type(child).__name__} can't be inspected for line number; fallback to {name} at line {lineno}")
             break  # if we can't get the line number, let it be that of the previous
         obj = child  # update the object to the next level
 
