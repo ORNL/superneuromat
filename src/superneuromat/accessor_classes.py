@@ -1,7 +1,7 @@
 from __future__ import annotations
-from .util import is_intlike
+from .util import is_intlike, int_err, accessor_slice, slice_indices
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 import numpy as np
 from numpy import dtype
 
@@ -15,7 +15,404 @@ else:
             return "SNN"
 
 
-class Neuron:
+class ModelAccessor:
+    """Accessor Class for SNNs"""
+
+    associated_typename = ""
+
+    def __init__(self, snn, idx: int, check_index: bool = True):
+        self.m = snn
+        self.idx = int_err(idx, 'idx', f'{self.__class__.__name__}.__init__()')
+        self.associated_typename = self.associated_typename or self.__class__.__name__
+
+        if check_index:
+            self.check_index()
+
+    @property
+    def num_onmodel(self):
+        pass
+
+    def info(self):
+        pass
+
+    def check_index(self):
+        if not (0 <= self.idx < self.num_onmodel):
+            msg = (f"{self.associated_typename} index {self.idx} is out of range for {self.m.__class__.__name__} at "
+                    f"{hex(id(self.m))} with {self.num_onmodel} {self.associated_typename.lower()}s.")
+            raise IndexError(msg)
+
+    def __int__(self):
+        return self.idx
+
+    def __eq__(self, x):
+        """Check if two instances represent the same object in the same network."""
+        if isinstance(x, type(self)):
+            return self.idx == x.idx and self.m is x.m
+        else:
+            return False
+
+    def __repr__(self):
+        return f"<{self.associated_typename} {self.idx} on {self.m.__class__.__name__} at {hex(id(self.m))}>"
+
+    def __str__(self):
+        return f"<{self.associated_typename} {self.info()}>"
+
+
+class ModelAccessorList(list):
+    accessor_type: type
+    listview_type: type
+
+    def __init__(self, model: SNN):
+        self.m = model
+
+        self.list_type: type = type(self)
+        self.accessor_typename = self.accessor_type.__name__
+
+    def __getitem__(self, idx):
+        if isinstance(idx, (int, self.accessor_type)):
+            return self.accessor_type(self.m, int(idx))
+        if idx is None:
+            raise TypeError("list indices cannot be NoneType.")
+        try:
+            return self.listview_type(self.m, idx)
+        except TypeError:
+            return self.accessor_type(self.m, idx)
+
+    @property
+    def num_onmodel(self) -> int:
+        pass
+
+    def info(self):
+        pass
+
+    def __len__(self) -> int:
+        return self.num_onmodel
+
+    def __iter__(self):
+        pass
+
+    def __str__(self):
+        return self.info(30)
+
+    def __repr__(self):
+        return f"<{type(self).__name__} on model at {hex(id(self.m))} with {len(self)} {self.accessor_typename.lower()}s>"
+
+    def __contains__(self, item):
+        if isinstance(item, self.accessor_type):
+            return 0 <= item.idx < self.num_onmodel and self.m is item.m
+        elif isinstance(item, int):
+            return 0 <= item < self.num_onmodel
+        return False
+
+    def __eq__(self, value):
+        if isinstance(value, type(self)):
+            return self.m is value.m
+        elif isinstance(value, self.listview_type):
+            return self.m is value.m and list(range(self.num_onmodel)) == value.indices
+        else:
+            try:
+                return all(a == b for a, b in zip(self, value)) and len(self) == len(value)
+            except TypeError:
+                return False
+
+    @property
+    def indices(self):
+        return list(range(self.num_onmodel))
+
+    def tolist(self):
+        return list(self)
+
+
+class ModelListView(list):
+    accessor_type: type
+    list_type: type
+
+    def __new__(cls, *args, **kwargs):
+        if args and isinstance(args[0], ModelListView):
+            return args[0].copy()
+        return super().__new__(cls, *args, **kwargs)
+
+    def __init__(self, model: SNN | None = None, indices: list[int] | slice | None = None, max_len: int | None = None):
+        self.m = model
+        self.indices: list[int]
+        self.listview_type = type(self)
+        if model is None and indices:
+            msg = f"Attempt to create {type(self).__name__} with non-empty indices but no model."
+        if isinstance(indices, slice):
+            max_len = self.num_onmodel if max_len is None else max_len
+            self.indices = slice_indices(indices, max_len)
+        elif isinstance(indices, (list, tuple, np.ndarray)):
+            self.indices = [int(i) for i in indices]
+        elif indices is None:
+            self.indices = []
+        else:
+            try:
+                iter(indices)
+            except TypeError as err:
+                msg = (f"{type(self)}.__init__() received invalid index type: {type(indices)}."
+                       f" Expected int, slice, list, or other iterable containing ints.")
+                raise TypeError(msg) from err
+            self.indices = indices
+        if any(i for i in self.indices if not 0 <= int(i) < self.num_onmodel):
+            msg = (f"{type(self)}.__init__() received {type(indices)} containing indices out of range "
+                    f"for SNN at {hex(id(self.m))} with {self.num_onmodel} neurons.")
+            raise IndexError(msg)
+        if model:
+            self.accessor_typename = self.accessor_type.__name__
+
+    @property
+    def num_onmodel(self) -> int:
+        pass
+
+    def _check_modify(self):
+        if self.m is None:
+            msg = f"attempt to modify empty {type(self).__name__} not associated with a model."
+            msg += f" Try creating a new {type(self).__name__} using snm.mlist([...]) instead."
+            raise RuntimeError(msg)
+
+    def _check_access(self):
+        if self.m is None:
+            msg = f"attempt to index into empty {type(self).__name__} not associated with a model."
+            raise IndexError(msg)
+
+    def __getitem__(self, idx):
+        if isinstance(idx, int):
+            return Neuron(self.m, self.indices[idx])
+        elif isinstance(idx, self.accessor_type) and idx.m is self.m:
+            return idx
+        elif isinstance(idx, slice) and self.m:
+            return self.listview_type(self.m, self.indices[accessor_slice(idx)], len(self))
+        else:
+            try:
+                idx = [int(i) for i in idx]
+            except (TypeError, ValueError) as err:
+                msg = f"Invalid index type: {type(idx)}"
+                raise TypeError(msg) from err
+            return self.listview_type(self.m, self.indices[idx])
+
+    def __setitem__(self, idx, value):
+        self._check_modify()
+
+        def check_value(value):
+            if not isinstance(value, self.accessor_type):
+                msg = (f"Type {type(value).__name__} is incompatible with {type(self).__name__}, "
+                       f"which only accepts {self.accessor_typename}s.")
+                raise TypeError(msg)
+            if value.m is not self.m:
+                msg = (f"Cannot place {self.accessor_typename} from {type(value.m).__name__} at {id(value.m)} "
+                       f"on a {type(self.m).__name__} which is at {id(self.m)}.")
+                raise ValueError(msg)
+            return int(value)
+
+        if isinstance(idx, int):
+            check_value(value)
+            self.indices[idx] = value.idx
+            return
+        if isinstance(value, self.listview_type):
+            if value.m is not self.m:
+                msg = (f"Expected {self.listview_type.__name__} from model {self.m.__class__.__name__}, "
+                       f"got {value.m.__class__.__name__}")
+                raise ValueError(msg)
+            new_indices = value.indices
+        else:
+            new_indices = [check_value(x) for x in value]
+        if isinstance(idx, slice):
+            sl = accessor_slice(idx)
+            if sl.step not in (None, 1):
+                # Extended slice
+                indices = slice_indices(idx, len(self))
+                if len(indices) != len(new_indices):
+                    msg = (f"attept to assign sequence of {len(new_indices)} {self.accessor_typename}s "
+                           f"to extended slice of size {len(indices)}.")
+                    raise ValueError(msg)
+            else:
+                # Regular slice
+                self.indices[idx] = new_indices
+                return
+        else:
+            indices = list(idx)
+            if len(indices) != len(new_indices):
+                msg = (f"attept to assign sequence of {len(new_indices)} {self.accessor_typename}s "
+                       f"to {len(indices)} indices.")
+                raise ValueError(msg)
+            if any(not (0 <= i < len(self)) for i in indices):
+                raise ValueError("Received indices out of range.")
+        for idx, x in zip(indices, new_indices):
+            self.indices[idx] = x
+
+    def __delitem__(self, idx):
+        self._check_modify()
+        if isinstance(idx, (int, self.accessor_type)):
+            del self.indices[int(idx)]
+        elif isinstance(idx, slice):
+            idx = slice_indices(idx, len(self))
+            for i in idx:
+                if i in self.indices:
+                    del self.indices[i]
+        else:
+            del self.indices[idx]  # raise error
+
+    def __eq__(self, x):
+        if isinstance(x, self.listview_type):
+            return self.indices == x.indices and self.m is x.m
+        else:
+            try:
+                return all(a == b for a, b in zip(self, x)) and len(self) == len(x)
+            except TypeError:
+                return False
+
+    def __contains__(self, idx):
+        if isinstance(idx, self.accessor_type):
+            return idx.idx in self.indices and self.m is idx.m
+        elif isinstance(idx, int):
+            return idx in self.indices
+        return False
+
+    def __len__(self):
+        return len(self.indices)
+
+    def tolist(self):
+        return list(self)
+
+    def using_model(self, model):
+        """Returns a copy of the listview using the given model."""
+        return self.copy(model)
+
+    def __repr__(self):
+        if self.m is None:
+            return f"<Empty, uninitialized {type(self).__name__}>"
+        return f"<{type(self).__name__} of model at {hex(id(self.m))} with {len(self)} {self.accessor_typename.lower()}s>"
+
+    def info(self, max_entries: int | None = 30):
+        if self.m is None:
+            return f"<Empty, uninitialized {type(self).__name__}>"
+        if max_entries is None or len(self) <= max_entries:
+            rows = (obj.info_row() for obj in self)
+        else:
+            fi = max_entries // 2
+            first = [obj.info_row() for obj in self[:fi]]
+            last = [obj.info_row() for obj in self[-fi:]]
+            rows = first + [self.accessor_type.row_cont()] + last
+        return '\n'.join([
+            f"{type(self).__name__} into model at {hex(id(self.m))} ({len(self)}):",
+            self.accessor_type.row_header(),
+            '\n'.join(rows),
+        ])
+
+    def __str__(self):
+        return self.info(None)
+
+    def __add__(self, other, right=False):
+        if isinstance(other, self.listview_type):
+            other = other.indices
+            me = self.indices
+            view = True
+        else:
+            all_neurons = all(isinstance(i, Neuron) for i in other)
+            same_model = all_neurons and all(i.m is self.m for i in other)
+            view = all_neurons and same_model
+            me = list(self)
+        indices = other + me if right else me + other
+        return self.listview_type(self.m, indices) if view else list(indices)
+
+    def __radd__(self, other):
+        return self.__add__(other, right=True)
+
+    def clear(self):
+        self.indices.clear()
+
+    def _verb_error(self, verb, obj_typename, badtype=None, wrongmodel=False):
+        msg = (f"{type(self).__name__}.{verb}() only supports {verb}ing "
+                f"{obj_typename} to {type(self).__name__}s of the same model.")
+        if badtype:
+            msg += f" Got {badtype} instead."
+        hint = f"\nConsider converting me to a list first with {type(self).__name__}.tolist()"
+        if wrongmodel:
+            msg += f"\nYour object(s) are from {type(wrongmodel).__name__} at {id(wrongmodel)} but I "
+            msg += f"can only keep track of the {type(self).__name__} at {id(self.m)}."
+        return msg + hint
+
+    def append(self, x):
+        self._check_modify()
+        if isinstance(x, self.accessor_type):
+            if x.m is not self.m:
+                raise ValueError(self._verb_error("append", self.accessor_typename, wrongmodel=x.m))
+            self.indices.append(x.idx)
+        else:
+            raise ValueError(self._verb_error("append", self.accessor_typename, badtype=type(x).__name__))
+
+    def insert(self, i, x):
+        self._check_modify()
+        if isinstance(x, self.accessor_type):
+            if x.m is not self.m:
+                raise ValueError(self._verb_error("insert", self.accessor_typename, wrongmodel=x.m))
+            self.indices.insert(i, x.idx)
+        else:
+            raise ValueError(self._verb_error("insert", self.accessor_typename, badtype=type(x).__name__))
+
+    def extend(self, li):
+        self._check_modify()
+        if isinstance(li, (self.list_type, self.listview_type)):
+            if li.m is not self.m:
+                raise ValueError(self._verb_error("extend", type(li).__name__, wrongmodel=li.m))
+            self.indices.extend(li.indices)
+            return
+        for x in li:
+            if not isinstance(x, self.accessor_type):
+                badobj = f"{type(li).__name__} containing {type(x).__name__}"
+                raise ValueError(self._verb_error("extend", self.accessor_typename, badtype=badobj))
+            if x.m is not self.m:
+                raise ValueError(self._verb_error("extend", self.accessor_typename, wrongmodel=True))
+            self.indices.append(x.idx)
+
+    def remove(self, value):
+        self._check_modify()
+        if isinstance(value, self.accessor_type):
+            if value.m is not self.m:
+                raise ValueError(self._verb_error("remove", self.accessor_typename, wrongmodel=value.m))
+            self.indices.remove(value.idx)
+        else:
+            raise ValueError(self._verb_error("remove", self.accessor_typename, badtype=type(value).__name__))
+
+    def pop(self, index=-1):
+        return self.m.neurons[self.indices.pop(index)]
+
+    def index(self, value, start=0, stop=-1):
+        if isinstance(value, self.accessor_type):
+            if value.m is not self.m:
+                raise ValueError(self._verb_error("index", self.accessor_typename, wrongmodel=value.m))
+            return self.indices.index(value.idx, start, stop)
+        elif (x := int_err(value, 'value', fname='index()')):
+            return self.indices.index(x, start, stop)
+        else:
+            raise ValueError(self._verb_error("index", self.accessor_typename, badtype=type(value).__name__))
+
+    def count(self, value):
+        if isinstance(value, self.accessor_type):
+            if value.m is not self.m:
+                raise ValueError(self._verb_error("count", self.accessor_typename, wrongmodel=value.m))
+            return self.indices.count(value.idx)
+        elif (x := int_err(value, 'value', fname='count()')):
+            return self.indices.count(x)
+        else:
+            raise ValueError(self._verb_error("count", self.accessor_typename, badtype=type(value).__name__))
+
+    def copy(self, model=None):
+        return type(self)(model or self.m, self.indices.copy())
+
+    def reverse(self):
+        self._check_modify()
+        return self.indices.reverse()
+
+    def sort(self, key=None, reverse=False):
+        self._check_modify()
+        if callable(key):
+            def key(idx):
+                return key(self[idx])
+        self.indices.sort(key=key, reverse=reverse)
+
+
+class Neuron(ModelAccessor):
     """Accessor Class for Neurons in SNNs
 
 
@@ -26,10 +423,10 @@ class Neuron:
         To test for equality, use ``==`` instead of ``is``.
 
     """
-    def __init__(self, model: SNN, idx: int):
-        self.m = model
-        #: The index of this neuron in the SNN.
-        self.idx = idx
+
+    @property
+    def num_onmodel(self):
+        return self.m.num_neurons
 
     @property
     def threshold(self) -> float:
@@ -393,16 +790,6 @@ class Neuron:
             s = sep.join([c1 if x else c0 for x in spikes])
         return f"[{s}]"
 
-    def __eq__(self, x):
-        """Check if two Neuron instances represent the same neuron in the SNN."""
-        if isinstance(x, Neuron):
-            return self.idx == x.idx and self.m is x.m
-        else:
-            return False
-
-    def __repr__(self):
-        return f"<Virtual Neuron {self.idx} on model at {hex(id(self.m))}>"
-
     def info(self):
         """Returns a string containing information about this neuron.
 
@@ -416,9 +803,6 @@ class Neuron:
             f"ref_state: {self.refractory_state:d}",
             f"ref_period: {self.refractory_period:d}",
         ])
-
-    def __str__(self):
-        return f"<Neuron {self.info()}>"
 
     def info_row(self):
         """Returns a string containing information about this neuron for use in a table.
@@ -444,7 +828,7 @@ class Neuron:
         return "  ...          ...         ...          ...       ...         ... [...]"
 
 
-class NeuronList:
+class NeuronList(ModelAccessorList):
     """Redirects indexing to the SNN's neurons.
 
     Returns a :py:class:`Neuron` or a list of Neurons.
@@ -456,39 +840,71 @@ class NeuronList:
         snn.neurons[0]
         snn.neurons[1:10]
     """
-    # TODO: make this subclass of list and have it return itself when slicing
     def __init__(self, model: SNN):
-        self.m = model
+        self.accessor_type = Neuron
+        self.listview_type = NeuronListView
+        super().__init__(model)
 
     if TYPE_CHECKING:
         @overload
-        def __getitem__(self, idx: int) -> Neuron: ...
+        def __getitem__(self, idx: int | Neuron) -> Neuron: ...
         @overload
-        def __getitem__(self, idx: slice) -> list[Neuron]: ...
-
-    def __getitem__(self, idx):
-        if isinstance(idx, int):
-            return Neuron(self.m, idx)
-        elif isinstance(idx, slice):
-            indices = list(range(self.m.num_neurons))[idx]
-            return [Neuron(self.m, i) for i in indices]
-        else:
-            raise TypeError("Invalid index type")
+        def __getitem__(self, idx: slice | list[int | Neuron] | np.ndarray) -> NeuronListView: ...
 
     def info(self, max_neurons=None):
         return self.m.neuron_info(max_neurons)
 
-    def __len__(self):
-        return len(self.m.neuron_thresholds)
-
     def __iter__(self):
         return NeuronIterator(self.m)
 
-    def __str__(self):
-        return self.info(30)
+    @property
+    def num_onmodel(self):
+        return self.m.num_neurons
 
-    def __repr__(self):
-        return f"<NeuronList on model at {hex(id(self.m))} with {len(self)} neurons>"
+
+class NeuronListView(ModelListView):
+    """Redirects indexing to the SNN's neurons.
+
+    Returns a :py:class:`Neuron` or a list of Neurons.
+
+    This is used to allow for the following syntax:
+
+    .. code-block:: python
+
+        snn.neurons[0]
+        snn.neurons[1:10]
+
+    You can take a view of a view:
+
+    .. code-block:: python
+
+        snn.neurons[0:10][-5:]
+
+    You can add two views together. This will return a view of the concatenation of the two views.
+
+    However, if you add a view and something containing neurons from another model, or some
+    other type of object,the result will be a list.
+
+    Equivalence checking can be done between views and views, or views and an iterable.
+    In the latter case, element-wise equality is used.
+    """
+    def __init__(self, model: SNN, indices: list[int] | slice, max_len: int | None = None):
+        self.accessor_type = Neuron
+        self.list_type = NeuronList
+        super().__init__(model, indices, max_len)
+
+    @property
+    def num_onmodel(self):
+        return self.m.num_neurons
+
+    if TYPE_CHECKING:
+        @overload
+        def __getitem__(self, idx: int | Neuron) -> Neuron: ...
+        @overload
+        def __getitem__(self, idx: slice | list[int | Neuron] | np.ndarray) -> NeuronListView: ...
+
+    def __iter__(self):
+        return NeuronViewIterator(self.m, self.indices)
 
 
 class NeuronIterator:
@@ -504,7 +920,17 @@ class NeuronIterator:
         return Neuron(self.m, next_idx)
 
 
-class Synapse:
+class NeuronViewIterator(NeuronIterator):
+    def __init__(self, model: SNN, indices: list[int]):
+        self.m = model
+        self.iter = iter(indices)
+        self.indices = indices
+
+    def __iter__(self):
+        return NeuronViewIterator(self.m, self.indices)
+
+
+class Synapse(ModelAccessor):
     """Synapse accessor class for synapses in an SNN
 
 
@@ -515,10 +941,10 @@ class Synapse:
         To test for equality, use ``==`` instead of ``is``.
 
     """
-    def __init__(self, model: SNN, idx: int):
-        self.m = model
-        #: The index of this synapse in the SNN.
-        self.idx = idx
+
+    @property
+    def num_onmodel(self):
+        return self.m.num_synapses
 
     @property
     def pre(self) -> Neuron:
@@ -598,13 +1024,6 @@ class Synapse:
         first_syn = self.m.synapses[self.idx + self.delay + 1]
         return self.m.synapses[first_syn.idx:self.idx] + [self]
 
-    def __eq__(self, x):
-        """Check if two Synapse instances represent the same synapse in the SNN."""
-        if isinstance(x, Synapse):
-            return self.idx == x.idx and self.m is x.m
-        else:
-            return False
-
     def info(self):
         """Returns a string containing information about this synapse.
 
@@ -619,9 +1038,6 @@ class Synapse:
             f"delay: {'- ' if self.delay < 1 else '  '}{abs(self.delay):d}",
             f"stdp {'en' if self.stdp_enabled else 'dis'}abled",
         ])
-
-    def __str__(self):
-        return f"<Synapse {self.info()}>"
 
     def info_row(self):
         """Returns a string containing information about this synapse for use in a table.
@@ -648,7 +1064,7 @@ class Synapse:
         return "    ...    ...       ...         ...      ... ..."
 
 
-class SynapseList:
+class SynapseList(ModelAccessorList):
     """Redirects indexing to the SNN's synapses.
 
     Returns a :py:class:`Synapse` or a list of Synapses.
@@ -659,39 +1075,78 @@ class SynapseList:
 
         snn.synapses[0]
         snn.synapses[1:10]
+
+    You can take a view of a view:
+
+    .. code-block:: python
+
+        snn.synapses[0:10][-5:]
     """
     def __init__(self, model: SNN):
-        self.m = model
+        self.accessor_type = Synapse
+        self.listview_type = SynapseListView
+        super().__init__(model)
 
     if TYPE_CHECKING:
         @overload
-        def __getitem__(self, idx: int) -> Synapse: ...
+        def __getitem__(self, idx: int | Synapse) -> Synapse: ...
         @overload
-        def __getitem__(self, idx: slice) -> list[Synapse]: ...
+        def __getitem__(self, idx: slice | list[int | Synapse]) -> SynapseListView: ...
 
-    def __getitem__(self, idx):
-        if isinstance(idx, int):
-            return Synapse(self.m, idx)
-        elif isinstance(idx, slice):
-            indices = list(range(self.m.num_synapses))[idx]
-            return [Synapse(self.m, i) for i in indices]
-        else:
-            raise TypeError("Invalid index type")
+    @property
+    def num_onmodel(self):
+        return self.m.num_synapses
 
     def info(self, max_synapses=None):
         return self.m.synapse_info(max_synapses)
 
-    def __repr__(self):
-        return f"<SynapseList on model at {hex(id(self.m))} with {len(self)} synapses>"
-
-    def __len__(self):
-        return len(self.m.synaptic_weights)
-
     def __iter__(self):
         return SynapseIterator(self.m)
 
-    def __str__(self):
-        return self.info(30)
+
+class SynapseListView(ModelListView):
+    """Redirects indexing to the SNN's synapses.
+
+    Returns a :py:class:`Synapse` or a list of Synapses.
+
+    This is used to allow for the following syntax:
+
+    .. code-block:: python
+
+        snn.synapses[0]
+        snn.synapses[1:10]
+
+    You can take a view of a view:
+
+    .. code-block:: python
+
+        snn.synapses[0:10][-5:]
+
+    You can add two views together. This will return a view of the concatenation of the two views.
+
+    However, if you add a view and something containing synapses from another model, or some
+    other type of object,the result will be a list.
+
+    Equivalence checking can be done between views and views, or views and an iterable.
+    In the latter case, element-wise equality is used.
+    """
+    def __init__(self, model: SNN, indices: list[int] | slice, max_len: int | None = None):
+        self.accessor_type = Synapse
+        self.list_type = SynapseList
+        super().__init__(model, indices, max_len)
+
+    if TYPE_CHECKING:
+        @overload
+        def __getitem__(self, idx: int | Synapse) -> Synapse: ...
+        @overload
+        def __getitem__(self, idx: slice | list[int | Synapse]) -> SynapseListView: ...
+
+    @property
+    def num_onmodel(self):
+        return self.m.num_synapses
+
+    def __iter__(self):
+        return SynapseViewIterator(self.m, self.indices)
 
 
 class SynapseIterator:
@@ -705,3 +1160,47 @@ class SynapseIterator:
     def __next__(self):
         next_idx = next(self.iter)
         return Synapse(self.m, next_idx)
+
+
+class SynapseViewIterator(SynapseIterator):
+    def __init__(self, model: SNN, indices: list[int]):
+        self.m = model
+        self.iter = iter(indices)
+        self.indices = indices
+
+    def __iter__(self):
+        return SynapseViewIterator(self.m, self.indices)
+
+
+map_accessor_to_listview = {
+    Neuron: NeuronListView,
+    Synapse: SynapseListView,
+}
+
+
+def mlist(a: list[Neuron | Synapse] | ModelAccessorList | ModelListView):
+    """Convert a list of Neuron or Synapse objects to a ModelAccessorList or ModelListView"""
+    if not a:
+        return ModelListView()
+    elif isinstance(a, ModelAccessorList):
+        return a[:]
+    elif isinstance(a, ModelListView):
+        return a.copy()
+    a = list(a)
+    objtype = type(a[0])
+    if objtype not in map_accessor_to_listview:
+        msg = f"array contains object of type {type(a).__name__} which has no associated ListView type."
+        raise TypeError(msg)
+    m = a[0].m
+    if any(not isinstance(x, objtype) for x in a):
+        raise ValueError("cannot convert mixed-type list to ListView.")
+    if any(x.m is not m for x in a):
+        raise ValueError("cannot convert list with objects from different models to ListView.")
+    return map_accessor_to_listview[objtype](m, a)
+
+
+def asmlist(a: list[Neuron | Synapse] | ModelAccessorList | ModelListView):
+    """Convert a list of Neuron or Synapse objects to a ModelAccessorList or ModelListView"""
+    if isinstance(a, ModelListView):
+        return a
+    return mlist(a)

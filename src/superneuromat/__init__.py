@@ -1,11 +1,14 @@
 from .neuromorphicmodel import SNN
-from .accessor_classes import Neuron, Synapse
+from .accessor_classes import Neuron, Synapse, ModelListView, mlist, asmlist
 from .util import is_intlike, pretty_spike_train, print_spike_train, getenvbool
 
 __all__ = [
     "SNN",
     "Neuron",
     "Synapse",
+    "ModelListView",
+    "mlist",
+    "asmlist",
     "is_intlike",
     "pretty_spike_train",
     "print_spike_train",
