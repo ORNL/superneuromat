@@ -1,4 +1,5 @@
 from __future__ import annotations
+import sys
 from .util import is_intlike, int_err, accessor_slice, slice_indices
 
 from typing import TYPE_CHECKING, Any
@@ -377,7 +378,7 @@ class ModelListView(list):
     def pop(self, index=-1):
         return self.m.neurons[self.indices.pop(index)]
 
-    def index(self, value, start=0, stop=-1):
+    def index(self, value, start=0, stop=sys.maxsize):
         if isinstance(value, self.accessor_type):
             if value.m is not self.m:
                 raise ValueError(self._verb_error("index", self.accessor_typename, wrongmodel=value.m))
