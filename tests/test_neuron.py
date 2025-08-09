@@ -164,6 +164,16 @@ class NeuronTest(unittest.TestCase):
 
         assert vl2 is vl
 
+    def test_neuron_cache(self):
+        """ Test if neuron cache works as expected """
+        print("begin test_neuron_cache")
+        snn = SNN()
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+
+        assert a is snn.neurons[0]
+        assert b is snn.neurons[1]
+
 
 if __name__ == "__main__":
     unittest.main()

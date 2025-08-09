@@ -20,11 +20,24 @@ class ModelAccessor:
     """Accessor Class for SNNs"""
 
     associated_typename = ""
+    model_cachename = ''
+
+    def __new__(cls, snn, idx: int, *args, **kwargs):
+        if isinstance(idx, int) and hasattr(snn, cls.model_cachename):
+            cache = getattr(snn, cls.model_cachename)
+            if idx in cache:
+                return cache[idx]
+        return super().__new__(cls)
 
     def __init__(self, snn, idx: int, check_index: bool = True):
         self.m = snn
         self.idx = int_err(idx, 'idx', f'{self.__class__.__name__}.__init__()')
         self.associated_typename = self.associated_typename or self.__class__.__name__
+
+        if hasattr(self.m, self.model_cachename):
+            cache = getattr(self.m, self.model_cachename)
+            if self.idx not in cache:
+                cache[self.idx] = self
 
         if check_index:
             self.check_index()
@@ -127,6 +140,7 @@ class ModelAccessorList(list):
 class ModelListView(list):
     accessor_type: type
     list_type: type
+    model_cachename = ''
 
     def __new__(cls, *args, **kwargs):
         if args and isinstance(args[0], ModelListView):
@@ -160,6 +174,14 @@ class ModelListView(list):
             raise IndexError(msg)
         if model:
             self.accessor_typename = self.accessor_type.__name__
+            if hasattr(self.m, self.model_cachename):
+                cache = getattr(self.m, self.model_cachename)
+                cache.append(self)
+
+    def __del__(self):
+        if hasattr(self.m, self.model_cachename):
+            cache = getattr(self.m, self.model_cachename)
+            cache.remove(self)
 
     @property
     def num_onmodel(self) -> int:
@@ -424,6 +446,8 @@ class Neuron(ModelAccessor):
         To test for equality, use ``==`` instead of ``is``.
 
     """
+
+    model_cachename = '_neuron_cache'
 
     @property
     def num_onmodel(self):
@@ -889,6 +913,9 @@ class NeuronListView(ModelListView):
     Equivalence checking can be done between views and views, or views and an iterable.
     In the latter case, element-wise equality is used.
     """
+
+    model_cachename = '_neuronlist_cache'
+
     def __init__(self, model: SNN, indices: list[int] | slice, max_len: int | None = None):
         self.accessor_type = Neuron
         self.list_type = NeuronList
@@ -942,6 +969,8 @@ class Synapse(ModelAccessor):
         To test for equality, use ``==`` instead of ``is``.
 
     """
+
+    model_cachename = '_synapse_cache'
 
     @property
     def num_onmodel(self):
@@ -1131,6 +1160,9 @@ class SynapseListView(ModelListView):
     Equivalence checking can be done between views and views, or views and an iterable.
     In the latter case, element-wise equality is used.
     """
+
+    model_cachename = '_synapselist_cache'
+
     def __init__(self, model: SNN, indices: list[int] | slice, max_len: int | None = None):
         self.accessor_type = Synapse
         self.list_type = SynapseList

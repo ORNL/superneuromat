@@ -6,16 +6,17 @@ import math
 import copy
 import warnings
 import numpy as np
-from numpy import typing as npt
 from textwrap import dedent
+from weakref import WeakValueDictionary
+from numpy import typing as npt
 from scipy.sparse import csc_array  # scipy is also used for BLAS + numpy (dense matrix)
 from .util import getenv, getenvbool, is_intlike_catch, int_err, float_err
-from .util import pretty_spike_train, slice_indices
+from .util import pretty_spike_train, slice_indices, WeakProxyList
 from . import json
 from .accessor_classes import Neuron, Synapse, NeuronList, SynapseList
 from .accessor_classes import NeuronListView, SynapseListView
 
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Sequence
 
 try:
     import numba
@@ -133,6 +134,10 @@ class SNN:
 
         self.neurons = NeuronList(self)
         self.synapses = SynapseList(self)
+        self._neuron_cache = WeakValueDictionary()
+        self._synapse_cache = WeakValueDictionary()
+        self._neuronlist_cache = WeakProxyList()
+        self._synapselist_cache = WeakProxyList()
         self.connection_ids = {}
 
         self.gpu = GPU_AVAILABLE
