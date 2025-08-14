@@ -15,6 +15,8 @@ else:
         def __repr__(self):
             return "SNN"
 
+_nonce = object()
+
 
 class ModelAccessor:
     """Accessor Class for SNNs"""
@@ -22,7 +24,8 @@ class ModelAccessor:
     associated_typename = ""
     model_cachename = ''
 
-    def __new__(cls, snn, idx: int, *args, **kwargs):
+    # when unpickling, Python will call __new__ without arguments
+    def __new__(cls, snn=_nonce, idx: int = _nonce, *args, **kwargs):
         if isinstance(idx, int) and hasattr(snn, cls.model_cachename):
             cache = getattr(snn, cls.model_cachename)
             if idx in cache:

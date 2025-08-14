@@ -158,6 +158,10 @@ def slice_indices(s: slice[Any, Any, Any], max_len: int = 0) -> list[int]:
 
 
 class WeakProxyList(list):
+    def __init__(self, x=None):
+        x = [] if x is None else x
+        super().__init__([proxy(y) for y in x])  # this is used when unpickling
+
     def append(self, x):
         super().append(proxy(x))
 
