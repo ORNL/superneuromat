@@ -2539,3 +2539,20 @@ class SNN:
             raise NotImplementedError("net_id must be int or str. Importing multiple networks is not supported yet.")
 
         return self.from_json_network(net_dict, skipkeys=skipkeys)
+
+    # deal with weakrefs not being picklable
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        d['_neuron_cache'] = dict(self._neuron_cache)
+        d['_synapse_cache'] = dict(self._synapse_cache)
+        d['_neuronlist_cache'] = list(self._neuronlist_cache)
+        d['_synapselist_cache'] = list(self._synapselist_cache)
+        return d
+
+    # see my comments: https://stackoverflow.com/a/45588812/2712730
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        self._neuron_cache = WeakValueDictionary(d['_neuron_cache'])
+        self._synapse_cache = WeakValueDictionary(d['_synapse_cache'])
+        self._neuronlist_cache = WeakProxyList(d['_neuronlist_cache'])
+        self._synapselist_cache = WeakProxyList(d['_synapselist_cache'])
