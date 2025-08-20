@@ -33,7 +33,7 @@ class ModelAccessor:
         return super().__new__(cls)
 
     def __init__(self, snn, idx: int, check_index: bool = True):
-        self.m = snn
+        self._m = snn
         self.idx = int_err(idx, 'idx', f'{self.__class__.__name__}.__init__()')
         self.associated_typename = self.associated_typename or self.__class__.__name__
 
@@ -44,6 +44,22 @@ class ModelAccessor:
 
         if check_index:
             self.check_index()
+
+    @property
+    def m(self):
+        return self._m
+
+    @m.setter
+    def m(self, newmodel):
+        if isinstance(self._m, SNN):
+            cache = getattr(self._m, self.model_cachename)
+            if self.idx in cache:
+                del cache[self.idx]
+        if isinstance(newmodel, SNN):
+            cache = getattr(newmodel, self.model_cachename)
+            if self.idx not in cache:
+                cache[self.idx] = self
+        self._m = newmodel
 
     @property
     def num_onmodel(self):
@@ -67,6 +83,9 @@ class ModelAccessor:
             return self.idx == x.idx and self.m is x.m
         else:
             return False
+
+    def __hash__(self):
+        return hash((self.idx, id(self.m)))
 
     def __repr__(self):
         return f"<{self.associated_typename} {self.idx} on {self.m.__class__.__name__} at {hex(id(self.m))}>"
@@ -184,7 +203,10 @@ class ModelListView(list):
     def __del__(self):
         if hasattr(self.m, self.model_cachename):
             cache = getattr(self.m, self.model_cachename)
-            cache.remove(self)
+            try:
+                cache.remove(self)
+            except (ValueError, ReferenceError):
+                pass
 
     @property
     def num_onmodel(self) -> int:
