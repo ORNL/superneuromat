@@ -941,7 +941,7 @@ class NeuronListView(ModelListView):
 
     model_cachename = '_neuronlist_cache'
 
-    def __init__(self, model: SNN, indices: list[int] | slice, max_len: int | None = None):
+    def __init__(self, model: SNN, indices: list[int] | slice | None = None, max_len: int | None = None):
         self.accessor_type = Neuron
         self.list_type = NeuronList
         super().__init__(model, indices, max_len)
@@ -1188,7 +1188,7 @@ class SynapseListView(ModelListView):
 
     model_cachename = '_synapselist_cache'
 
-    def __init__(self, model: SNN, indices: list[int] | slice, max_len: int | None = None):
+    def __init__(self, model: SNN, indices: list[int] | slice | None = None, max_len: int | None = None):
         self.accessor_type = Synapse
         self.list_type = SynapseList
         super().__init__(model, indices, max_len)
