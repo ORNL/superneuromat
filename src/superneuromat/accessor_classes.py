@@ -105,7 +105,7 @@ class ModelAccessorList(list):
         self.accessor_typename = self.accessor_type.__name__
 
     def __getitem__(self, idx):
-        if isinstance(idx, (int, self.accessor_type)):
+        if isinstance(idx, (int, np.integer, self.accessor_type)):
             return self.accessor_type(self.m, int(idx))
         if idx is None:
             raise TypeError("list indices cannot be NoneType.")
@@ -136,7 +136,7 @@ class ModelAccessorList(list):
     def __contains__(self, item):
         if isinstance(item, self.accessor_type):
             return 0 <= item.idx < self.num_onmodel and self.m is item.m
-        elif isinstance(item, int):
+        elif isinstance(item, (int, np.integer)):
             return 0 <= item < self.num_onmodel
         return False
 
@@ -224,7 +224,7 @@ class ModelListView(list):
             raise IndexError(msg)
 
     def __getitem__(self, idx):
-        if isinstance(idx, int):
+        if isinstance(idx, (int, np.integer)):
             return Neuron(self.m, self.indices[idx])
         elif isinstance(idx, self.accessor_type) and idx.m is self.m:
             return idx
@@ -252,7 +252,7 @@ class ModelListView(list):
                 raise ValueError(msg)
             return int(value)
 
-        if isinstance(idx, int):
+        if isinstance(idx, (int, np.integer)):
             check_value(value)
             self.indices[idx] = value.idx
             return
@@ -290,7 +290,7 @@ class ModelListView(list):
 
     def __delitem__(self, idx):
         self._check_modify()
-        if isinstance(idx, (int, self.accessor_type)):
+        if isinstance(idx, (int, np.integer, self.accessor_type)):
             del self.indices[int(idx)]
         elif isinstance(idx, slice):
             idx = slice_indices(idx, len(self))
@@ -312,7 +312,7 @@ class ModelListView(list):
     def __contains__(self, idx):
         if isinstance(idx, self.accessor_type):
             return idx.idx in self.indices and self.m is idx.m
-        elif isinstance(idx, int):
+        elif isinstance(idx, (int, np.integer)):
             return idx in self.indices
         return False
 
