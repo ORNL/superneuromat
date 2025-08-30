@@ -1,5 +1,6 @@
 from .neuromorphicmodel import SNN
 from .accessor_classes import Neuron, Synapse, ModelListView, mlist, asmlist
+from .accessor_classes import NeuronListView, SynapseListView
 from .util import is_intlike, pretty_spike_train, print_spike_train, getenvbool
 
 __all__ = [
@@ -7,6 +8,8 @@ __all__ = [
     "Neuron",
     "Synapse",
     "ModelListView",
+    "NeuronListView",
+    "SynapseListView",
     "mlist",
     "asmlist",
     "is_intlike",
