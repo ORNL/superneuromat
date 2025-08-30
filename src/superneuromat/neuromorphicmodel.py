@@ -405,6 +405,11 @@ class SNN:
     def get_synaptic_id(self, pre_id: int | Neuron, post_id: int | Neuron) -> int | None:
         """Returns the id of the synapse connecting the given pre- and post-synaptic neurons.
 
+        .. toctree::
+            :hidden:
+
+            /api/_gen/superneuromat.SNN.get_synapse_id.rst
+
         Parameters
         ----------
         pre_id : int | Neuron, required
@@ -420,6 +425,11 @@ class SNN:
         ------
         TypeError
             If `pre_id` or `post_id` is not a Neuron or neuron ID (int).
+
+
+        See Also
+        --------
+        SNN.get_synapse_id
         """
         if isinstance(pre_id, Neuron):
             pre_id = pre_id.idx
@@ -430,7 +440,7 @@ class SNN:
         return self.connection_ids.get((pre_id, post_id), None)
 
     def get_synapse_id(self, pre_id: int | Neuron, post_id: int | Neuron) -> int | None:
-        """Alias to get_synaptic_id"""
+        """Alias to :py:meth:`get_synaptic_id`."""
         return self.get_synaptic_id(pre_id, post_id)
 
     @property

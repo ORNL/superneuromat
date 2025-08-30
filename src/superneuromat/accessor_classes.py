@@ -466,9 +466,8 @@ class Neuron(ModelAccessor):
 
     .. warning::
 
-        Instances of Neurons are created at access time and are not unique.
-        Multiple instances of this class may be created for the same neuron on the SNN.
-        To test for equality, use ``==`` instead of ``is``.
+        Instances of Neurons are cached at access time and ARE unique as of v3.4.0.
+        That is, each Neuron instance is a singleton.
 
     """
 
@@ -989,9 +988,8 @@ class Synapse(ModelAccessor):
 
     .. warning::
 
-        Instances of Synapse are created at access time and are not unique.
-        Multiple instances of this class may be created for the same synapse on the SNN.
-        To test for equality, use ``==`` instead of ``is``.
+        Instances of Synapse are cached at access time and ARE unique as of v3.4.0.
+        That is, each Synapse instance is a singleton.
 
     """
 
