@@ -174,6 +174,27 @@ class NeuronTest(unittest.TestCase):
         assert a is snn.neurons[0]
         assert b is snn.neurons[1]
 
+    def test_neuron_hashing(self):
+        """ Test if neuron hashing works as expected """
+        print("begin test_neuron_hashing")
+        snn = SNN()
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+
+        assert hash(a) == hash(snn.neurons[0])
+        assert hash(b) == hash(snn.neurons[1])
+
+        assert a == snn.neurons[0]
+        assert b == snn.neurons[1]
+
+        assert a != b
+
+        d = {a: 0, b: 1}
+        assert d[a] == 0
+        assert d[b] == 1
+        assert a in d
+        assert b in d
+
 
 if __name__ == "__main__":
     unittest.main()
