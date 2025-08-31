@@ -466,8 +466,9 @@ class Neuron(ModelAccessor):
 
     .. warning::
 
-        Instances of Neurons are cached at access time and ARE unique as of v3.4.0.
-        That is, each Neuron instance is a singleton.
+        Instances of Neurons are cached at access time as of v3.4.0.
+        i.e. ``snn.neurons[0] is snn.neurons[0]``.
+        Prior to v3.4.0, new Neuron instances were created on each access.
 
     """
 
@@ -988,8 +989,9 @@ class Synapse(ModelAccessor):
 
     .. warning::
 
-        Instances of Synapse are cached at access time and ARE unique as of v3.4.0.
-        That is, each Synapse instance is a singleton.
+        Instances of Synapse are cached at access time as of v3.4.0.
+        i.e. ``snn.synapses[0] is snn.synapses[0]``.
+        Prior to v3.4.0, new Synapse instances were created on each access.
 
     """
 
