@@ -932,7 +932,7 @@ class SNN:
 
         leak = float_err(leak, 'leak', fname)
         if not self.allow_signed_leak and leak < 0.0:
-            raise ValueError("leak must be grater than or equal to zero.")
+            raise ValueError("leak must be greater than or equal to zero.")
 
         refractory_period = int_err(refractory_period, 'refractory_period', fname)
         if refractory_period < 0:

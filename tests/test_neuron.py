@@ -174,6 +174,71 @@ class NeuronTest(unittest.TestCase):
         assert a is snn.neurons[0]
         assert b is snn.neurons[1]
 
+    def test_neuron_hashing(self):
+        """ Test if neuron hashing works as expected """
+        print("begin test_neuron_hashing")
+        snn = SNN()
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+
+        assert hash(a) == hash(snn.neurons[0])
+        assert hash(b) == hash(snn.neurons[1])
+
+        assert a == snn.neurons[0]
+        assert b == snn.neurons[1]
+
+        assert a != b
+
+        d = {a: 0, b: 1}
+        assert d[a] == 0
+        assert d[b] == 1
+
+    def test_neuron_properties(self):
+        """ Test if neuron properties work as expected """
+        print("begin test_neuron_properties")
+        snn = SNN()
+
+        neurons = mlist([snn.create_neuron(threshold=i) for i in range(3)])
+        assert neurons == snn.neurons
+        assert all(neurons.thresholds == [0.0, 1.0, 2.0])
+
+        assert all(neurons.thresholds[:2] == [0.0, 1.0])
+
+    def test_neuron_properties_modify(self):
+        """ Test if modifying neuron properties work as expected """
+        print("begin test_neuron_properties_modify")
+        snn = SNN()
+
+        neurons = mlist([snn.create_neuron(threshold=i) for i in range(3)])
+        assert all(neurons.thresholds == [0.0, 1.0, 2.0])
+        neurons.thresholds -= 1
+        assert all(neurons.thresholds == [-1.0, 0.0, 1.0])
+        mask = neurons.thresholds > 0.0
+        assert mask.tolist() == [False, False, True]
+
+        neurons.thresholds[:2] *= 2
+        assert all(neurons.thresholds == [-2.0, 0.0, 1.0])
+        neurons.thresholds = np.arange(3)
+        assert all(neurons.thresholds == [0.0, 1.0, 2.0])
+        neurons.thresholds[:] = [0, 0, 0]
+        assert all(neurons.thresholds == [0.0, 0.0, 0.0])
+
+        with self.assertRaises(ValueError):
+            neurons.thresholds[0] = "alpha"
+        with self.assertRaises(ValueError):
+            neurons.refractory_periods_state[0] = -1
+            neurons.refractory_periods[0] = -1
+        with self.assertRaises(ValueError):
+            neurons.leaks[0] = -1
+        snn.allow_signed_leak = True
+        neurons.leaks[0] = -1
+        assert snn.neuron_leaks[0] == -1
+        with self.assertRaises(TypeError):
+            neurons.thresholds[0] = None
+
+
+
+
 
 if __name__ == "__main__":
     unittest.main()
