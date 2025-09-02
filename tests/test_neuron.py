@@ -236,8 +236,27 @@ class NeuronTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             neurons.thresholds[0] = None
 
+    def test_neuron_output_spikes(self):
+        """ Test if neuron output spikes work as expected """
+        print("begin test_neuron_output_spikes")
+        snn = SNN()
+        inputs = mlist([snn.create_neuron() for _ in range(3)])
+        outputs = mlist([snn.create_neuron() for _ in range(2)])
+        snn.create_synapse(inputs[0], outputs[0])
+        snn.create_synapse(inputs[1], outputs[0])
+        snn.create_synapse(inputs[2], outputs[1])
 
-
+        inputs[0].add_spike(0, 9)
+        snn.simulate(3)
+        expected = [
+            [1, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0],
+        ]
+        expected = np.asarray(expected)
+        print(snn.ispikes)
+        assert np.array_equal(snn.ispikes, expected)
+        assert np.array_equal(outputs.ispikes, expected[:, 3:])
 
 
 if __name__ == "__main__":

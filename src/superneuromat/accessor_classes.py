@@ -1,6 +1,7 @@
 from __future__ import annotations
 import sys
 from .util import is_intlike, int_err, float_err, accessor_slice, slice_indices
+from . import util
 
 from typing import TYPE_CHECKING, Any
 import numpy as np
@@ -1171,6 +1172,10 @@ class NeuronList(ModelAccessorList, NeuronProperties):
     def num_onmodel(self):
         return self.m.num_neurons
 
+    @property
+    def ispikes(self):
+        return self.m.ispikes
+
 
 class NeuronListView(ModelListView, NeuronProperties):
     """Redirects indexing to the SNN's neurons.
@@ -1218,6 +1223,20 @@ class NeuronListView(ModelListView, NeuronProperties):
 
     def __iter__(self):
         return NeuronViewIterator(self.m, self.indices)
+
+    @property
+    def ispikes(self):
+        return self.m.ispikes[:, self.indices]
+
+    def pretty_spike_train(self, max_steps=None, max_neurons=None, use_unicode=True, indices=None):
+        if indices is None:
+            indices = self.indices
+        return util.pretty_spike_train(self.ispikes, max_steps, max_neurons, use_unicode, indices)
+
+    def print_spike_train(self, max_steps=None, max_neurons=None, use_unicode=True, indices=None):
+        if indices is None:
+            indices = self.indices
+        util.print_spike_train(self.ispikes, max_steps, max_neurons, use_unicode, indices)
 
 
 class NeuronIterator:

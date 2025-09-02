@@ -5,6 +5,7 @@ import sys
 sys.path.insert(0, "../src/")
 
 from superneuromat import SNN
+import superneuromat as snm
 
 
 class DisplayTest(unittest.TestCase):
@@ -90,6 +91,20 @@ class DisplayTest(unittest.TestCase):
         # TODO: test slicing and printing of neurons and synapses lists
         # print(snn.neurons[-3:].info())
         # print(snn.synapses[-3:].info())
+
+    def test_print_spike_train(self):
+        snn = self.snn
+        for _i in range(100):
+            snn.create_neuron()
+        snn.simulate(100)
+
+        snn.print_spike_train(10, 10)
+        sv = snm.pretty_spike_train(snn.spike_train, 10, 10)
+        assert 10 < len(sv) < 15
+        assert 10 < len(sv[0]) < 30
+        sv = snm.pretty_spike_train(snn.ispikes, 10, 10, indices=[i * 2 for i in range(snn.num_neurons)])
+        print(sv[0])
+        print(sv[1])
 
 
 if __name__ == "__main__":
