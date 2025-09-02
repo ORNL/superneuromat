@@ -51,11 +51,13 @@ class ModelAccessor:
 
     @m.setter
     def m(self, newmodel):
-        if isinstance(self._m, SNN):
+        # if the model of this object is changed, remove it from the cache
+        if hasattr(self._m, self.model_cachename):
             cache = getattr(self._m, self.model_cachename)
             if self.idx in cache:
                 del cache[self.idx]
-        if isinstance(newmodel, SNN):
+        # make it known to the new SNN
+        if hasattr(newmodel, self.model_cachename):
             cache = getattr(newmodel, self.model_cachename)
             if self.idx not in cache:
                 cache[self.idx] = self
@@ -63,10 +65,11 @@ class ModelAccessor:
 
     @property
     def num_onmodel(self):
-        pass
+        """Internal variable used to check if the index is valid."""
+        pass  # subclasses should define this  # pragma: no cover
 
     def info(self):
-        pass
+        pass  # subclasses should define this  # pragma: no cover
 
     def check_index(self):
         if not (0 <= self.idx < self.num_onmodel):
@@ -75,6 +78,7 @@ class ModelAccessor:
             raise IndexError(msg)
 
     def __int__(self):
+        """Returns the index of the object in the :py:class:`SNN`."""
         return self.idx
 
     def __eq__(self, x):
@@ -85,7 +89,7 @@ class ModelAccessor:
             return False
 
     def __hash__(self):
-        return hash((self.idx, id(self.m)))
+        return hash((self.associated_typename, self.idx, id(self.m)))
 
     def __repr__(self):
         return f"<{self.associated_typename} {self.idx} on {self.m.__class__.__name__} at {hex(id(self.m))}>"
@@ -106,26 +110,29 @@ class ModelAccessorList(list):
 
     def __getitem__(self, idx):
         if isinstance(idx, (int, np.integer, self.accessor_type)):
-            return self.accessor_type(self.m, int(idx))
+            return self.accessor_type(self.m, int(idx))  # return a single item
         if idx is None:
             raise TypeError("list indices cannot be NoneType.")
-        try:
-            return self.listview_type(self.m, idx)
-        except TypeError:
-            return self.accessor_type(self.m, idx)
+        try:  # idx wasn't int or accessor_type
+            return self.listview_type(self.m, idx)  # assume idx is slice or sequence
+        except TypeError:  # the __init__ of the listview_type failed, so idx isn't a slice or sequence
+            return self.accessor_type(self.m, idx)  # maybe idx is some weird int-like type?
+
+    # No __delitem__ or __setitem__ because modifying the model like that is suuper messy
+    # and I don't want users to think it's something to be taken lightly or do accidentally
 
     @property
     def num_onmodel(self) -> int:
-        pass
+        pass  # subclasses should define this  # pragma: no cover
 
     def info(self):
-        pass
+        pass  # subclasses should define this  # pragma: no cover
 
     def __len__(self) -> int:
         return self.num_onmodel
 
     def __iter__(self):
-        pass
+        pass  # pragma: no cover
 
     def __str__(self):
         return self.info(30)
@@ -137,26 +144,33 @@ class ModelAccessorList(list):
         if isinstance(item, self.accessor_type):
             return 0 <= item.idx < self.num_onmodel and self.m is item.m
         elif isinstance(item, (int, np.integer)):
-            return 0 <= item < self.num_onmodel
+            return 0 <= item < self.num_onmodel  # True if it's valid index for the model
         return False
 
     def __eq__(self, value):
         if isinstance(value, type(self)):
+            # A ModelAccessorList is unique to an SNN
             return self.m is value.m
         elif isinstance(value, self.listview_type):
-            return self.m is value.m and list(range(self.num_onmodel)) == value.indices
+            # A ModelAccessorList is basically a ModelListView where the indices are range(num_onmodel)
+            return self.m is value.m and self.indices == value.indices
         else:
-            try:
+            try:  # check elementwise equality
                 return all(a == b for a, b in zip(self, value)) and len(self) == len(value)
             except TypeError:
                 return False
 
+    def __ne__(self, value):
+        return not self.__eq__(value)
+
     @property
     def indices(self):
+        """A sorted list of all valid indices for accessors on the SNN."""
         return list(range(self.num_onmodel))
 
     def tolist(self):
-        return list(self)
+        """A list of all the accessors on the SNN."""
+        return list(self)  # I think this works because we defined __iter__
 
 
 class ModelListView(list):
@@ -164,41 +178,60 @@ class ModelListView(list):
     list_type: type
     model_cachename = ''
 
-    def __new__(cls, *args, **kwargs):
-        if args and isinstance(args[0], ModelListView):
-            return args[0].copy()
-        return super().__new__(cls, *args, **kwargs)
-
     def __init__(self, model: SNN | None = None, indices: list[int] | slice | None = None, max_len: int | None = None):
+        if isinstance(model, ModelListView) and indices is None:  # allow us to create new ModelListView from ModelListView
+            assert max_len is None
+            indices = model.indices.copy()
+            model = model.m
+        self._model = None
         self.m = model
-        self.indices: list[int]
+        self.indices: list[int]  # list of index values for the accessors on the SNN
         self.listview_type = type(self)
         if model is None and indices:
             msg = f"Attempt to create {type(self).__name__} with non-empty indices but no model."
+            raise ValueError(msg)
         if isinstance(indices, slice):
             max_len = self.num_onmodel if max_len is None else max_len
-            self.indices = slice_indices(indices, max_len)
-        elif isinstance(indices, (list, tuple, np.ndarray)):
-            self.indices = [int(i) for i in indices]
+            self.indices = slice_indices(indices, max_len)  # generate indices from slice
         elif indices is None:
             self.indices = []
         else:
-            try:
-                iter(indices)
-            except TypeError as err:
-                msg = (f"{type(self)}.__init__() received invalid index type: {type(indices)}."
-                       f" Expected int, slice, list, or other iterable containing ints.")
-                raise TypeError(msg) from err
-            self.indices = indices
-        if any(i for i in self.indices if not 0 <= int(i) < self.num_onmodel):
+            if not isinstance(indices, (list, tuple, np.ndarray)):  # skip checks for common types
+                try:  # raise error if indices is not iterable
+                    iter(indices)
+                except TypeError as err:
+                    msg = (f"{type(self)}.__init__() received invalid index type: {type(indices)}."
+                        f" Expected int, slice, list, or other iterable containing ints.")
+                    raise TypeError(msg) from err  # THIS IS NECESSARY FOR ModelAccessorList.__getitem__
+            # normalize indices
+            self.indices = [int(i) for i in indices]  # this converts accessor instances to their index values too
+        # check that indices are valid
+        if any(i for i in self.indices if not 0 <= i < self.num_onmodel):
             msg = (f"{type(self)}.__init__() received {type(indices)} containing indices out of range "
                     f"for SNN at {hex(id(self.m))} with {self.num_onmodel} neurons.")
             raise IndexError(msg)
+        # add to model cache if model is not None
         if model:
             self.accessor_typename = self.accessor_type.__name__
-            if hasattr(self.m, self.model_cachename):
-                cache = getattr(self.m, self.model_cachename)
+
+    @property
+    def m(self):
+        return self._model
+
+    @m.setter
+    def m(self, newmodel):
+        # if the model of this object is changed, remove it from the cache
+        if hasattr(self._model, self.model_cachename):
+            cache = getattr(self._model, self.model_cachename)
+            try:
+                cache.remove(self)
+            except (ValueError, ReferenceError):
+                pass
+        if hasattr(self.m, self.model_cachename):
+            cache = getattr(newmodel, self.model_cachename)
+            if self not in cache:
                 cache.append(self)
+        self._model = newmodel
 
     def __del__(self):
         if hasattr(self.m, self.model_cachename):
@@ -224,10 +257,11 @@ class ModelListView(list):
             raise IndexError(msg)
 
     def __getitem__(self, idx):
+        self._check_access()
         if isinstance(idx, (int, np.integer)):
-            return Neuron(self.m, self.indices[idx])
-        elif isinstance(idx, self.accessor_type) and idx.m is self.m:
-            return idx
+            return self.accessor_type(self.m, self.indices[idx])
+        # elif isinstance(idx, self.accessor_type) and idx.m is self.m:
+        #     return idx  # on second thought, this behavior makes little sense
         elif isinstance(idx, slice) and self.m:
             return self.listview_type(self.m, self.indices[accessor_slice(idx)], len(self))
         else:
@@ -236,7 +270,7 @@ class ModelListView(list):
             except (TypeError, ValueError) as err:
                 msg = f"Invalid index type: {type(idx)}"
                 raise TypeError(msg) from err
-            return self.listview_type(self.m, self.indices[idx])
+            return self.listview_type(self.m, idx)
 
     def __setitem__(self, idx, value):
         self._check_modify()
@@ -290,13 +324,11 @@ class ModelListView(list):
 
     def __delitem__(self, idx):
         self._check_modify()
-        if isinstance(idx, (int, np.integer, self.accessor_type)):
+        if isinstance(idx, (int, np.integer)):
             del self.indices[int(idx)]
         elif isinstance(idx, slice):
             idx = slice_indices(idx, len(self))
-            for i in idx:
-                if i in self.indices:
-                    del self.indices[i]
+            self.indices = [i for i in self.indices if i not in idx]
         else:
             del self.indices[idx]  # raise error
 
@@ -308,6 +340,9 @@ class ModelListView(list):
                 return all(a == b for a, b in zip(self, x)) and len(self) == len(x)
             except TypeError:
                 return False
+
+    def __ne__(self, x):
+        return not self.__eq__(x)
 
     def __contains__(self, idx):
         if isinstance(idx, self.accessor_type):
@@ -476,6 +511,13 @@ class Neuron(ModelAccessor):
 
     @property
     def num_onmodel(self):
+        """The number of neurons in the SNN.
+
+        See Also
+        --------
+        SNN.num_neurons
+        NeuronList.__len__ : ``len(SNN.neurons)``
+        """
         return self.m.num_neurons
 
     @property
@@ -999,6 +1041,13 @@ class Synapse(ModelAccessor):
 
     @property
     def num_onmodel(self):
+        """The number of synapses in the SNN.
+
+        See Also
+        --------
+        SNN.num_synapses
+        SynapseList.__len__
+        """
         return self.m.num_synapses
 
     @property
@@ -1025,7 +1074,10 @@ class Synapse(ModelAccessor):
 
     @property
     def delay(self) -> int:
-        """The delay of before a spike is sent to the post-synaptic neuron."""
+        """The delay of before a spike is sent to the post-synaptic neuron.
+
+        Currently, the delay cannot be modified once set.
+        """
         return self.m.synaptic_delays[self.idx]
 
     @delay.setter
@@ -1047,6 +1099,11 @@ class Synapse(ModelAccessor):
 
     @property
     def weight(self) -> float:
+        """The weight of the synapse connecting the pre- and post-synaptic neurons.
+
+        If a synapse connects neurons A and B with a weight of 2.0, then when neuron A fires,
+        neuron B will receive a spike with an amplitude of 2.0.
+        """
         return self.m.synaptic_weights[self.idx]
 
     @weight.setter
