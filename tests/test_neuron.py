@@ -147,6 +147,8 @@ class NeuronTest(unittest.TestCase):
 
         assert not snn.neurons[:]
         assert snn.neurons[:] == []
+        print(snn.neurons[:])
+        print(repr(snn.neurons[:]))
 
         a = snn.create_neuron()
         b = snn.create_neuron()
@@ -156,6 +158,7 @@ class NeuronTest(unittest.TestCase):
 
         assert snn.neurons[:]
         print(snn.neurons[1:2])
+        print(snn.neurons[:].info(3))
         assert len(snn.neurons[1:2]) == 1
         assert snn.neurons[1:2][0] == b
         assert snn.neurons[-3:].indices == [c.idx, d.idx, e.idx]
@@ -188,19 +191,47 @@ class NeuronTest(unittest.TestCase):
         assert l1[0:1] != None  # not iterable  # noqa: E711
         assert l1[0:1] != []
         assert l1.tolist() == [a, b, c]
+        assert l1.index(a) == 0
+        assert l1.index(b) == 1
+        assert l1.index(2) == 2
+        l4 = mlist([b, c, c, d, d, d])
+        assert l4.index(c) == 1
+        assert l4.index(c, start=2) == 2
+        with self.assertRaises(ValueError):
+            l4.index(c, start=3)
+        with self.assertRaises(ValueError):
+            l4.index(d, stop=2)
+        with self.assertRaises(ValueError):
+            l4.index(1.2)
+        with self.assertRaises(ValueError):
+            a.connect_child(b)
+            l1.index(snn.synapses[0])
+        with self.assertRaises(ValueError):
+            snn2 = SNN()
+            a2 = snn2.create_neuron()
+            l4.index(a2)
+        assert l4.count(1) == 1
+        assert l4.count(c) == 2
+        assert l4.count(d) == 3
+        assert l4.count(a) == 0
+        assert l4.count(0) == 0
+        assert l4.count(snn.synapses[0]) == 0
+        assert l4.count(1.2) == 0
 
     def test_neuronlist_empty(self):
         """ Test if NeuronList works as expected """
         print("begin test_neuronlist_empty")
         snn = SNN()
         a = snn.create_neuron()
-        empty = mlist([])
+        empty = NeuronListView(None, [])
         with self.assertRaises(RuntimeError):
             empty.append(a)
         assert len(empty) == 0
         assert not empty
         with self.assertRaises(IndexError):
             assert not empty[0]
+        print(empty)
+        print(repr(empty))
 
     def test_neuronlistview_error(self):
         """ Test if NeuronListView works as expected """
@@ -245,12 +276,17 @@ class NeuronTest(unittest.TestCase):
         """ Test if NeuronListView works as expected """
         print("begin test_neuronlistview_modify")
 
+        snn2 = SNN()
+        a2 = snn2.create_neuron()
+
         snn = SNN()
         a = snn.create_neuron()
         b = snn.create_neuron()
         c = snn.create_neuron()
         d = snn.create_neuron()
         e = snn.create_neuron()
+
+        a.connect_child(b)
 
         vl = snn.neurons[:2]
         vl.append(c)
@@ -262,6 +298,10 @@ class NeuronTest(unittest.TestCase):
         vl.remove(b)
         assert vl == [a, b, c, d, e]
         vl.remove(b)
+        with self.assertRaises(ValueError):
+            vl.remove(None)
+        with self.assertRaises(ValueError):
+            vl.remove(a2)
         vl.pop()
         assert vl == [a, c, d]
         vl.pop(0)
@@ -295,10 +335,31 @@ class NeuronTest(unittest.TestCase):
         assert vl == [b, b]
         del vl[0:2]
         assert vl == []
+        assert vl2 * 2 == [a, b, a, b]
+        assert vl + vl2 + [c, d] == [a, b, c, d]
+        assert [] + vl2 == [a, b]
         with self.assertRaises(TypeError):
             del vl[None]
         with self.assertRaises(IndexError):
             del vl[0]
+        vl = snn.neurons[:4]
+        vl2 = vl.copy()
+        vl.sort(reverse=True)
+        assert vl == [d, c, b, a]
+        vl2.sort(key=lambda neuron: -neuron.idx)
+        assert vl == vl2
+        vl.sort()
+        assert vl == [a, b, c, d]
+        vl2.reverse()
+        assert vl == vl2
+        vl.extend(vl2)
+        assert vl == vl2 + vl2
+        with self.assertRaises(ValueError):
+            vl.extend(snn2.neurons[:])
+        with self.assertRaises(ValueError):
+            vl.extend([a2])
+        with self.assertRaises(ValueError):
+            vl.extend(snn.synapses[:])
 
     def test_create_listview(self):
         """ Test if creating listview works as expected """

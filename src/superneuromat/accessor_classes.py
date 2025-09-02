@@ -8,8 +8,10 @@ from numpy import dtype
 
 if TYPE_CHECKING:
     from .neuromorphicmodel import SNN
+    from _typeshed import SupportsRichComparison
     from typing import overload
 else:
+    SupportsRichComparison = None
     # for docgen type in signatures
     class SNN:
         def __repr__(self):
@@ -391,15 +393,18 @@ class ModelListView(list):
             me = self.indices
             view = True
         else:
-            all_neurons = all(isinstance(i, Neuron) for i in other)
-            same_model = all_neurons and all(i.m is self.m for i in other)
-            view = all_neurons and same_model
+            same_type = all(isinstance(i, self.accessor_type) for i in other)
+            same_model = same_type and all(i.m is self.m for i in other)  # checking same_type ensures .m attr exists
+            view = same_model  # same_model and same_type
             me = list(self)
-        indices = other + me if right else me + other
-        return self.listview_type(self.m, indices) if view else list(indices)
+        indices_or_objs = other + me if right else me + other
+        return self.listview_type(self.m, indices_or_objs) if view else list(indices_or_objs)
 
     def __radd__(self, other):
         return self.__add__(other, right=True)
+
+    def __mul__(self, value):
+        return sum([self for _ in range(value)], self.listview_type(self.m, []))
 
     def clear(self):
         self.indices.clear()
@@ -465,20 +470,18 @@ class ModelListView(list):
             if value.m is not self.m:
                 raise ValueError(self._verb_error("index", self.accessor_typename, wrongmodel=value.m))
             return self.indices.index(value.idx, start, stop)
-        elif (x := int_err(value, 'value', fname='index()')):
+        elif not isinstance(value, ModelAccessor) and (x := int_err(value, 'value', fname='index()')):
             return self.indices.index(x, start, stop)
         else:
             raise ValueError(self._verb_error("index", self.accessor_typename, badtype=type(value).__name__))
 
     def count(self, value):
-        if isinstance(value, self.accessor_type):
-            if value.m is not self.m:
-                raise ValueError(self._verb_error("count", self.accessor_typename, wrongmodel=value.m))
+        if isinstance(value, self.accessor_type) and value.m is self.m:
             return self.indices.count(value.idx)
-        elif (x := int_err(value, 'value', fname='count()')):
-            return self.indices.count(x)
+        elif not isinstance(value, ModelAccessor) and is_intlike(value):
+            return self.indices.count(value)
         else:
-            raise ValueError(self._verb_error("count", self.accessor_typename, badtype=type(value).__name__))
+            return 0
 
     def copy(self, model=None):
         return type(self)(model or self.m, self.indices.copy())
@@ -490,9 +493,12 @@ class ModelListView(list):
     def sort(self, key=None, reverse=False):
         self._check_modify()
         if callable(key):
-            def key(idx):
-                return key(self[idx])
-        self.indices.sort(key=key, reverse=reverse)
+            indices = self.indices.copy()
+
+            def getter(idx: int) -> SupportsRichComparison:
+                return key(self.accessor_type(self.m, indices[idx]))
+
+        self.indices.sort(key=getter if key else None, reverse=reverse)
 
 
 class Neuron(ModelAccessor):
