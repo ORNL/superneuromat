@@ -6,6 +6,7 @@ import sys
 sys.path.insert(0, "../src/")
 
 from superneuromat import SNN, mlist, asmlist, NeuronListView
+from superneuromat.accessor_classes import NeuronIterator, NeuronViewIterator
 
 
 class NeuronTest(unittest.TestCase):
@@ -26,6 +27,17 @@ class NeuronTest(unittest.TestCase):
 
         print(a)
         print(repr(a))
+
+    def test_neurons_iter(self):
+        """ Test if Neuron iterator works as expected """
+        print("begin test_neurons_iter")
+        snn = SNN()
+
+        neurons = mlist([snn.create_neuron(threshold=i) for i in range(3)])
+
+        it = NeuronIterator(snn)
+        li = list(it)
+        assert len(li) == 3
 
     def test_accessor_change_model(self):
         """ Test if Neuron model change works as expected """

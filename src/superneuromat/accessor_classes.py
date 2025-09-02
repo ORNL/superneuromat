@@ -175,6 +175,33 @@ class ModelAccessorList(list):
         return list(self)  # I think this works because we defined __iter__
 
 
+class ModelListIterator:
+    accessor_type: type
+    model_num_name: str
+
+    def __init__(self, model: SNN):
+        self.m = model
+        self.iter = iter(range( # get number of elements on model
+            getattr(model, self.model_num_name, 0)))
+
+    def __iter__(self):
+        return type(self)(self.m)
+
+    def __next__(self):
+        next_idx = next(self.iter)
+        return self.accessor_type(self.m, next_idx)
+
+
+class ModelListViewIterator(ModelListIterator):
+    def __init__(self, model: SNN, indices: list[int]):
+        self.m = model
+        self.indices = indices
+        self.iter = iter(indices)
+
+    def __iter__(self):
+        return type(self)(self.m, self.indices)
+
+
 class ModelListView(list):
     accessor_type: type
     list_type: type
@@ -1008,27 +1035,13 @@ class NeuronListView(ModelListView):
         return NeuronViewIterator(self.m, self.indices)
 
 
-class NeuronIterator:
-    def __init__(self, model: SNN):
-        self.m = model
-        self.iter = iter(range(len(self.m.neuron_thresholds)))
-
-    def __iter__(self):
-        return NeuronIterator(self.m)
-
-    def __next__(self):
-        next_idx = next(self.iter)
-        return Neuron(self.m, next_idx)
+class NeuronIterator(ModelListIterator):
+    accessor_type = Neuron
+    model_num_name = 'num_neurons'
 
 
-class NeuronViewIterator(NeuronIterator):
-    def __init__(self, model: SNN, indices: list[int]):
-        self.m = model
-        self.iter = iter(indices)
-        self.indices = indices
-
-    def __iter__(self):
-        return NeuronViewIterator(self.m, self.indices)
+class NeuronViewIterator(ModelListViewIterator, NeuronIterator):
+    pass
 
 
 class Synapse(ModelAccessor):
@@ -1270,27 +1283,13 @@ class SynapseListView(ModelListView):
         return SynapseViewIterator(self.m, self.indices)
 
 
-class SynapseIterator:
-    def __init__(self, model: SNN):
-        self.m = model
-        self.iter = iter(range(len(self.m.synaptic_weights)))
-
-    def __iter__(self):
-        return SynapseIterator(self.m)
-
-    def __next__(self):
-        next_idx = next(self.iter)
-        return Synapse(self.m, next_idx)
+class SynapseIterator(ModelListIterator):
+    accessor_type = Synapse
+    model_num_name = 'num_synapses'
 
 
-class SynapseViewIterator(SynapseIterator):
-    def __init__(self, model: SNN, indices: list[int]):
-        self.m = model
-        self.iter = iter(indices)
-        self.indices = indices
-
-    def __iter__(self):
-        return SynapseViewIterator(self.m, self.indices)
+class SynapseViewIterator(ModelListViewIterator, SynapseIterator):
+    pass
 
 
 map_accessor_to_listview = {
@@ -1299,7 +1298,8 @@ map_accessor_to_listview = {
 }
 
 
-def mlist(a: list[Neuron | Synapse] | ModelAccessorList | ModelListView):
+def mlist(a: list[Neuron] | list[Synapse] | ModelAccessorList | ModelListView
+          | ModelListViewIterator | ModelListIterator):
     """Convert a list of Neuron or Synapse objects to a ModelAccessorList or ModelListView"""
     if not a:
         return ModelListView()
