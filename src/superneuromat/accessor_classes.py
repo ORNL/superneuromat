@@ -221,6 +221,7 @@ class ModelListView(list):
             indices = model.indices.copy()
             model = model.m
         self._model = None
+        # add to model cache if model is not None
         self.m = model
         self.indices: list[int]  # list of index values for the accessors on the SNN
         self.listview_type = type(self)
@@ -242,14 +243,13 @@ class ModelListView(list):
                     raise TypeError(msg) from err  # THIS IS NECESSARY FOR ModelAccessorList.__getitem__
             # normalize indices
             self.indices = [int(i) for i in indices]  # this converts accessor instances to their index values too
-        # check that indices are valid
-        if any(i for i in self.indices if not 0 <= i < self.num_onmodel):
-            msg = (f"{type(self)}.__init__() received {type(indices)} containing indices out of range "
-                    f"for SNN at {hex(id(self.m))} with {self.num_onmodel} neurons.")
-            raise IndexError(msg)
-        # add to model cache if model is not None
         if model:
             self.accessor_typename = self.accessor_type.__name__
+            # check that indices are valid
+            if any(i for i in self.indices if not 0 <= i < self.num_onmodel):
+                msg = (f"{type(self)}.__init__() received {type(indices)} containing indices out of range "
+                        f"for SNN at {hex(id(self.m))} with {self.num_onmodel} {self.accessor_typename.lower()}s.")
+                raise IndexError(msg)
 
     @property
     def m(self):
@@ -516,7 +516,7 @@ class ModelListView(list):
         Neuron | Synapse
             NeuronListViews will return Neurons, SynapseListViews will return Synapses.
         """
-        return self.m.neurons[self.indices.pop(index)]
+        return self.accessor_type(self.m, self.indices.pop(index))
 
     def index(self, value, start=0, stop=sys.maxsize):
         if isinstance(value, self.accessor_type):
