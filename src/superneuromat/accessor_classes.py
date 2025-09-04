@@ -1,5 +1,6 @@
 from __future__ import annotations
 import sys
+from collections.abc import Sequence, MutableSequence
 from .util import is_intlike, int_err, accessor_slice, slice_indices
 
 from typing import TYPE_CHECKING, Any
@@ -109,8 +110,10 @@ class ModelAccessor:
         return f"<{self.associated_typename} {self.info()}>"
 
 
-class ModelAccessorList(list):
-    """Base class for :py:class:`NeuronList` and :py:class:`SynapseList`."""
+class ModelAccessorList(Sequence):
+    """Base class for :py:class:`NeuronList` and :py:class:`SynapseList`.
+
+    Inherits from :py:class:`collections.abc.Sequence`."""
     accessor_type: type
     listview_type: type
 
@@ -212,8 +215,10 @@ class ModelListViewIterator(ModelListIterator):
         return type(self)(self.m, self.indices)
 
 
-class ModelListView(list):
-    """Base class for :py:class:`NeuronListView` and :py:class:`SynapseListView`."""
+class ModelListView(MutableSequence):
+    """Base class for :py:class:`NeuronListView` and :py:class:`SynapseListView`.
+
+    Inherits from :py:class:`collections.abc.MutableSequence`."""
     accessor_type: type
     list_type: type
     model_cachename = ''
@@ -447,7 +452,7 @@ class ModelListView(list):
     def __str__(self):
         return self.info(None)
 
-    def __add__(self, other, right=False):
+    def add(self, other, right=False):
         """Concatenate this ListView with another iterable.
 
         Parameters
@@ -474,6 +479,8 @@ class ModelListView(list):
             me = list(self)
         indices_or_objs = other + me if right else me + other
         return self.listview_type(self.m, indices_or_objs) if view else list(indices_or_objs)
+
+    __add__ = add
 
     def __radd__(self, other):
         return self.__add__(other, right=True)
