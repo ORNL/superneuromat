@@ -6,16 +6,17 @@ import math
 import copy
 import warnings
 import numpy as np
-from numpy import typing as npt
 from textwrap import dedent
+from weakref import WeakValueDictionary
+from numpy import typing as npt
 from scipy.sparse import csc_array  # scipy is also used for BLAS + numpy (dense matrix)
 from .util import getenv, getenvbool, is_intlike_catch, int_err, float_err
-from .util import pretty_spike_train, slice_indices
+from .util import pretty_spike_train, slice_indices, WeakProxyList
 from . import json
 from .accessor_classes import Neuron, Synapse, NeuronList, SynapseList
 from .accessor_classes import NeuronListView, SynapseListView
 
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Sequence
 
 try:
     import numba
@@ -133,6 +134,10 @@ class SNN:
 
         self.neurons = NeuronList(self)
         self.synapses = SynapseList(self)
+        self._neuron_cache = WeakValueDictionary()
+        self._synapse_cache = WeakValueDictionary()
+        self._neuronlist_cache = WeakProxyList()
+        self._synapselist_cache = WeakProxyList()
         self.connection_ids = {}
 
         self.gpu = GPU_AVAILABLE
@@ -400,6 +405,11 @@ class SNN:
     def get_synaptic_id(self, pre_id: int | Neuron, post_id: int | Neuron) -> int | None:
         """Returns the id of the synapse connecting the given pre- and post-synaptic neurons.
 
+        .. toctree::
+            :hidden:
+
+            /api/_gen/superneuromat.SNN.get_synapse_id.rst
+
         Parameters
         ----------
         pre_id : int | Neuron, required
@@ -415,6 +425,11 @@ class SNN:
         ------
         TypeError
             If `pre_id` or `post_id` is not a Neuron or neuron ID (int).
+
+
+        See Also
+        --------
+        SNN.get_synapse_id
         """
         if isinstance(pre_id, Neuron):
             pre_id = pre_id.idx
@@ -425,7 +440,7 @@ class SNN:
         return self.connection_ids.get((pre_id, post_id), None)
 
     def get_synapse_id(self, pre_id: int | Neuron, post_id: int | Neuron) -> int | None:
-        """Alias to get_synaptic_id"""
+        """Alias to :py:meth:`get_synaptic_id`."""
         return self.get_synaptic_id(pre_id, post_id)
 
     @property
@@ -2534,3 +2549,20 @@ class SNN:
             raise NotImplementedError("net_id must be int or str. Importing multiple networks is not supported yet.")
 
         return self.from_json_network(net_dict, skipkeys=skipkeys)
+
+    # deal with weakrefs not being picklable
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        d['_neuron_cache'] = dict(self._neuron_cache)
+        d['_synapse_cache'] = dict(self._synapse_cache)
+        d['_neuronlist_cache'] = list(self._neuronlist_cache)
+        d['_synapselist_cache'] = list(self._synapselist_cache)
+        return d
+
+    # see my comments: https://stackoverflow.com/a/45588812/2712730
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        self._neuron_cache = WeakValueDictionary(d['_neuron_cache'])
+        self._synapse_cache = WeakValueDictionary(d['_synapse_cache'])
+        self._neuronlist_cache = WeakProxyList(d['_neuronlist_cache'])
+        self._synapselist_cache = WeakProxyList(d['_synapselist_cache'])

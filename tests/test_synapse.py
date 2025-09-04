@@ -166,6 +166,8 @@ class SynapseTest(unittest.TestCase):
 
         print("testing SynapseListView")
         print(snn.synapses)
+        assert snn.synapses[0] == ab
+        assert snn.synapses[ab].idx == 0
         assert snn.synapses[:] == [ab] + ac.delay_chain_synapses
         assert snn.synapses[0:2] == [ab, ac.delay_chain_synapses[0]]
         assert snn.synapses[2:4]
@@ -218,6 +220,29 @@ class SynapseTest(unittest.TestCase):
         assert [int(n) for n in neuron_chain] == [0, 2, 3, 1]
         assert [int(s) for s in synapse_chain] == [0, 1, 2]
         assert snn.synapses[0].delay_chain == []
+
+    def test_synapse_hashing(self):
+        """ Test if synapse hashing works as expected """
+        print("begin test_synapse_hashing")
+        snn = SNN()
+        a = snn.create_neuron()
+        b = snn.create_neuron()
+
+        ab = snn.create_synapse(a, b)
+        ba = snn.create_synapse(b, a)
+
+        assert hash(ab) == hash(snn.synapses[0])
+        assert hash(ab) != hash(snn.neurons[0])
+        assert hash(ba) == hash(snn.synapses[1])
+
+        synapse_set = {ab, ba}
+        assert ab in synapse_set
+        synapse_set.add(ab)
+        assert len(synapse_set) == 2
+
+        d = {ab: 0, ba: 1}
+        assert d[ab] == 0
+        assert d[ba] == 1
 
 
 if __name__ == "__main__":

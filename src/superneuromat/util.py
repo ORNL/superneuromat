@@ -10,6 +10,7 @@
 """
 from __future__ import annotations
 import os
+from weakref import proxy
 
 import numpy as np
 
@@ -154,6 +155,15 @@ def slice_indices(s: slice[Any, Any, Any], max_len: int = 0) -> list[int]:
     else:  # step is negative, stop is not None. Ignore stop
         stop = max_len
     return list(range(stop))[s]
+
+
+class WeakProxyList(list):
+    def __init__(self, x=None):
+        x = [] if x is None else x
+        super().__init__([proxy(y) for y in x])  # this is used when unpickling
+
+    def append(self, x):
+        super().append(proxy(x))
 
 
 def pretty_spike_train(
