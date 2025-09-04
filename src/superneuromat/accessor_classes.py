@@ -90,7 +90,7 @@ class ModelAccessor:
     model_cachename = ''
 
     # when unpickling, Python will call __new__ without arguments
-    def __new__(cls, snn=_nonce, idx: int = _nonce, *args, **kwargs):
+    def __new__(cls, snn=_nonce, idx: int = _nonce, *args, **kwargs):  # pyright: ignore[reportArgumentType]
         if isinstance(idx, int) and hasattr(snn, cls.model_cachename):
             cache = getattr(snn, cls.model_cachename)
             if idx in cache:
@@ -172,7 +172,7 @@ class ModelAccessor:
         return f"<{self.associated_typename} {self.info()}>"
 
 
-class ModelAccessorList(BaseListOperators, Sequence):
+class ModelAccessorList(Sequence):
     """Base class for :py:class:`NeuronList` and :py:class:`SynapseList`.
 
     Inherits from :py:class:`collections.abc.Sequence`."""
@@ -197,6 +197,16 @@ class ModelAccessorList(BaseListOperators, Sequence):
 
     # No __delitem__ or __setitem__ because modifying the model like that is suuper messy
     # and I don't want users to think it's something to be taken lightly or do accidentally
+
+    def _check_modify(self):
+        if self.m is None:
+            msg = f"attempt to modify empty {type(self).__name__} not associated with a model."
+            raise RuntimeError(msg)
+
+    def _check_access(self):
+        if self.m is None:
+            msg = f"attempt to index into {type(self).__name__} not associated with a model."
+            raise IndexError(msg)
 
     @property
     def num_onmodel(self) -> int:
@@ -256,7 +266,7 @@ class ModelListIterator:
 
     def __init__(self, model: SNN):
         self.m = model
-        self.iter = iter(range( # get number of elements on model
+        self.iter = iter(range(  # get number of elements on model
             getattr(model, self.model_num_name, 0)))
 
     def __iter__(self):
@@ -268,7 +278,7 @@ class ModelListIterator:
 
 
 class ModelListViewIterator(ModelListIterator):
-    def __init__(self, model: SNN, indices: list[int]):
+    def __init__(self, model: SNN | None, indices: list[int]):
         self.m = model
         self.indices = indices
         self.iter = iter(indices)
@@ -861,9 +871,9 @@ class ModelParameterSubset(BaseListOperators):
 
     def __contains__(self, idx):
         if isinstance(idx, self.accessor_type):
-            return idx.idx in self.indices and self.m is idx.m
+            return idx.idx in self.v.indices and self.v.m is idx.m
         elif isinstance(idx, (int, np.integer)):
-            return idx in self.indices
+            return idx in self.v.indices
         return False
 
     def __len__(self):
@@ -872,26 +882,8 @@ class ModelParameterSubset(BaseListOperators):
     def tolist(self):
         return list(self)
 
-    def using_model(self, model):
-        """Returns a copy of the listview using the given model."""
-        return self.copy(model)
-
     def __repr__(self):
         return repr(list(self))
-        if self.m is None:
-            return f"<Empty, uninitialized {type(self).__name__}>"
-        if max_entries is None or len(self) <= max_entries:
-            rows = (obj.info_row() for obj in self)
-        else:
-            fi = max_entries // 2
-            first = [obj.info_row() for obj in self[:fi]]
-            last = [obj.info_row() for obj in self[-fi:]]
-            rows = first + [self.accessor_type.row_cont()] + last
-        return '\n'.join([
-            f"{type(self).__name__} into model at {hex(id(self.m))} ({len(self)}):",
-            self.accessor_type.row_header(),
-            '\n'.join(rows),
-        ])
 
     def __str__(self):
         return str(list(self))
@@ -903,7 +895,8 @@ class ModelParameterSubset(BaseListOperators):
         for i, x in enumerate(self[start:stop]):
             if x == value:
                 return i + start
-        raise ValueError(f"Value {value!r} is not in list.")
+        msg = f"Value {value!r} is not in list."
+        raise ValueError(msg)
 
     def count(self, value):
         n = 0
@@ -1420,7 +1413,7 @@ class NeuronList(ModelAccessorList, NeuronProperties):
         @overload
         def __getitem__(self, idx: int | Neuron) -> Neuron: ...
         @overload
-        def __getitem__(self, idx: slice | list[int | Neuron] | np.ndarray) -> NeuronListView: ...
+        def __getitem__(self, idx: slice | list[int] | list[Neuron] | list[int | Neuron] | np.ndarray) -> NeuronListView: ...
 
     def info(self, max_neurons=None):
         return self.m.neuron_info(max_neurons)
@@ -1759,7 +1752,7 @@ class SynapseListView(ModelListView, SynapseProperties):
         @overload
         def __getitem__(self, idx: int | Synapse) -> Synapse: ...
         @overload
-        def __getitem__(self, idx: slice | list[int | Synapse]) -> SynapseListView: ...
+        def __getitem__(self, idx: slice | list[int] | list[Synapse] | list[int | Synapse] | np.ndarray) -> SynapseListView: ...
 
     @property
     def num_onmodel(self):
@@ -1816,7 +1809,7 @@ def mlist(a: list[Neuron] | list[Synapse] | ModelAccessorList | ModelListView
     return map_accessor_to_listview[objtype](m, a)
 
 
-def asmlist(a: list[Neuron | Synapse] | ModelAccessorList | ModelListView):
+def asmlist(a: list[Neuron] | list[Synapse] | ModelAccessorList | ModelListView):
     """Convert a list of Neuron or Synapse objects to a ModelAccessorList or ModelListView"""
     if isinstance(a, ModelListView):
         return a

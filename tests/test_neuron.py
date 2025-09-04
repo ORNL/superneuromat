@@ -33,7 +33,7 @@ class NeuronTest(unittest.TestCase):
         print("begin test_neurons_iter")
         snn = SNN()
 
-        neurons = mlist([snn.create_neuron(threshold=i) for i in range(3)])
+        _neurons = mlist([snn.create_neuron(threshold=i) for i in range(3)])
 
         it = NeuronIterator(snn)
         li = list(it)
