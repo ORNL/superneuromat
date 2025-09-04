@@ -228,9 +228,7 @@ class ModelListView(MutableSequence):
             assert max_len is None
             indices = model.indices.copy()
             model = model.m
-        self._model = None
-        # add to model cache if model is not None
-        self.m = model
+        self._model = model
         self.indices: list[int]  # list of index values for the accessors on the SNN
         self.listview_type = type(self)
         if model is None and indices:
@@ -258,6 +256,11 @@ class ModelListView(MutableSequence):
                 msg = (f"{type(self)}.__init__() received {type(indices)} containing indices out of range "
                         f"for SNN at {hex(id(self.m))} with {self.num_onmodel} {self.accessor_typename.lower()}s.")
                 raise IndexError(msg)
+        # add to model cache if model is not None
+        if hasattr(model, self.model_cachename):
+            cache = getattr(model, self.model_cachename)
+            if self not in cache:
+                cache.append(self)
 
     @property
     def m(self):
