@@ -277,7 +277,7 @@ class ModelListView(MutableSequence):
                 cache.remove(self)
             except (ValueError, ReferenceError):
                 pass
-        if hasattr(self.m, self.model_cachename):
+        if hasattr(newmodel, self.model_cachename):
             cache = getattr(newmodel, self.model_cachename)
             if self not in cache:
                 cache.append(self)
@@ -373,15 +373,15 @@ class ModelListView(MutableSequence):
         for idx, x in zip(indices, new_indices):
             self.indices[idx] = x
 
-    def __delitem__(self, idx):
+    def __delitem__(self, idx_toremove):
         self._check_modify()
-        if isinstance(idx, (int, np.integer)):
-            del self.indices[int(idx)]
-        elif isinstance(idx, slice):
-            idx = slice_indices(idx, len(self))
-            self.indices = [i for i in self.indices if i not in idx]
+        if isinstance(idx_toremove, (int, np.integer)):
+            del self.indices[int(idx_toremove)]
+        elif isinstance(idx_toremove, slice):
+            idx_toremove = slice_indices(idx_toremove, len(self))
+            self.indices = [idx for i, idx in enumerate(self.indices) if i not in idx_toremove]
         else:
-            del self.indices[idx]  # raise error
+            del self.indices[idx_toremove]  # raise error
 
     def __eq__(self, x):
         if isinstance(x, self.listview_type):
