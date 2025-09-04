@@ -97,6 +97,51 @@ class NeuronTest(unittest.TestCase):
 
         print("test_accessor_create_synapse completed successfully")
 
+    def test_neuron_properties(self):
+        """ Test if neuron properties work as expected """
+        print("begin test_neuron_properties")
+        snn = SNN()
+        a = snn.create_neuron(
+            initial_state=1.2,
+            threshold=10,
+            refractory_state=2,
+            refractory_period=3,
+            reset_state=0.0,
+            leak=0.05,
+        )
+        assert a.state == 1.2
+        assert a.threshold == 10
+        assert a.refractory_state == 2
+        assert a.refractory_period == 3
+        assert a.reset_state == 0.0
+        assert a.leak == 0.05
+
+        a.state = 0.1
+        assert snn.neuron_states[0] == 0.1
+        a.threshold = 0.2
+        assert snn.neuron_thresholds[0] == 0.2
+        a.leak = 0.3
+        assert snn.neuron_leaks[0] == 0.3
+        with self.assertRaises(ValueError):
+            a.leak = -1.0
+        snn.allow_signed_leak = True
+        a.leak = -1.0
+        assert snn.neuron_leaks[0] == -1.0
+        a.reset_state = -0.4
+        assert snn.neuron_reset_states[0] == -0.4
+        a.refractory_state = 100
+        assert snn.neuron_refractory_periods_state[0] == 100
+        with self.assertRaises(ValueError):
+            a.refractory_state = -1
+        with self.assertRaises(TypeError):
+            a.refractory_state = 1.1  # pyright: ignore[reportAttributeAccessIssue]
+        a.refractory_period = 10
+        assert snn.neuron_refractory_periods[0] == 10
+        with self.assertRaises(ValueError):
+            a.refractory_period = -1
+        with self.assertRaises(TypeError):
+            a.refractory_period = 1.1  # pyright: ignore[reportAttributeAccessIssue]
+
     def test_neuronlist(self):
         """ Test if NeuronList works as expected """
         print("begin test_neuronlist")
@@ -435,9 +480,9 @@ class NeuronTest(unittest.TestCase):
         assert a in d
         assert b in d
 
-    def test_neuron_properties(self):
+    def test_neuronlist_properties(self):
         """ Test if neuron properties work as expected """
-        print("begin test_neuron_properties")
+        print("begin test_neuronlist_properties")
         snn = SNN()
 
         neurons = mlist([snn.create_neuron(threshold=i) for i in range(3)])
@@ -454,9 +499,9 @@ class NeuronTest(unittest.TestCase):
         assert repr(neurons.thresholds) == repr(snn.neuron_thresholds)
         assert neurons.thresholds.tolist() == snn.neuron_thresholds
 
-    def test_neuron_properties_modify(self):
+    def test_neuronlist_properties_modify(self):
         """ Test if modifying neuron properties work as expected """
-        print("begin test_neuron_properties_modify")
+        print("begin test_neuronlist_properties_modify")
         snn = SNN()
 
         neurons = mlist([snn.create_neuron(threshold=i) for i in range(3)])

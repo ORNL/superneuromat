@@ -374,7 +374,7 @@ class ModelListView(MutableSequence):
     @property
     def num_onmodel(self) -> int:
         # used for knowing the max index of an object on the model
-        pass
+        pass  # pragma: no cover
 
     def _check_modify(self):
         if self.m is None:
