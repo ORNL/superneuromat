@@ -5,7 +5,7 @@ import numpy as np
 import sys
 sys.path.insert(0, "../src/")
 
-from superneuromat import SNN
+from superneuromat import SNN, mlist
 
 use = 'cpu'
 
@@ -145,6 +145,30 @@ class SpikeTest(unittest.TestCase):
         assert np.array_equal(a.spikes, expected_spike_train)
 
         snn.print_spike_train()
+
+    def test_neuronlist_ispikes(self):
+        """Test the ispikes property of NeuronList"""
+        print("begin test_neuronlist_ispikes")
+        snn = SNN()
+        inputs = mlist([snn.create_neuron() for _ in range(2)])
+        outputs = mlist([snn.create_neuron() for _ in range(2)])
+        inputs[0].connect_child(outputs[0], delay=3)
+        inputs[0].add_spike(3, 9)
+        snn.simulate(8)
+        assert outputs.ispikes[6, 0]
+        t, v = np.nonzero(outputs.ispikes)
+        assert t[0], v[0] == (6, 0)
+        expected = np.array([
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 1],
+            [0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0]
+        ])
+        assert np.array_equal(snn.neurons.ispikes, expected)
 
     def test_delete_spikes(self):
         """Test the clear_input_spikes function"""

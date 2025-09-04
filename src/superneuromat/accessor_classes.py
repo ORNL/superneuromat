@@ -17,7 +17,7 @@ else:
     # for docgen type in signatures
     class SNN:
         def __repr__(self):
-            return "SNN"
+            return "SNN"  # pragma: no cover
 
 _nonce = object()
 
@@ -902,7 +902,7 @@ class PositiveModelProp(ModelParameterSubset):
     def check_value(self, new_value, old_value=None):
         new_value = super().check_value(new_value, old_value)
         if not (new_value > 0
-            or not self.positive_definite and new_value == 0):
+                or not self.positive_definite and new_value == 0):
             msg = f"{self.parameter_name} must be greater than {'' if self.positive_definite else 'or equal to '}0."
             raise ValueError(msg)
         return new_value
@@ -975,6 +975,8 @@ class Neuron(ModelAccessor):
 
     @leak.setter
     def leak(self, value: float):
+        if not self.m.allow_signed_leak and value < 0.0:
+            raise ValueError("leak must be greater than or equal to zero.")
         self.m.neuron_leaks[self.idx] = value
 
     @property
@@ -1004,6 +1006,8 @@ class Neuron(ModelAccessor):
     def refractory_state(self, value: int):
         if not is_intlike(value):
             raise TypeError("refractory_state must be int")
+        if value < 0:
+            raise ValueError("refractory_state must be greater than or equal to 0.")
         self.m.neuron_refractory_periods_state[self.idx] = int(value)
 
     @property
@@ -1015,6 +1019,8 @@ class Neuron(ModelAccessor):
     def refractory_period(self, value: int):
         if not is_intlike(value):
             raise TypeError("refractory_period must be int")
+        if value < 0:
+            raise ValueError("refractory_period must be greater than or equal to 0.")
         self.m.neuron_refractory_periods[self.idx] = int(value)
 
     @property

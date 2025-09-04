@@ -4,7 +4,7 @@ import unittest
 import sys
 sys.path.insert(0, "../src/")
 
-from superneuromat import SNN
+from superneuromat import SNN, mlist
 import superneuromat as snm
 
 
@@ -105,6 +105,17 @@ class DisplayTest(unittest.TestCase):
         sv = snm.pretty_spike_train(snn.ispikes, 10, 10, indices=[i * 2 for i in range(snn.num_neurons)])
         print(sv[0])
         print(sv[1])
+
+    def test_neuronlistview_spike_train(self):
+        snn = self.snn
+        inputs = mlist([snn.create_neuron() for _ in range(5)])
+        outputs = mlist([snn.create_neuron() for _ in range(5)])
+        inputs[0].connect_child(outputs[0], delay=5)
+        inputs[0].add_spike(5, 9)
+        snn.simulate(15)
+
+        outputs.print_spike_train()
+        sv = outputs.pretty_spike_train()
 
 
 if __name__ == "__main__":

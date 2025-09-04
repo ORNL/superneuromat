@@ -445,6 +445,14 @@ class NeuronTest(unittest.TestCase):
         assert all(neurons.thresholds == [0.0, 1.0, 2.0])
 
         assert all(neurons.thresholds[:2] == [0.0, 1.0])
+        mask = neurons.thresholds > 1.0
+        assert mask.tolist() == [False, False, True]
+        with self.assertRaises(IndexError):
+            neurons.thresholds[mask[:1]]
+
+        assert str(neurons.thresholds) == str(snn.neuron_thresholds)
+        assert repr(neurons.thresholds) == repr(snn.neuron_thresholds)
+        assert neurons.thresholds.tolist() == snn.neuron_thresholds
 
     def test_neuron_properties_modify(self):
         """ Test if modifying neuron properties work as expected """
@@ -457,18 +465,35 @@ class NeuronTest(unittest.TestCase):
         assert all(neurons.thresholds == [-1.0, 0.0, 1.0])
         mask = neurons.thresholds > 0.0
         assert mask.tolist() == [False, False, True]
+        assert neurons.thresholds[mask] == [1.0]
+        assert np.array_equal(neurons.thresholds[neurons.thresholds + 1.0], [-1.0, 0.0, 1.0])
 
         neurons.thresholds[:2] *= 2
         assert all(neurons.thresholds == [-2.0, 0.0, 1.0])
         neurons.thresholds = np.arange(3)
         assert all(neurons.thresholds == [0.0, 1.0, 2.0])
+        assert 2.0 in neurons.thresholds
+        neurons.thresholds[0:9:2] = [-1, -1]
+        assert all(neurons.thresholds == [-1.0, 1.0, -1.0])
+        with self.assertRaises(ValueError):
+            neurons.thresholds[0:9:2] = [(-1,), ()]  # broadcasting error
+        neurons.thresholds[neurons.thresholds < 0.0] = [0.0, 9.0]
+        assert all(neurons.thresholds == [0.0, 1.0, 9.0])
+        neurons.thresholds[neurons.thresholds > 1.0] = [0.0]
+        assert all(neurons.thresholds == [0.0, 1.0, 0.0])
+        assert neurons.thresholds.count(0.0) == 2
+        assert neurons.thresholds.index(1.0) == 1
+        with self.assertRaises(ValueError):
+            neurons.thresholds.index(8)
         neurons.thresholds[:] = [0, 0, 0]
         assert all(neurons.thresholds == [0.0, 0.0, 0.0])
+        neurons.refractory_periods[0] = 1
 
         with self.assertRaises(ValueError):
             neurons.thresholds[0] = "alpha"
         with self.assertRaises(ValueError):
             neurons.refractory_periods_state[0] = -1
+        with self.assertRaises(ValueError):
             neurons.refractory_periods[0] = -1
         with self.assertRaises(ValueError):
             neurons.leaks[0] = -1
