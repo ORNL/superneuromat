@@ -45,7 +45,7 @@ class ModelAccessor:
                 cache[self.idx] = self
 
         if check_index:
-            self.check_index()
+            self._check_index()
 
     @property
     def m(self):
@@ -73,7 +73,7 @@ class ModelAccessor:
     def info(self):
         pass  # subclasses should define this  # pragma: no cover
 
-    def check_index(self):
+    def _check_index(self):
         if not (0 <= self.idx < self.num_onmodel):
             msg = (f"{self.associated_typename} index {self.idx} is out of range for {self.m.__class__.__name__} at "
                     f"{hex(id(self.m))} with {self.num_onmodel} {self.associated_typename.lower()}s.")
