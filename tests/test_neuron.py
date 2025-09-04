@@ -208,7 +208,7 @@ class NeuronTest(unittest.TestCase):
         assert l1.index(2) == 2
         l4 = mlist([b, c, c, d, d, d])
         assert l4.index(c) == 1
-        assert l4.index(c, start=2) == 2
+        assert l4.index(c, start=2, stop=3) == 2
         with self.assertRaises(ValueError):
             l4.index(c, start=3)
         with self.assertRaises(ValueError):

@@ -5,4 +5,5 @@
 
 .. autoclass:: Synapse
    :members:
+   :inherited-members:
    

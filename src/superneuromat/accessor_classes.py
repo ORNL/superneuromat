@@ -49,6 +49,7 @@ class ModelAccessor:
 
     @property
     def m(self):
+        """The :py:class:`SNN` that this object is associated with."""
         return self._m
 
     @m.setter
@@ -109,6 +110,7 @@ class ModelAccessor:
 
 
 class ModelAccessorList(list):
+    """Base class for :py:class:`NeuronList` and :py:class:`SynapseList`."""
     accessor_type: type
     listview_type: type
 
@@ -211,6 +213,7 @@ class ModelListViewIterator(ModelListIterator):
 
 
 class ModelListView(list):
+    """Base class for :py:class:`NeuronListView` and :py:class:`SynapseListView`."""
     accessor_type: type
     list_type: type
     model_cachename = ''
@@ -494,6 +497,20 @@ class ModelListView(list):
             self.indices.append(x.idx)
 
     def remove(self, value):
+        """Remove the first occurrence of ``value`` from this ListView.
+
+        Parameters
+        ----------
+        value : NeuronAccessor | SynapseAccessor
+            The item to remove from this ListView.
+
+        Raises
+        ------
+        RuntimeError
+            If this ListView is not associated with an :py:class:`SNN`.
+        ValueError
+            If ``value`` is not present in this ListView.
+        """
         self._check_modify()
         if isinstance(value, self.accessor_type):
             if value.m is not self.m:
@@ -519,6 +536,26 @@ class ModelListView(list):
         return self.accessor_type(self.m, self.indices.pop(index))
 
     def index(self, value, start=0, stop=sys.maxsize):
+        """Return the index of ``value`` in this ListView.
+
+        Parameters
+        ----------
+        value : NeuronAccessor | SynapseAccessor
+        start : int, optional
+            The starting index of the search, by default 0
+        stop : _type_, optional
+            The ending index of the search (non-inclusive), by default sys.maxsize
+
+        Returns
+        -------
+        int
+            first index of ``value`` in this ListView.
+
+        Raises
+        ------
+        ValueError
+            if the value is not present.
+        """
         if isinstance(value, self.accessor_type):
             if value.m is not self.m:
                 raise ValueError(self._verb_error("index", self.accessor_typename, wrongmodel=value.m))
@@ -529,6 +566,20 @@ class ModelListView(list):
             raise ValueError(self._verb_error("index", self.accessor_typename, badtype=type(value).__name__))
 
     def count(self, value):
+        """Return the number of occurrences of ``value`` in this ListView.
+
+        Parameters
+        ----------
+        value : int | NeuronAccessor | SynapseAccessor
+
+        Returns
+        -------
+        int
+            The number of occurrences of ``value`` in this ListView.
+
+            If ``value`` can be cast to int (excluding :py:class:`ModelAccessor`\\ s), then
+            the number of occurrences of that index in the ListView.
+        """
         if isinstance(value, self.accessor_type) and value.m is self.m:
             return self.indices.count(value.idx)
         elif not isinstance(value, ModelAccessor) and is_intlike(value):
@@ -537,13 +588,27 @@ class ModelListView(list):
             return 0
 
     def copy(self, model=None):
+        """Create a copy of this ListView with the same indices, referring to the same :py:class:`SNN`."""
         return type(self)(model or self.m, self.indices.copy())
 
     def reverse(self):
+        """Reverse the order of the items in this ListView."""
         self._check_modify()
         return self.indices.reverse()
 
     def sort(self, key=None, reverse=False):
+        """Sort the items in this ListView.
+
+        Parameters
+        ----------
+        key : callable | None, default=None
+            A function to be called on each item in the ListView.
+            The function should take a single argument, which will be the item from the ListView,
+            and return a value that will be used for sorting.
+            If ``None``, the items will be sorted by its index in the :py:class:`SNN`.
+        reverse : bool, default=False
+            If ``True``, the items will be sorted in descending order.
+        """
         self._check_modify()
         if callable(key):
             indices = self.indices.copy()
