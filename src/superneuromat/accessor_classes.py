@@ -457,7 +457,7 @@ class ModelListView(MutableSequence):
 
         Parameters
         ----------
-        other : ModelListView | Sequence[NeuronAccessor] | Sequence[SynapseAccessor]
+        other : ModelListView | Sequence[Neuron] | Sequence[Synapse]
         right : bool, default=False
             Used for right-handed concatenation.
 
@@ -508,7 +508,7 @@ class ModelListView(MutableSequence):
 
         Parameters
         ----------
-        x : NeuronAccessor | SynapseAccessor
+        x : Neuron | Synapse
             The object to append to this ListView.
 
         Raises
@@ -535,7 +535,7 @@ class ModelListView(MutableSequence):
         ----------
         i : int
             The index at which to insert ``x``.
-        x : NeuronAccessor | SynapseAccessor
+        x : Neuron | Synapse
             The object to insert into this ListView.
 
         Raises
@@ -560,7 +560,7 @@ class ModelListView(MutableSequence):
 
         Parameters
         ----------
-        li : Sequence[NeuronAccessor] | Sequence[SynapseAccessor]
+        li : Sequence[Neuron] | Sequence[Synapse]
             The iterable of objects to extend this ListView with.
 
         Raises
@@ -591,7 +591,7 @@ class ModelListView(MutableSequence):
 
         Parameters
         ----------
-        value : NeuronAccessor | SynapseAccessor
+        value : Neuron | Synapse
             The item to remove from this ListView.
 
         Raises
@@ -630,7 +630,7 @@ class ModelListView(MutableSequence):
 
         Parameters
         ----------
-        value : NeuronAccessor | SynapseAccessor
+        value : Neuron | Synapse
         start : int, optional
             The starting index of the search, by default 0
         stop : _type_, optional
@@ -660,7 +660,7 @@ class ModelListView(MutableSequence):
 
         Parameters
         ----------
-        value : int | NeuronAccessor | SynapseAccessor
+        value : int | Neuron | Synapse
 
         Returns
         -------
