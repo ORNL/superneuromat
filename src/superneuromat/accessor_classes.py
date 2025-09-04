@@ -288,6 +288,7 @@ class ModelListView(list):
 
     @property
     def num_onmodel(self) -> int:
+        # used for knowing the max index of an object on the model
         pass
 
     def _check_modify(self):
@@ -400,6 +401,7 @@ class ModelListView(list):
         return len(self.indices)
 
     def tolist(self):
+        """Returns a list of the objects in this ListView."""
         return list(self)
 
     def using_model(self, model):
@@ -412,6 +414,21 @@ class ModelListView(list):
         return f"<{type(self).__name__} of model at {hex(id(self.m))} with {len(self)} {self.accessor_typename.lower()}s>"
 
     def info(self, max_entries: int | None = 30):
+        """Generate a summary of the objects in this ListView.
+
+        Similar to :py:meth:`SNN.neuron_info` or :py:meth:`SNN.synapse_info`, but only
+        including information about objects in this ListView.
+
+        Parameters
+        ----------
+        max_entries : int | None, default=30
+            Limits the number of entries which will be included.
+            If None, all entries will be included.
+
+        Returns
+        -------
+        str
+        """
         if self.m is None:
             return f"<Empty, uninitialized {type(self).__name__}>"
         if max_entries is None or len(self) <= max_entries:
@@ -431,6 +448,21 @@ class ModelListView(list):
         return self.info(None)
 
     def __add__(self, other, right=False):
+        """Concatenate this ListView with another iterable.
+
+        Parameters
+        ----------
+        other : ModelListView | Sequence[NeuronAccessor] | Sequence[SynapseAccessor]
+        right : bool, default=False
+            Used for right-handed concatenation.
+
+        Returns
+        -------
+        NeuronListView | SynapseListView | list[ModelAccessor | Any]
+            If both operands ``self + other`` are :py:class:`ModelListView`\\ s of the same type and model,
+            returns a :py:class:`ModelListView` of the same type and model with the concatenated indices.
+            Otherwise, returns a list of the concatenated objects.
+        """
         if isinstance(other, self.listview_type):
             other = other.indices
             me = self.indices
@@ -450,6 +482,7 @@ class ModelListView(list):
         return sum([self for _ in range(value)], self.listview_type(self.m, []))
 
     def clear(self):
+        """Make this ListView empty by clearing the indices of this ListView."""
         self.indices.clear()
 
     def _verb_error(self, verb, obj_typename, badtype=None, wrongmodel=False):
@@ -464,6 +497,22 @@ class ModelListView(list):
         return msg + hint
 
     def append(self, x):
+        """Append a compatible object to this ListView.
+
+        Parameters
+        ----------
+        x : NeuronAccessor | SynapseAccessor
+            The object to append to this ListView.
+
+        Raises
+        ------
+        RuntimeError
+            If this ListView is not associated with an :py:class:`SNN`.
+        ValueError
+            if ``x`` is not the same accessor type as this ListView
+            (i.e. you can't add a Neuron to a SynapseListView),
+            or if ``x`` is not from the same model.
+        """
         self._check_modify()
         if isinstance(x, self.accessor_type):
             if x.m is not self.m:
@@ -473,6 +522,24 @@ class ModelListView(list):
             raise ValueError(self._verb_error("append", self.accessor_typename, badtype=type(x).__name__))
 
     def insert(self, i, x):
+        """Insert a compatible object at the given index in this ListView.
+
+        Parameters
+        ----------
+        i : int
+            The index at which to insert ``x``.
+        x : NeuronAccessor | SynapseAccessor
+            The object to insert into this ListView.
+
+        Raises
+        ------
+        RuntimeError
+            If this ListView is not associated with an :py:class:`SNN`.
+        ValueError
+            if ``x`` is not the same accessor type as this ListView
+            (i.e. you can't add a Neuron to a SynapseListView),
+            or if ``x`` is not from the same model.
+        """
         self._check_modify()
         if isinstance(x, self.accessor_type):
             if x.m is not self.m:
@@ -482,6 +549,22 @@ class ModelListView(list):
             raise ValueError(self._verb_error("insert", self.accessor_typename, badtype=type(x).__name__))
 
     def extend(self, li):
+        """Extend this ListView with the given iterable of compatible objects.
+
+        Parameters
+        ----------
+        li : Sequence[NeuronAccessor] | Sequence[SynapseAccessor]
+            The iterable of objects to extend this ListView with.
+
+        Raises
+        ------
+        RuntimeError
+            If this ListView is not associated with an :py:class:`SNN`.
+        ValueError
+            if any of the objects are not the same accessor type as this ListView
+            (i.e. you can't add a Neuron to a SynapseListView),
+            or if any of the objects in are not from the same model.
+        """
         self._check_modify()
         if isinstance(li, (self.list_type, self.listview_type)):
             if li.m is not self.m:
