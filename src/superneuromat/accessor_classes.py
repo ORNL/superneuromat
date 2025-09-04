@@ -826,7 +826,9 @@ class ModelParameterSubset(BaseListOperators):
                 raise IndexError(msg)
             return a([model_list[self.v.indices[i]] for i in np.nonzero(idx)[0]])
         else:
-            return a([model_list[self.v.indices[arr_val]] for arr_val in idx])
+            return a([model_list[self.v.indices[
+                        int_err(arr_val, 'arr_val', fname=f"{type(self).__name__}.__getitem__()")]]
+                      for arr_val in idx])
 
     def check_value(self, value, old_value=None):
         try:
@@ -849,32 +851,17 @@ class ModelParameterSubset(BaseListOperators):
             model_list[self.v.indices[idx]] = self.check_value(value)
             return
         if isinstance(idx, slice):
-            if idx.step not in (None, 1):
-                # Extended slice
-                my_indices = slice_indices(idx, len(self.v))
-                if len(my_indices) != len(value):
-                    msg = (f"attept to assign sequence of {len(value)} "
-                           f"to extended slice of size {len(my_indices)}.")
-                    raise ValueError(msg)
             model_indices = self.v.indices[idx]
         else:
             my_indices = np.asarray(idx)
             if np.issubdtype(my_indices.dtype, np.bool_):
                 my_indices = np.nonzero(my_indices)[0]
             model_indices = [self.v.indices[i] for i in my_indices]
-        if len(model_indices) != len(value):
-            msg = (f"attept to assign sequence of {len(value)} "
-                    f"to {len(model_indices)} indices.")
-            raise ValueError(msg)
-        for idx, x in zip(model_indices, value):
+        for idx, x in np.broadcast(model_indices, value):  # valueerror if can't be broadcasted
             model_list[idx] = self.check_value(x, model_list[idx])
 
-    def __contains__(self, idx):
-        if isinstance(idx, self.accessor_type):
-            return idx.idx in self.v.indices and self.v.m is idx.m
-        elif isinstance(idx, (int, np.integer)):
-            return idx in self.v.indices
-        return False
+    def __contains__(self, value):
+        return value in getattr(self.v.m, self.parameter_name)
 
     def __len__(self):
         return len(self.v)
