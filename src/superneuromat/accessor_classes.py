@@ -91,6 +91,14 @@ class ModelAccessor:
             return False
 
     def __hash__(self):
+        """Generate a hash for this object.
+
+        This hash is unique if the combination of the following is unique:
+
+        * the ``associated_typename`` of the object, i.e. ``"Neuron"`` or ``"Synapse"``
+        * the model instance that the object is associated with
+        * the index of the neuron or synapse that the object refers to
+        """
         return hash((self.associated_typename, self.idx, id(self.m)))
 
     def __repr__(self):
@@ -245,6 +253,11 @@ class ModelListView(list):
 
     @property
     def m(self):
+        """The :py:class:`SNN` that this object is associated with.
+
+        When setting this property, the object is moved from its current model to the new model,
+        if possible.
+        """
         return self._model
 
     @m.setter
@@ -490,6 +503,19 @@ class ModelListView(list):
             raise ValueError(self._verb_error("remove", self.accessor_typename, badtype=type(value).__name__))
 
     def pop(self, index=-1):
+        """Remove and return the last item, or the item at the given index.
+
+        Parameters
+        ----------
+        index : int, optional
+            The index (in this list) of the item to return
+            If not specified, the last item is returned.
+
+        Returns
+        -------
+        Neuron | Synapse
+            NeuronListViews will return Neurons, SynapseListViews will return Synapses.
+        """
         return self.m.neurons[self.indices.pop(index)]
 
     def index(self, value, start=0, stop=sys.maxsize):
