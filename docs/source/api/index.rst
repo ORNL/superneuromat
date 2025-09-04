@@ -13,6 +13,10 @@ This is the API reference for the :py:mod:`superneuromat` package.
    SNN
    Neuron
    Synapse
+   accessor_classes.NeuronList
+   accessor_classes.SynapseList
+   NeuronListView
+   SynapseListView
 
 .. autosummary::
    :nosignatures:
@@ -20,12 +24,19 @@ This is the API reference for the :py:mod:`superneuromat` package.
    SNN
    Neuron
    Synapse
+   accessor_classes.NeuronList
+   accessor_classes.SynapseList
+   NeuronListView
+   SynapseListView
 
 .. autosummary::
    :toctree: _gen/
    :recursive:
 
-   ~accessor_classes.NeuronList
-   ~accessor_classes.SynapseList
+   ~accessor_classes.ModelAccessor
+   ~accessor_classes.ModelAccessorList
+   ~accessor_classes.ModelListView
+   ~accessor_classes.ModelListIterator
+   ~accessor_classes.ModelListViewIterator
    neuromorphicmodel
    util
