@@ -1481,7 +1481,7 @@ class NeuronListView(ModelListView, NeuronProperties):
         ----------
         time : int
             The time step at which the external spike is added
-        neuron_id : int
+        idx : int
             The neuron for which the external spike is added
         value : float
             The value of the external spike (default: 1.0)
