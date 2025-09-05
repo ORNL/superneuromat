@@ -94,6 +94,7 @@ commands = [
     ["python", "test_display.py",],
     ["python", "test_reset.py",],
     ["python", "test_dtype.py",],
+    ["python", "test_deletion.py",],
     ["python", "test_json.py",],
 ]
 

@@ -1671,6 +1671,268 @@ class SNN:
             time_steps = max(bool(self.spike_train), self.stdp_time_steps)
         self.spike_train = self.spike_train[-time_steps:]
 
+    def delete_neuron(self, neuron_id: int | Neuron, reindex: bool = True, _delete_synapses: bool = True):
+        """Deletes a neuron from the network.
+
+        Because neurons and synapses are stored in the SNN as lists of parameters, deleting a neuron may
+        cause shifts in the indices of other neurons and synapses. If you are manually modifying
+        the lists of neuron or synapse parameters, you may find it hard to keep track of what's what.
+
+        However, if you use :py:class:`Neuron`\\ s and :py:class:`Synapse`\\ s, or :py:class:`NeuronListView`\\ s
+        and :py:class:`SynapseListView`\\ s, then the shift in indices will be automatically handled, and those
+        objects will reflect the new indices while still referring to the same neurons and synapses that you'd expect.
+
+        Parameters
+        ----------
+        neuron_id : int or Neuron
+            The ID of the neuron to delete.
+
+        Returns
+        -------
+        tuple[dict, dict]
+            Returns ``(neuron_mapping, synapse_mapping)``, where ``neuron_mapping`` is a mapping
+            of neuron IDs from ``{before: after}`` the neuron was deleted, and ``synapse_mapping`` is a mapping
+            of synaptic IDs from ``{before: after}`` the neuron was deleted.
+        """
+        if isinstance(neuron_id, Neuron):
+            neuron_id = neuron_id.idx
+        if not is_intlike_catch(neuron_id):
+            raise TypeError("neuron_id must be int or Neuron.")
+
+        # TODO: what about delay chains?
+
+        # Delete synapses
+        synaptic_ids = [
+            idx for idx, (pre, post)
+            in enumerate(zip(self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids))
+            if pre == neuron_id or post == neuron_id
+        ]
+
+        smap = {}
+        if _delete_synapses:
+            smap = self.delete_synapses(synaptic_ids, reindex=reindex)
+
+        if neuron_id in self._neuron_cache:
+            self._neuron_cache[neuron_id].idx = None
+            del self._neuron_cache[neuron_id]
+
+        if reindex:
+            mapping = {i: i for i in range(neuron_id)}
+            mapping |= {i: i - 1 for i in range(neuron_id + 1, self.num_neurons)}
+
+            # fix broken indices in synapses
+            self.pre_synaptic_neuron_ids = [mapping[i] for i in self.pre_synaptic_neuron_ids if i not in synaptic_ids]
+            self.post_synaptic_neuron_ids = [mapping[i] for i in self.post_synaptic_neuron_ids if i not in synaptic_ids]
+
+            # replace affected indices in neuron lists
+            for nlist in self._neuronlist_cache:
+                indices = set(nlist.indices)
+                overlap = indices & mapping.keys()
+                if overlap:
+                    nlist.indices = [mapping[i] for i in nlist.indices if i != neuron_id and i in mapping]
+            self.rebuild_connection_ids()
+
+            # remap neuron IDs in cache
+            for idx in range(neuron_id + 1, self.num_neurons):
+                if idx in self._neuron_cache:
+                    self._neuron_cache[idx].idx = idx - 1
+                    self._neuron_cache[idx - 1] = self._neuron_cache[idx]
+            del self._neuron_cache[idx]  # delete item in cache with id self.num_neurons - 1 due to left shift in indices
+
+        # self.neurons.remove(self.neurons[neuron_id])
+        del self.neuron_refractory_periods[neuron_id]
+        del self.neuron_refractory_periods_state[neuron_id]
+        del self.neuron_states[neuron_id]
+        del self.neuron_thresholds[neuron_id]
+        del self.neuron_leaks[neuron_id]
+        del self.neuron_reset_states[neuron_id]
+
+        if reindex:
+            return mapping, smap
+        return {}, {}
+
+    def delete_neurons(self, neuron_ids: list[int] | list[Neuron], reindex: bool = True):
+        """Deletes neurons from the network.
+
+        Because neurons and synapses are stored in the SNN as lists of parameters, deleting neurons may
+        cause shifts in the indices of other neurons and synapses. If you are manually modifying
+        the lists of neuron or synapse parameters, you may find it hard to keep track of what's what.
+
+        However, if you use :py:class:`Neuron`\\ s and :py:class:`Synapse`\\ s, or :py:class:`NeuronListView`\\ s
+        and :py:class:`SynapseListView`\\ s, then the shift in indices will be automatically handled, and those
+        objects will reflect the new indices while still referring to the same neurons and synapses that you'd expect.
+
+        Parameters
+        ----------
+        neuron_ids : list[int] | list[Neuron]
+            The IDs of the neurons to delete.
+
+        Returns
+        -------
+        tuple[dict, dict]
+            Returns ``(neuron_mapping, synapse_mapping)``, where ``neuron_mapping`` is a mapping
+            of neuron IDs from ``{before: after}`` the neurons were deleted, and ``synapse_mapping`` is a mapping
+            of synaptic IDs from ``{before: after}`` the neurons were deleted.
+        """
+        indices = set(int(neuron_id) for neuron_id in neuron_ids if isinstance(neuron_id, (int, Neuron)))
+        indices = list(indices)
+        indices.sort(reverse=True)
+        num_neurons = self.num_neurons
+
+        synaptic_ids = [
+            idx for idx, (pre, post)
+            in enumerate(zip(self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids))
+            if pre in indices or post in indices
+        ]
+
+        for neuron_id in indices:
+            self.delete_neuron(neuron_id, reindex=False, _delete_synapses=False)
+
+        smap = self.delete_synapses(synaptic_ids, reindex=reindex)
+
+        for idx in indices:
+            if idx in self._neuron_cache:
+                self._neuron_cache[idx].idx = None
+                del self._neuron_cache[idx]
+
+        if not reindex:
+            return {}, {}
+
+        remaining_idxs = (idx for idx in range(num_neurons) if idx not in indices)  # sorted
+        mapping = {old: new for new, old in enumerate(remaining_idxs)}
+
+        for neuron in self._neuron_cache.values():
+            neuron.idx = mapping[neuron.idx]
+        self._neuron_cache = {neuron.idx: neuron for neuron in self._neuron_cache.values()}
+
+        # fix broken indices in synapses
+        self.pre_synaptic_neuron_ids = [mapping[i] for i in self.pre_synaptic_neuron_ids]
+        self.post_synaptic_neuron_ids = [mapping[i] for i in self.post_synaptic_neuron_ids]
+
+        # replace affected indices in neuron lists
+        for nlist in self._neuronlist_cache:
+            indices = set(nlist.indices)
+            overlap = indices & mapping.keys()
+            if overlap:
+                nlist.indices = [mapping[i] for i in nlist.indices if i not in neuron_ids and i in mapping]
+        self.rebuild_connection_ids()
+        return mapping, smap
+
+    def delete_synapse(self, synapse_id: int | Synapse, reindex: bool = True, _rebuild_connection_ids: bool = True):
+        """Deletes a synapse from the network.
+
+        Because synapses are stored in the SNN as a list, deleting a synapse may
+        cause a shift in the indices of other synapses. If you are manually modifying
+        the lists of synapse parameters, you may find it hard to keep track of what's what.
+
+        However, if you use :py:class:`Synapse`\\ s or a :py:class:`SynapseListView`,
+        then the shift in indices will be automatically handled, and those objects will
+        reflect the new indices while still referring to the same synapses that you'd expect.
+
+        .. warning::
+
+            Deleting synapses may result in unexpected behavior, as it can cause
+            large shifts in the indices of synapses. Use with caution.
+
+        Parameters
+        ----------
+        synapse_id : int or Synapse
+            The ID of the synapse to delete.
+
+        Returns
+        -------
+        dict
+            A mapping of synaptic IDs from ``{before: after}`` the synapse was deleted. May be empty.
+        """
+        if isinstance(synapse_id, Synapse):
+            synapse_id = synapse_id.idx
+        if not is_intlike_catch(synapse_id):
+            raise TypeError("synapse_id must be int or Synapse.")
+
+        if synapse_id in self._synapse_cache:
+            self._synapse_cache[synapse_id].idx = None
+            del self._synapse_cache[synapse_id]
+
+        if reindex:
+            mapping = {i: i for i in range(synapse_id)}
+            for syn_id in range(synapse_id, self.num_synapses):
+                mapping[syn_id] = syn_id - 1
+                print(syn_id)
+                if syn_id in self._synapse_cache:
+                    print(syn_id, ' in cache')
+                    self._synapse_cache[syn_id].idx = syn_id - 1
+                    self._synapse_cache[syn_id - 1] = self._synapse_cache[syn_id]
+            del mapping[synapse_id]
+            del self._synapse_cache[syn_id]  # delete the last cached synapse after the shift
+
+        pair = (self.pre_synaptic_neuron_ids[synapse_id], self.post_synaptic_neuron_ids[synapse_id])
+        if pair in self.connection_ids:
+            del self.connection_ids[pair]
+        del self.pre_synaptic_neuron_ids[synapse_id]
+        del self.post_synaptic_neuron_ids[synapse_id]
+        del self.synaptic_weights[synapse_id]
+        del self.synaptic_delays[synapse_id]
+        del self.enable_stdp[synapse_id]
+        if reindex:
+            for slist in self._synapselist_cache:
+                indices = set(slist.indices)
+                overlap = indices & mapping.keys()
+                if overlap:
+                    slist.indices = [mapping[i] for i in slist.indices if i != synapse_id and i in mapping]
+            if _rebuild_connection_ids:
+                self.rebuild_connection_ids()
+            return mapping
+        return {}
+
+    def delete_synapses(self, synapse_ids: Sequence[int] | Sequence[Synapse], reindex: bool = True, _rebuild_connection_ids: bool = True):
+        """Deletes a list of synapses from the network.
+
+        Because synapses are stored in the SNN as a list, deleting synapses may
+        cause a shift in the indices of other synapses. If you are manually modifying
+        the lists of synapse parameters, you may find it hard to keep track of what's what.
+
+        However, if you use :py:class:`Synapse`\\ s or a :py:class:`SynapseListView`,
+        then the shift in indices will be automatically handled, and those objects will
+        reflect the new indices while still referring to the same synapses that you'd expect.
+
+        .. warning::
+
+            Deleting synapses may result in unexpected behavior, as it can cause
+            large shifts in the indices of synapses. Use with caution.
+
+        Parameters
+        ----------
+        synapse_ids : list[int] | list[Synapse]
+            The IDs of the synapses to delete.
+        """
+        indices = set(int(synapse_id) for synapse_id in synapse_ids if isinstance(synapse_id, (int, Synapse)))
+        indices = list(indices)
+        indices.sort(reverse=True)
+        num_synapses = self.num_synapses
+        for synapse_id in indices:
+            self.delete_synapse(synapse_id, reindex=False)
+        if not reindex:
+            return {}
+
+        remaining_idxs = (idx for idx in range(num_synapses) if idx not in indices)  # sorted
+        mapping = {old: new for new, old in enumerate(remaining_idxs)}
+
+        for synapse in self._synapse_cache.values():
+            synapse.idx = mapping[synapse.idx]
+        self._synapse_cache = {synapse.idx: synapse for synapse in self._synapse_cache.values()}
+
+        if _rebuild_connection_ids:
+            self.rebuild_connection_ids()
+
+        for slist in self._synapselist_cache:
+            indices = set(slist.indices)
+            overlap = indices & mapping.keys()
+            if not overlap:
+                continue
+            slist.indices = [mapping[i] for i in slist.indices if i in mapping]
+
+        return mapping
+
     _internal_vars = [
         "_neuron_thresholds", "_neuron_leaks", "_neuron_reset_states", "_internal_states",
         "_neuron_refractory_periods", "_neuron_refractory_periods_original", "_weights",
