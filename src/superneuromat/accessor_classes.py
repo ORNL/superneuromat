@@ -1,7 +1,8 @@
 from __future__ import annotations
 import sys
 from collections.abc import Sequence, MutableSequence
-from .util import is_intlike, int_err, accessor_slice, slice_indices
+from .util import is_intlike, int_err, float_err, accessor_slice, slice_indices
+from . import util
 
 from typing import TYPE_CHECKING, Any
 import numpy as np
@@ -16,9 +17,70 @@ else:
     # for docgen type in signatures
     class SNN:
         def __repr__(self):
-            return "SNN"
+            return "SNN"  # pragma: no cover
 
 _nonce = object()
+
+
+class BaseListOperators:
+    v: ModelListView | ModelAccessorList
+
+    def _asarrays(self, other):
+        me = np.asarray(self, dtype=self.v.m.default_dtype)
+        other = np.asarray(other, dtype=self.v.m.default_dtype)
+        return me, other
+
+    @staticmethod
+    def binop(op, right=False):
+        def func(self, other):
+            me, other = self._asarrays(other)
+            result = op(other, me) if right else op(me, other)
+            return result
+        return func
+
+    @staticmethod
+    def bcmp(op, right=False):
+        def func(self, other):
+            me, other = self._asarrays(other)
+            result = op(other, me) if right else op(me, other)
+            return result
+        return func
+
+    # python 3.9 workaround https://stackoverflow.com/a/41921291
+    binopf = binop.__func__
+    bcmpf = bcmp.__func__
+
+    __add__ = binopf(np.add)
+    __radd__ = binopf(np.add, right=True)
+    __sub__ = binopf(np.subtract)
+    __rsub__ = binopf(np.subtract, right=True)
+    __mul__ = binopf(np.multiply)
+    __rmul__ = binopf(np.multiply, right=True)
+    __truediv__ = binopf(np.divide)
+    __rtruediv__ = binopf(np.divide, right=True)
+    __floordiv__ = binopf(np.floor_divide)
+    __rfloordiv__ = binopf(np.floor_divide, right=True)
+    __mod__ = binopf(np.mod)
+    __rmod__ = binopf(np.mod, right=True)
+    __pow__ = binopf(np.power)
+    __rpow__ = binopf(np.power, right=True)
+    __lshift__ = binopf(np.left_shift)
+    __rlshift__ = binopf(np.left_shift, right=True)
+    __rshift__ = binopf(np.right_shift)
+    __rrshift__ = binopf(np.right_shift, right=True)
+    __and__ = binopf(np.bitwise_and)
+    __rand__ = binopf(np.bitwise_and, right=True)
+    __xor__ = binopf(np.bitwise_xor)
+    __rxor__ = binopf(np.bitwise_xor, right=True)
+    __or__ = binopf(np.bitwise_or)
+    __ror__ = binopf(np.bitwise_or, right=True)
+
+    __lt__ = bcmpf(np.less)
+    __le__ = bcmpf(np.less_equal)
+    __gt__ = bcmpf(np.greater)
+    __ge__ = bcmpf(np.greater_equal)
+    __eq__ = bcmpf(np.equal)
+    __ne__ = bcmpf(np.not_equal)
 
 
 class ModelAccessor:
@@ -28,7 +90,7 @@ class ModelAccessor:
     model_cachename = ''
 
     # when unpickling, Python will call __new__ without arguments
-    def __new__(cls, snn=_nonce, idx: int = _nonce, *args, **kwargs):
+    def __new__(cls, snn=_nonce, idx: int = _nonce, *args, **kwargs):  # pyright: ignore[reportArgumentType]
         if isinstance(idx, int) and hasattr(snn, cls.model_cachename):
             cache = getattr(snn, cls.model_cachename)
             if idx in cache:
@@ -136,6 +198,16 @@ class ModelAccessorList(Sequence):
     # No __delitem__ or __setitem__ because modifying the model like that is suuper messy
     # and I don't want users to think it's something to be taken lightly or do accidentally
 
+    def _check_modify(self):
+        if self.m is None:
+            msg = f"attempt to modify empty {type(self).__name__} not associated with a model."
+            raise RuntimeError(msg)
+
+    def _check_access(self):
+        if self.m is None:
+            msg = f"attempt to index into {type(self).__name__} not associated with a model."
+            raise IndexError(msg)
+
     @property
     def num_onmodel(self) -> int:
         pass  # subclasses should define this  # pragma: no cover
@@ -194,7 +266,7 @@ class ModelListIterator:
 
     def __init__(self, model: SNN):
         self.m = model
-        self.iter = iter(range( # get number of elements on model
+        self.iter = iter(range(  # get number of elements on model
             getattr(model, self.model_num_name, 0)))
 
     def __iter__(self):
@@ -206,13 +278,18 @@ class ModelListIterator:
 
 
 class ModelListViewIterator(ModelListIterator):
-    def __init__(self, model: SNN, indices: list[int]):
+    def __init__(self, model: SNN | None, indices: list[int]):
         self.m = model
         self.indices = indices
         self.iter = iter(indices)
 
     def __iter__(self):
         return type(self)(self.m, self.indices)
+
+    def _check_modify(self):
+        if self.m is None:
+            msg = f"attempt to modify empty {type(self).__name__} not associated with a model."
+            raise RuntimeError(msg)
 
 
 class ModelListView(MutableSequence):
@@ -297,7 +374,7 @@ class ModelListView(MutableSequence):
     @property
     def num_onmodel(self) -> int:
         # used for knowing the max index of an object on the model
-        pass
+        pass  # pragma: no cover
 
     def _check_modify(self):
         if self.m is None:
@@ -712,6 +789,151 @@ class ModelListView(MutableSequence):
         self.indices.sort(key=getter if key else None, reverse=reverse)
 
 
+class ModelParameterSubset(BaseListOperators):
+    accessor_type: type
+    parameter_name: str
+    paramtype: type | None
+
+    def __init__(self, parent, parameter_name: str | None = None, paramtype: type | None = None):
+        # when the user accesses the property, this is called with the parent listview as the first argument
+        self.v = parent
+        # this allows us to create subclasses of ModelParameterSubset which have these pre-set
+        # otherwise, dynamically set them. This is probably easier to understand than metaclasses.
+        if parameter_name is not None:
+            self.parameter_name = parameter_name
+        if paramtype is not None:
+            self.paramtype = paramtype
+
+    def _check_modify(self):
+        self.v._check_modify()
+
+    def _check_access(self):
+        self.v._check_access()
+
+    def __getitem__(self, idx):
+        model_list = getattr(self.v.m, self.parameter_name, [])
+        if isinstance(idx, (int, np.integer)):
+            return model_list[self.v.indices[idx]]
+        a = np.asarray
+        if isinstance(idx, slice):
+            return a([model_list[i] for i in self.v.indices[idx]])
+        # If not int or slice, use numpy-style indexing
+        idx = np.asarray(idx)
+        if np.issubdtype(idx.dtype, np.bool_):
+            if idx.shape != (len(self.v.indices),):
+                msg = (f"boolean index of shape {idx.shape} "
+                        f"does not match the shape of indexed list {(len(self.v.indices),)}.")
+                raise IndexError(msg)
+            return a([model_list[self.v.indices[i]] for i in np.nonzero(idx)[0]])
+        else:
+            return a([model_list[self.v.indices[
+                        int_err(arr_val, 'arr_val', fname=f"{type(self).__name__}.__getitem__()")]]
+                      for arr_val in idx])
+
+    def check_value(self, value, old_value=None):
+        try:
+            if self.paramtype is int:
+                return int_err(value, 'value', fname=f"{type(self).__name__}.{self.parameter_name}.__setitem__()")
+            elif self.paramtype is float:
+                return float_err(value, 'value', fname=f"{type(self).__name__}.{self.parameter_name}.__setitem__()")
+            else:
+                return self.paramtype(value)
+        except TypeError as e:
+            msg = (f"Type {type(value).__name__} is incompatible with {type(self).__name__}, "
+                    f"which only accepts {self.paramtype.__name__}s.")
+            raise TypeError(msg) from e
+
+    def __setitem__(self, idx, value):
+        self._check_modify()
+
+        model_list = getattr(self.v.m, self.parameter_name, [])
+        if isinstance(idx, (int, np.integer)):
+            model_list[self.v.indices[idx]] = self.check_value(value)
+            return
+        if isinstance(idx, slice):
+            model_indices = self.v.indices[idx]
+        else:
+            my_indices = np.asarray(idx)
+            if np.issubdtype(my_indices.dtype, np.bool_):
+                my_indices = np.nonzero(my_indices)[0]
+            model_indices = [self.v.indices[i] for i in my_indices]
+        for idx, x in np.broadcast(model_indices, value):  # valueerror if can't be broadcasted
+            model_list[idx] = self.check_value(x, model_list[idx])
+
+    def __contains__(self, value):
+        return value in getattr(self.v.m, self.parameter_name)
+
+    def __len__(self):
+        return len(self.v)
+
+    def tolist(self):
+        return list(self)
+
+    def __repr__(self):
+        return repr(list(self))
+
+    def __str__(self):
+        return str(list(self))
+
+    def __iter__(self):
+        return ModelParameterIterator(self)
+
+    def index(self, value, start=0, stop=sys.maxsize):
+        for i, x in enumerate(self[start:stop]):
+            if x == value:
+                return i + start
+        msg = f"Value {value!r} is not in list."
+        raise ValueError(msg)
+
+    def count(self, value):
+        n = 0
+        for x in self:
+            if x == value:
+                n += 1
+        return n
+
+
+class PositiveModelProp(ModelParameterSubset):
+    def __init__(self, parent, parameter_name: str | None = None, paramtype: type | None = None,
+                 positive_definite: bool = True):
+        super().__init__(parent, parameter_name, paramtype)
+        self.positive_definite = positive_definite
+
+    def check_value(self, new_value, old_value=None):
+        new_value = super().check_value(new_value, old_value)
+        if not (new_value > 0
+                or not self.positive_definite and new_value == 0):
+            msg = f"{self.parameter_name} must be greater than {'' if self.positive_definite else 'or equal to '}0."
+            raise ValueError(msg)
+        return new_value
+
+
+def ModelProp(cls, *args, doc=None, **kwargs):
+    # create a property on the listview
+    def getter(listview):
+        # when user tries to access the property, return a new instance of the property list
+        return cls(listview, *args, **kwargs)
+
+    def setter(listview, value):
+        prop = cls(listview, *args, **kwargs)
+        prop[:] = value
+
+    return property(getter, setter, doc=cls.__doc__ if doc is None else doc)
+
+
+class ModelParameterIterator:
+    def __init__(self, parent):
+        self.parent = parent
+        self.iter = iter(parent.v.indices)
+
+    def __iter__(self):
+        return ModelParameterIterator(self.parent)
+
+    def __next__(self):
+        next_idx = next(self.iter)
+        return self.parent[next_idx]
+
+
 class Neuron(ModelAccessor):
     """Accessor Class for Neurons in SNNs
 
@@ -753,6 +975,8 @@ class Neuron(ModelAccessor):
 
     @leak.setter
     def leak(self, value: float):
+        if not self.m.allow_signed_leak and value < 0.0:
+            raise ValueError("leak must be greater than or equal to zero.")
         self.m.neuron_leaks[self.idx] = value
 
     @property
@@ -782,6 +1006,8 @@ class Neuron(ModelAccessor):
     def refractory_state(self, value: int):
         if not is_intlike(value):
             raise TypeError("refractory_state must be int")
+        if value < 0:
+            raise ValueError("refractory_state must be greater than or equal to 0.")
         self.m.neuron_refractory_periods_state[self.idx] = int(value)
 
     @property
@@ -793,6 +1019,8 @@ class Neuron(ModelAccessor):
     def refractory_period(self, value: int):
         if not is_intlike(value):
             raise TypeError("refractory_period must be int")
+        if value < 0:
+            raise ValueError("refractory_period must be greater than or equal to 0.")
         self.m.neuron_refractory_periods[self.idx] = int(value)
 
     @property
@@ -1137,7 +1365,27 @@ class Neuron(ModelAccessor):
         return "  ...          ...         ...          ...       ...         ... [...]"
 
 
-class NeuronList(ModelAccessorList):
+class LeakProp(ModelParameterSubset):
+    parameter_name = 'neuron_leaks'
+    paramtype = float
+
+    def check_value(self, new_leak, old_value=None):
+        new_leak = super().check_value(new_leak, old_value)
+        if not self.v.m.allow_signed_leak and new_leak < 0.0:
+            raise ValueError("leak must be greater than or equal to zero.")
+        return new_leak
+
+
+class NeuronProperties:
+    thresholds = ModelProp(ModelParameterSubset, 'neuron_thresholds', float)
+    states = ModelProp(ModelParameterSubset, 'neuron_states', float)
+    leaks = ModelProp(LeakProp, 'neuron_leaks', float)
+    reset_states = ModelProp(ModelParameterSubset, 'neuron_reset_states', float)
+    refractory_periods = ModelProp(PositiveModelProp, 'neuron_refractory_periods', int, positive_definite=False)
+    refractory_periods_state = ModelProp(PositiveModelProp, 'neuron_refractory_periods_state', float, positive_definite=False)
+
+
+class NeuronList(ModelAccessorList, NeuronProperties):
     """Redirects indexing to the SNN's neurons.
 
     Returns a :py:class:`Neuron` or a list of Neurons.
@@ -1158,7 +1406,7 @@ class NeuronList(ModelAccessorList):
         @overload
         def __getitem__(self, idx: int | Neuron) -> Neuron: ...
         @overload
-        def __getitem__(self, idx: slice | list[int | Neuron] | np.ndarray) -> NeuronListView: ...
+        def __getitem__(self, idx: slice | list[int] | list[Neuron] | list[int | Neuron] | np.ndarray) -> NeuronListView: ...
 
     def info(self, max_neurons=None):
         return self.m.neuron_info(max_neurons)
@@ -1170,8 +1418,12 @@ class NeuronList(ModelAccessorList):
     def num_onmodel(self):
         return self.m.num_neurons
 
+    @property
+    def ispikes(self):
+        return self.m.ispikes
 
-class NeuronListView(ModelListView):
+
+class NeuronListView(ModelListView, NeuronProperties):
     """Redirects indexing to the SNN's neurons.
 
     Returns a :py:class:`Neuron` or a list of Neurons.
@@ -1217,6 +1469,20 @@ class NeuronListView(ModelListView):
 
     def __iter__(self):
         return NeuronViewIterator(self.m, self.indices)
+
+    @property
+    def ispikes(self):
+        return self.m.ispikes[:, self.indices]
+
+    def pretty_spike_train(self, max_steps=None, max_neurons=None, use_unicode=True, indices=None):
+        if indices is None:
+            indices = self.indices
+        return util.pretty_spike_train(self.ispikes, max_steps, max_neurons, use_unicode, indices)
+
+    def print_spike_train(self, max_steps=None, max_neurons=None, use_unicode=True, indices=None):
+        if indices is None:
+            indices = self.indices
+        util.print_spike_train(self.ispikes, max_steps, max_neurons, use_unicode, indices)
 
 
 class NeuronIterator(ModelListIterator):
@@ -1379,7 +1645,29 @@ class Synapse(ModelAccessor):
         return "    ...    ...       ...         ...      ... ..."
 
 
-class SynapseList(ModelAccessorList):
+class DelayProp(ModelParameterSubset):
+    parameter_name = 'synaptic_delays'
+    paramtype = int
+
+    def check_value(self, new_delay, old_delay):
+        if old_delay < 0:
+            raise ValueError("delay cannot be changed on chained synapse.")
+        new_delay = int_err(new_delay, 'new_delay', fname=self.parameter_name)
+        if new_delay < 0:
+            raise ValueError("delay must be greater than or equal to 1. Consider using np.clip(delay, 1, None).")
+        return new_delay
+
+    def last_chained_synapses(self):
+        return np.asarray(self.v.m.synaptic_delays) < 0
+
+
+class SynapseProperties:
+    weights = ModelProp(ModelParameterSubset, 'synaptic_weights', float)
+    delays = ModelProp(DelayProp)
+    stdp_enabled = ModelProp(ModelParameterSubset, 'enable_stdp', bool)
+
+
+class SynapseList(ModelAccessorList, SynapseProperties):
     """Redirects indexing to the SNN's synapses.
 
     Returns a :py:class:`Synapse` or a list of Synapses.
@@ -1419,7 +1707,7 @@ class SynapseList(ModelAccessorList):
         return SynapseIterator(self.m)
 
 
-class SynapseListView(ModelListView):
+class SynapseListView(ModelListView, SynapseProperties):
     """Redirects indexing to the SNN's synapses.
 
     Returns a :py:class:`Synapse` or a list of Synapses.
@@ -1457,7 +1745,7 @@ class SynapseListView(ModelListView):
         @overload
         def __getitem__(self, idx: int | Synapse) -> Synapse: ...
         @overload
-        def __getitem__(self, idx: slice | list[int | Synapse]) -> SynapseListView: ...
+        def __getitem__(self, idx: slice | list[int] | list[Synapse] | list[int | Synapse] | np.ndarray) -> SynapseListView: ...
 
     @property
     def num_onmodel(self):
@@ -1480,6 +1768,16 @@ map_accessor_to_listview = {
     Neuron: NeuronListView,
     Synapse: SynapseListView,
 }
+
+if TYPE_CHECKING:
+    @overload
+    def mlist(a: list[Neuron] | NeuronListView) -> NeuronListView: ...
+    @overload
+    def mlist(a: list[Synapse] | SynapseListView) -> SynapseListView: ...
+    @overload
+    def asmlist(a: list[Neuron] | NeuronListView) -> NeuronListView: ...
+    @overload
+    def asmlist(a: list[Synapse] | SynapseListView) -> SynapseListView: ...
 
 
 def mlist(a: list[Neuron] | list[Synapse] | ModelAccessorList | ModelListView
@@ -1504,7 +1802,7 @@ def mlist(a: list[Neuron] | list[Synapse] | ModelAccessorList | ModelListView
     return map_accessor_to_listview[objtype](m, a)
 
 
-def asmlist(a: list[Neuron | Synapse] | ModelAccessorList | ModelListView):
+def asmlist(a: list[Neuron] | list[Synapse] | ModelAccessorList | ModelListView):
     """Convert a list of Neuron or Synapse objects to a ModelAccessorList or ModelListView"""
     if isinstance(a, ModelListView):
         return a

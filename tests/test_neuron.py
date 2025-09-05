@@ -33,7 +33,7 @@ class NeuronTest(unittest.TestCase):
         print("begin test_neurons_iter")
         snn = SNN()
 
-        neurons = mlist([snn.create_neuron(threshold=i) for i in range(3)])
+        _neurons = mlist([snn.create_neuron(threshold=i) for i in range(3)])
 
         it = NeuronIterator(snn)
         li = list(it)
@@ -96,6 +96,51 @@ class NeuronTest(unittest.TestCase):
         assert (ba.pre_id, ba.post_id) == (1, 0)
 
         print("test_accessor_create_synapse completed successfully")
+
+    def test_neuron_properties(self):
+        """ Test if neuron properties work as expected """
+        print("begin test_neuron_properties")
+        snn = SNN()
+        a = snn.create_neuron(
+            initial_state=1.2,
+            threshold=10,
+            refractory_state=2,
+            refractory_period=3,
+            reset_state=0.0,
+            leak=0.05,
+        )
+        assert a.state == 1.2
+        assert a.threshold == 10
+        assert a.refractory_state == 2
+        assert a.refractory_period == 3
+        assert a.reset_state == 0.0
+        assert a.leak == 0.05
+
+        a.state = 0.1
+        assert snn.neuron_states[0] == 0.1
+        a.threshold = 0.2
+        assert snn.neuron_thresholds[0] == 0.2
+        a.leak = 0.3
+        assert snn.neuron_leaks[0] == 0.3
+        with self.assertRaises(ValueError):
+            a.leak = -1.0
+        snn.allow_signed_leak = True
+        a.leak = -1.0
+        assert snn.neuron_leaks[0] == -1.0
+        a.reset_state = -0.4
+        assert snn.neuron_reset_states[0] == -0.4
+        a.refractory_state = 100
+        assert snn.neuron_refractory_periods_state[0] == 100
+        with self.assertRaises(ValueError):
+            a.refractory_state = -1
+        with self.assertRaises(TypeError):
+            a.refractory_state = 1.1  # pyright: ignore[reportAttributeAccessIssue]
+        a.refractory_period = 10
+        assert snn.neuron_refractory_periods[0] == 10
+        with self.assertRaises(ValueError):
+            a.refractory_period = -1
+        with self.assertRaises(TypeError):
+            a.refractory_period = 1.1  # pyright: ignore[reportAttributeAccessIssue]
 
     def test_neuronlist(self):
         """ Test if NeuronList works as expected """
@@ -434,6 +479,96 @@ class NeuronTest(unittest.TestCase):
         assert d[b] == 1
         assert a in d
         assert b in d
+
+    def test_neuronlist_properties(self):
+        """ Test if neuron properties work as expected """
+        print("begin test_neuronlist_properties")
+        snn = SNN()
+
+        neurons = mlist([snn.create_neuron(threshold=i) for i in range(3)])
+        assert neurons == snn.neurons
+        assert all(neurons.thresholds == [0.0, 1.0, 2.0])
+
+        assert all(neurons.thresholds[:2] == [0.0, 1.0])
+        mask = neurons.thresholds > 1.0
+        assert mask.tolist() == [False, False, True]
+        with self.assertRaises(IndexError):
+            neurons.thresholds[mask[:1]]
+
+        assert str(neurons.thresholds) == str(snn.neuron_thresholds)
+        assert repr(neurons.thresholds) == repr(snn.neuron_thresholds)
+        assert neurons.thresholds.tolist() == snn.neuron_thresholds
+
+    def test_neuronlist_properties_modify(self):
+        """ Test if modifying neuron properties work as expected """
+        print("begin test_neuronlist_properties_modify")
+        snn = SNN()
+
+        neurons = mlist([snn.create_neuron(threshold=i) for i in range(3)])
+        assert all(neurons.thresholds == [0.0, 1.0, 2.0])
+        neurons.thresholds -= 1
+        assert all(neurons.thresholds == [-1.0, 0.0, 1.0])
+        mask = neurons.thresholds > 0.0
+        assert mask.tolist() == [False, False, True]
+        assert neurons.thresholds[mask] == [1.0]
+        assert np.array_equal(neurons.thresholds[neurons.thresholds + 1.0], [-1.0, 0.0, 1.0])
+
+        neurons.thresholds[:2] *= 2
+        assert all(neurons.thresholds == [-2.0, 0.0, 1.0])
+        neurons.thresholds = np.arange(3)
+        assert all(neurons.thresholds == [0.0, 1.0, 2.0])
+        assert 2.0 in neurons.thresholds
+        neurons.thresholds[0:9:2] = [-1, -1]
+        assert all(neurons.thresholds == [-1.0, 1.0, -1.0])
+        with self.assertRaises(ValueError):
+            neurons.thresholds[0:9:2] = [(-1,), ()]  # broadcasting error
+        neurons.thresholds[neurons.thresholds < 0.0] = [0.0, 9.0]
+        assert all(neurons.thresholds == [0.0, 1.0, 9.0])
+        neurons.thresholds[neurons.thresholds > 1.0] = [0.0]
+        assert all(neurons.thresholds == [0.0, 1.0, 0.0])
+        assert neurons.thresholds.count(0.0) == 2
+        assert neurons.thresholds.index(1.0) == 1
+        with self.assertRaises(ValueError):
+            neurons.thresholds.index(8)
+        neurons.thresholds[:] = [0, 0, 0]
+        assert all(neurons.thresholds == [0.0, 0.0, 0.0])
+        neurons.refractory_periods[0] = 1
+
+        with self.assertRaises(ValueError):
+            neurons.thresholds[0] = "alpha"
+        with self.assertRaises(ValueError):
+            neurons.refractory_periods_state[0] = -1
+        with self.assertRaises(ValueError):
+            neurons.refractory_periods[0] = -1
+        with self.assertRaises(ValueError):
+            neurons.leaks[0] = -1
+        snn.allow_signed_leak = True
+        neurons.leaks[0] = -1
+        assert snn.neuron_leaks[0] == -1
+        with self.assertRaises(TypeError):
+            neurons.thresholds[0] = None
+
+    def test_neuron_output_spikes(self):
+        """ Test if neuron output spikes work as expected """
+        print("begin test_neuron_output_spikes")
+        snn = SNN()
+        inputs = mlist([snn.create_neuron() for _ in range(3)])
+        outputs = mlist([snn.create_neuron() for _ in range(2)])
+        snn.create_synapse(inputs[0], outputs[0])
+        snn.create_synapse(inputs[1], outputs[0])
+        snn.create_synapse(inputs[2], outputs[1])
+
+        inputs[0].add_spike(0, 9)
+        snn.simulate(3)
+        expected = [
+            [1, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0],
+        ]
+        expected = np.asarray(expected)
+        print(snn.ispikes)
+        assert np.array_equal(snn.ispikes, expected)
+        assert np.array_equal(outputs.ispikes, expected[:, 3:])
 
 
 if __name__ == "__main__":
