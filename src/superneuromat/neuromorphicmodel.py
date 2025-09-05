@@ -1737,8 +1737,7 @@ class SNN:
                 if idx in self._neuron_cache:
                     self._neuron_cache[idx].idx = idx - 1
                     self._neuron_cache[idx - 1] = self._neuron_cache[idx]
-            if self.num_neurons - 1 in self._neuron_cache:
-                del self._neuron_cache[self.num_neurons - 1]
+            del self._neuron_cache[idx]  # delete item in cache with id self.num_neurons - 1 due to left shift in indices
 
         # self.neurons.remove(self.neurons[neuron_id])
         del self.neuron_refractory_periods[neuron_id]
@@ -1815,7 +1814,7 @@ class SNN:
             indices = set(nlist.indices)
             overlap = indices & mapping.keys()
             if overlap:
-                nlist.indices = [mapping[i] for i in nlist.indices if i != neuron_id and i in mapping]
+                nlist.indices = [mapping[i] for i in nlist.indices if i not in neuron_ids and i in mapping]
         self.rebuild_connection_ids()
         return mapping, smap
 
@@ -1864,9 +1863,7 @@ class SNN:
                     self._synapse_cache[syn_id].idx = syn_id - 1
                     self._synapse_cache[syn_id - 1] = self._synapse_cache[syn_id]
             del mapping[synapse_id]
-            del self._synapse_cache[syn_id]
-            if self.num_synapses - 1 in self._synapse_cache:
-                del self._synapse_cache[self.num_synapses - 1]
+            del self._synapse_cache[syn_id]  # delete the last cached synapse after the shift
 
         pair = (self.pre_synaptic_neuron_ids[synapse_id], self.post_synaptic_neuron_ids[synapse_id])
         if pair in self.connection_ids:
