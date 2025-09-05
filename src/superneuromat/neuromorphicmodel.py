@@ -1674,10 +1674,25 @@ class SNN:
     def delete_neuron(self, neuron_id: int | Neuron, reindex: bool = True, _delete_synapses: bool = True):
         """Deletes a neuron from the network.
 
+        Because neurons and synapses are stored in the SNN as lists of parameters, deleting a neuron may
+        cause shifts in the indices of other neurons and synapses. If you are manually modifying
+        the lists of neuron or synapse parameters, you may find it hard to keep track of what's what.
+
+        However, if you use :py:class:`Neuron`\\ s and :py:class:`Synapse`\\ s, or :py:class:`NeuronListView`\\ s
+        and :py:class:`SynapseListView`\\ s, then the shift in indices will be automatically handled, and those
+        objects will reflect the new indices while still referring to the same neurons and synapses that you'd expect.
+
         Parameters
         ----------
         neuron_id : int or Neuron
             The ID of the neuron to delete.
+
+        Returns
+        -------
+        tuple[dict, dict]
+            Returns ``(neuron_mapping, synapse_mapping)``, where ``neuron_mapping`` is a mapping
+            of neuron IDs from ``{before: after}`` the neuron was deleted, and ``synapse_mapping`` is a mapping
+            of synaptic IDs from ``{before: after}`` the neuron was deleted.
         """
         if isinstance(neuron_id, Neuron):
             neuron_id = neuron_id.idx
@@ -1740,10 +1755,25 @@ class SNN:
     def delete_neurons(self, neuron_ids: list[int] | list[Neuron], reindex: bool = True):
         """Deletes neurons from the network.
 
+        Because neurons and synapses are stored in the SNN as lists of parameters, deleting neurons may
+        cause shifts in the indices of other neurons and synapses. If you are manually modifying
+        the lists of neuron or synapse parameters, you may find it hard to keep track of what's what.
+
+        However, if you use :py:class:`Neuron`\\ s and :py:class:`Synapse`\\ s, or :py:class:`NeuronListView`\\ s
+        and :py:class:`SynapseListView`\\ s, then the shift in indices will be automatically handled, and those
+        objects will reflect the new indices while still referring to the same neurons and synapses that you'd expect.
+
         Parameters
         ----------
         neuron_ids : list[int] | list[Neuron]
             The IDs of the neurons to delete.
+
+        Returns
+        -------
+        tuple[dict, dict]
+            Returns ``(neuron_mapping, synapse_mapping)``, where ``neuron_mapping`` is a mapping
+            of neuron IDs from ``{before: after}`` the neurons were deleted, and ``synapse_mapping`` is a mapping
+            of synaptic IDs from ``{before: after}`` the neurons were deleted.
         """
         indices = set(int(neuron_id) for neuron_id in neuron_ids if isinstance(neuron_id, (int, Neuron)))
         indices = list(indices)
@@ -1792,10 +1822,28 @@ class SNN:
     def delete_synapse(self, synapse_id: int | Synapse, reindex: bool = True, _rebuild_connection_ids: bool = True):
         """Deletes a synapse from the network.
 
+        Because synapses are stored in the SNN as a list, deleting a synapse may
+        cause a shift in the indices of other synapses. If you are manually modifying
+        the lists of synapse parameters, you may find it hard to keep track of what's what.
+
+        However, if you use :py:class:`Synapse`\\ s or a :py:class:`SynapseListView`,
+        then the shift in indices will be automatically handled, and those objects will
+        reflect the new indices while still referring to the same synapses that you'd expect.
+
+        .. warning::
+
+            Deleting synapses may result in unexpected behavior, as it can cause
+            large shifts in the indices of synapses. Use with caution.
+
         Parameters
         ----------
         synapse_id : int or Synapse
             The ID of the synapse to delete.
+
+        Returns
+        -------
+        dict
+            A mapping of synaptic IDs from ``{before: after}`` the synapse was deleted. May be empty.
         """
         if isinstance(synapse_id, Synapse):
             synapse_id = synapse_id.idx
@@ -1841,6 +1889,19 @@ class SNN:
 
     def delete_synapses(self, synapse_ids: Sequence[int] | Sequence[Synapse], reindex: bool = True, _rebuild_connection_ids: bool = True):
         """Deletes a list of synapses from the network.
+
+        Because synapses are stored in the SNN as a list, deleting synapses may
+        cause a shift in the indices of other synapses. If you are manually modifying
+        the lists of synapse parameters, you may find it hard to keep track of what's what.
+
+        However, if you use :py:class:`Synapse`\\ s or a :py:class:`SynapseListView`,
+        then the shift in indices will be automatically handled, and those objects will
+        reflect the new indices while still referring to the same synapses that you'd expect.
+
+        .. warning::
+
+            Deleting synapses may result in unexpected behavior, as it can cause
+            large shifts in the indices of synapses. Use with caution.
 
         Parameters
         ----------

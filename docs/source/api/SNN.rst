@@ -143,6 +143,10 @@ Methods
    ~SNN.stdp_setup
    ~SNN.set_stdp_enabled_from_mat
    ~SNN.set_weights_from_mat
+   ~SNN.delete_neuron
+   ~SNN.delete_neurons
+   ~SNN.delete_synapse
+   ~SNN.delete_synapses
 
 
 .. _inspecting-the-snn:
