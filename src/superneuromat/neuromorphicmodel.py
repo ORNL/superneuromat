@@ -1671,7 +1671,7 @@ class SNN:
             time_steps = max(bool(self.spike_train), self.stdp_time_steps)
         self.spike_train = self.spike_train[-time_steps:]
 
-    def delete_neuron(self, neuron_id: int | Neuron, reindex: bool = True):
+    def delete_neuron(self, neuron_id: int | Neuron, reindex: bool = True, _delete_synapses: bool = True):
         """Deletes a neuron from the network.
 
         Parameters
@@ -1693,7 +1693,9 @@ class SNN:
             if pre == neuron_id or post == neuron_id
         ]
 
-        smap = self.delete_synapses(synaptic_ids, reindex=reindex)
+        smap = {}
+        if _delete_synapses:
+            smap = self.delete_synapses(synaptic_ids, reindex=reindex)
 
         if neuron_id in self._neuron_cache:
             self._neuron_cache[neuron_id].idx = None
@@ -1704,8 +1706,8 @@ class SNN:
             mapping |= {i: i - 1 for i in range(neuron_id + 1, self.num_neurons)}
 
             # fix broken indices in synapses
-            self.pre_synaptic_neuron_ids = [mapping[i] for i in self.pre_synaptic_neuron_ids]
-            self.post_synaptic_neuron_ids = [mapping[i] for i in self.post_synaptic_neuron_ids]
+            self.pre_synaptic_neuron_ids = [mapping[i] for i in self.pre_synaptic_neuron_ids if i not in synaptic_ids]
+            self.post_synaptic_neuron_ids = [mapping[i] for i in self.post_synaptic_neuron_ids if i not in synaptic_ids]
 
             # replace affected indices in neuron lists
             for nlist in self._neuronlist_cache:
@@ -1714,6 +1716,14 @@ class SNN:
                 if overlap:
                     nlist.indices = [mapping[i] for i in nlist.indices if i != neuron_id and i in mapping]
             self.rebuild_connection_ids()
+
+            # remap neuron IDs in cache
+            for idx in range(neuron_id + 1, self.num_neurons):
+                if idx in self._neuron_cache:
+                    self._neuron_cache[idx].idx = idx - 1
+                    self._neuron_cache[idx - 1] = self._neuron_cache[idx]
+            if self.num_neurons - 1 in self._neuron_cache:
+                del self._neuron_cache[self.num_neurons - 1]
 
         # self.neurons.remove(self.neurons[neuron_id])
         del self.neuron_refractory_periods[neuron_id]
@@ -1727,24 +1737,27 @@ class SNN:
             return mapping, smap
         return {}, {}
 
-    def delete_neurons(self, neuron_ids: list[int | Neuron], reindex: bool = True):
+    def delete_neurons(self, neuron_ids: list[int] | list[Neuron], reindex: bool = True):
         """Deletes neurons from the network.
 
         Parameters
         ----------
-        neuron_ids : list[int | Neuron]
+        neuron_ids : list[int] | list[Neuron]
             The IDs of the neurons to delete.
         """
         indices = set(int(neuron_id) for neuron_id in neuron_ids if isinstance(neuron_id, (int, Neuron)))
+        indices = list(indices)
+        indices.sort(reverse=True)
         num_neurons = self.num_neurons
-        for neuron_id in indices:
-            self.delete_neuron(neuron_id, reindex=False)
 
         synaptic_ids = [
             idx for idx, (pre, post)
             in enumerate(zip(self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids))
             if pre in indices or post in indices
         ]
+
+        for neuron_id in indices:
+            self.delete_neuron(neuron_id, reindex=False, _delete_synapses=False)
 
         smap = self.delete_synapses(synaptic_ids, reindex=reindex)
 
@@ -1802,7 +1815,10 @@ class SNN:
                     print(syn_id, ' in cache')
                     self._synapse_cache[syn_id].idx = syn_id - 1
                     self._synapse_cache[syn_id - 1] = self._synapse_cache[syn_id]
+            del mapping[synapse_id]
             del self._synapse_cache[syn_id]
+            if self.num_synapses - 1 in self._synapse_cache:
+                del self._synapse_cache[self.num_synapses - 1]
 
         pair = (self.pre_synaptic_neuron_ids[synapse_id], self.post_synaptic_neuron_ids[synapse_id])
         if pair in self.connection_ids:
@@ -1820,16 +1836,20 @@ class SNN:
                     slist.indices = [mapping[i] for i in slist.indices if i != synapse_id and i in mapping]
             if _rebuild_connection_ids:
                 self.rebuild_connection_ids()
+            return mapping
+        return {}
 
-    def delete_synapses(self, synapse_ids: Sequence[int | Synapse], reindex: bool = True, _rebuild_connection_ids: bool = True):
+    def delete_synapses(self, synapse_ids: Sequence[int] | Sequence[Synapse], reindex: bool = True, _rebuild_connection_ids: bool = True):
         """Deletes a list of synapses from the network.
 
         Parameters
         ----------
-        synapse_ids : list[int | Synapse]
+        synapse_ids : list[int] | list[Synapse]
             The IDs of the synapses to delete.
         """
         indices = set(int(synapse_id) for synapse_id in synapse_ids if isinstance(synapse_id, (int, Synapse)))
+        indices = list(indices)
+        indices.sort(reverse=True)
         num_synapses = self.num_synapses
         for synapse_id in indices:
             self.delete_synapse(synapse_id, reindex=False)
