@@ -150,6 +150,26 @@ class DeletionTest(unittest.TestCase):
         assert snn.synaptic_weights == [1.0, 2.0]
         assert snn.neuron_thresholds == [0.0, 1.0]
 
+    def test_neurons_deletion(self):
+
+        snn, a, b, c, ab, ba, ac = self.setup_3_3_network()
+
+        sl = snn.neurons[:]
+        assert sl == [a, b, c]
+
+        neuron_mapping, synapse_mapping = snn.delete_neurons([a, b])
+
+        assert len(snn._neuron_cache) == 1
+        assert len(snn._synapse_cache) == 0
+
+        assert neuron_mapping == {2: 0}
+        assert synapse_mapping == {}
+
+        assert snn.synaptic_weights == []
+        assert snn.neuron_thresholds == [2.0]
+        assert sl == [c]
+        assert sl[0].idx == 0
+
 
 if __name__ == "__main__":
     unittest.main()
