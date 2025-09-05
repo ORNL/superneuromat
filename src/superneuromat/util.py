@@ -188,6 +188,9 @@ def pretty_spike_train(
     use_unicode : bool, default=True
         If ``True``, use unicode characters to represent spikes.
         Otherwise fallback to ascii characters.
+    indices : list[int] | None, default=None
+        If provided, show these indices in the header of the output.
+        Otherwise, enumerate them from 0 to the number of neurons in the spike train.
     """
     lines = []
     steps = len(spike_train)
@@ -258,5 +261,8 @@ def print_spike_train(spike_train, max_steps=None, max_neurons=None, use_unicode
     use_unicode : bool, default=True
         If ``True``, use unicode characters to represent spikes.
         Otherwise fallback to ascii characters.
+    indices : list[int] | None, default=None
+        If provided, show these indices in the header of the output.
+        Otherwise, enumerate them from 0 to the number of neurons in the spike train.
     """
     print('\n'.join(pretty_spike_train(spike_train, max_steps, max_neurons, use_unicode, indices)))

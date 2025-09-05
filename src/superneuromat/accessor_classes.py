@@ -1474,15 +1474,157 @@ class NeuronListView(ModelListView, NeuronProperties):
     def ispikes(self):
         return self.m.ispikes[:, self.indices]
 
+    def add_spike(self, time: int, idx: int, value=1.0, exist='error'):
+        """Adds an external spike in the SNN
+
+        Parameters
+        ----------
+        time : int
+            The time step at which the external spike is added
+        idx : int
+            The neuron for which the external spike is added
+        value : float
+            The value of the external spike (default: 1.0)
+        exist : str
+            action for existing spikes on a neuron at a given time step.
+            Should be one of ['error', 'overwrite', 'add', 'dontadd']. (default: 'error')
+
+            if exist='add', the existing spike value is added to the new value.
+
+        Raises
+        ------
+        TypeError
+            if:
+
+            * time cannot be precisely cast to int
+            * neuron_id is not an int
+            * value is not an int or float
+
+        ValueError
+            if spike already exists at that neuron and timestep and exist='error',
+            or if exist is an invalid setting.
+
+        See Also
+        --------
+        SNN.add_spike
+        Neuron.add_spike
+        """
+        self.m.add_spike(time, self.indices[idx], value, exist)
+
+    def add_spikes(
+        self,
+        spikes: float | Sequence[float] | Sequence[Sequence[float]] | np.ndarray[(int,), dtype] | np.ndarray[(int, int), dtype],
+        time_offset: int = 0,
+        exist: str = 'error',
+    ):
+        """Add a time-series of spikes to this neuron.
+
+        Parameters
+        ----------
+        spikes : numpy.typing.ArrayLike
+        time_offset : int, default=0
+            The number of time steps to offset the spikes by.
+        exist : str, default='error'
+            Action if a queued spike already exists at the given time step.
+            Should be one of ['error', 'overwrite', 'add', 'dontadd'].
+
+            Note: ``0.0``-valued spikes are not added unless ``exist='overwrite'``.
+
+
+        If the input is a scalar, a single spike is sent to each neuron in this NeuronListView
+        at time ``time_offset``.
+
+        If the input is a 1-dimensional array, it is assumed to be the values of spikes to send to each neuron
+        in this NeuronListView at time ``time_offset``.
+
+        If the input is a 2-dimensional array, it is assumed to be, for each time step, a list of values to send
+        to each neuron in this NeuronListView, starting at time ``time_offset``. That is, the first row of the array
+        corresponds to the first time step, the second row to the second time step, and so on.
+        """
+        arr = np.asarray(spikes, dtype=self.m.default_dtype)
+        if arr.ndim == 0:
+            arr = np.broadcast_to(arr, (1, len(self.indices)))
+        elif arr.ndim == 1:
+            if arr.shape != (len(self.indices),):
+                msg = ("add_spikes() received a 1-dimensional array, which is assumed to be "
+                       "the values of spikes to send to each neuron in this NeuronListView. "
+                       f"Expected {len(self.indices)} values, but received {arr.shape[0]}.")
+                raise ValueError(msg)
+            arr = arr.reshape((1, -1))
+        elif arr.ndim == 2:
+            if arr.shape[1] != len(self.indices):
+                msg = ("add_spikes() received a 2-dimensional array, which is assumed to be, "
+                       "for each time step, a list of values to send to each neuron in this NeuronListView. "
+                       f"Expected arr.shape[1] == {len(self.indices)}, but received values "
+                       f"for {arr.shape[1]} neurons.")
+                raise ValueError(msg)
+        for time, vec in enumerate(arr):
+            for idx, value in zip(self.indices, vec):
+                if value == 0.0 and exist != 'overwrite':
+                    continue
+                self.m.add_spike(time + time_offset, idx, value, exist)
+
     def pretty_spike_train(self, max_steps=None, max_neurons=None, use_unicode=True, indices=None):
+        """Returns a list[str] showing the spike train for each neuron in this NeuronListView.
+
+        See Also
+        --------
+        SNN.pretty_spike_train
+        """
         if indices is None:
             indices = self.indices
         return util.pretty_spike_train(self.ispikes, max_steps, max_neurons, use_unicode, indices)
 
     def print_spike_train(self, max_steps=None, max_neurons=None, use_unicode=True, indices=None):
+        """Prints the spike train for each neuron in this NeuronListView.
+
+        See Also
+        --------
+        SNN.print_spike_train
+        """
         if indices is None:
             indices = self.indices
         util.print_spike_train(self.ispikes, max_steps, max_neurons, use_unicode, indices)
+
+    def clear_input_spikes(self, t: int | slice | list | np.ndarray | None = None,
+                           destination: int | slice | list | np.ndarray | None = None,
+                           remove_empty: bool = True):
+        """Delete input spikes from the SNN.
+
+        Parameters
+        ----------
+        t : int | slice | list | np.ndarray | None, default=None
+            The time step(s) from which to delete input spikes.
+            If ``None``, delete input spikes across all time steps.
+        destination : int | Neuron | slice | list | np.ndarray | None, default=None
+            The neuron(s) from which to delete input spikes.
+            If ``None``, delete all input spikes from only neurons in this NeuronListView.
+        remove_empty : bool, default=True
+            If ``True``, remove empty time steps from the input spike train.
+
+        See Also
+        --------
+        SNN.clear_input_spikes
+        """
+        if destination is None:
+            destination = set(self.indices)
+        else:
+            if isinstance(destination, (int, np.integer)):
+                destination = [destination]
+            elif isinstance(destination, slice):
+                destination = slice_indices(destination, len(self))
+            elif isinstance(destination, np.ndarray):
+                destination = list(set(destination.tolist()))
+            else:
+                try:
+                    destination = [int(idx) for idx in destination]
+                except (TypeError, ValueError) as err:
+                    msg = f"clear_input_spikes() expected int, slice, list, or None, but received {type(destination)}"
+                    raise TypeError(msg) from err
+                destination = list(set(destination))
+            destination = [self.indices[idx] for idx in destination]
+
+        self.m.clear_input_spikes(t, destination, remove_empty)
 
 
 class NeuronIterator(ModelListIterator):

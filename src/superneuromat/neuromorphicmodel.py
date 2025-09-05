@@ -1496,7 +1496,7 @@ class SNN:
         self.spike_train = []
 
     def clear_input_spikes(self, t: int | slice | list | np.ndarray | None = None,
-                           destination: int | Neuron | slice | list | np.ndarray | None = None,
+                           destination: int | Neuron | slice | list | np.ndarray | set | None = None,
                            remove_empty: bool = True):
         """Delete input spikes from the SNN.
 
@@ -1524,7 +1524,7 @@ class SNN:
         # normalize times to delete
         if isinstance(t, slice):
             times_to_delete = set(self.input_spikes.keys()) & set(slice_indices(t, max(self.input_spikes)))
-        elif isinstance(t, int):
+        elif isinstance(t, (int, np.integer)):
             times_to_delete = [t] if t in self.input_spikes else []
         elif t is None:
             times_to_delete = list(self.input_spikes.keys())
@@ -1539,7 +1539,7 @@ class SNN:
                     raise TypeError(msg) from err
 
         # normalize destinations to delete
-        if isinstance(destination, (int, Neuron)):
+        if isinstance(destination, (int, np.integer, Neuron)):
             destination = [int(destination)]
         elif destination is None:
             pass
