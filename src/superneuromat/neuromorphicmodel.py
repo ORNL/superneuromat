@@ -2498,6 +2498,33 @@ class SNN:
         del self.memoized
         self.memoized = {}
 
+    @staticmethod
+    def is_numeric_array(o):
+        is_np = isinstance(o, np.ndarray) and o.dtype.kind in 'iuf'
+        is_py = isinstance(o, (tuple, list)) and all([isinstance(x, (int, float, bool)) for x in o])
+        return is_np or is_py
+
+    @staticmethod
+    def is_bool_array(o):
+        if isinstance(o, np.ndarray):
+            try:
+                return np.issubdtype(o.dtype, np.bool)
+            except AttributeError:
+                return issubclass(o.dtype.type, np.bool_)
+        else:
+            return all([isinstance(x, bool) for x in o])
+
+    @classmethod
+    def _json_default(cls, o):
+        if isinstance(o, np.ndarray):
+            if cls.is_bool_array(o):
+                return o.astype(np.int_).tolist()
+            return o.tolist()
+        if issubclass(o, np.generic):
+            return o.__name__
+        msg = f'Object of type {o.__class__.__name__} is not JSON serializable'
+        raise TypeError(msg)
+
     def _to_json_dict(self, array_representation="json-native",
                       skipkeys: list[str] | tuple[str] | set[str] | None = None,
                       net_name=None, extra=None):
@@ -2530,30 +2557,6 @@ class SNN:
         varnames = set(self.eqvars) - skipkeys
         arep = array_representation
 
-        def is_numeric_array(o):
-            is_np = isinstance(o, np.ndarray) and o.dtype.kind in 'iuf'
-            is_py = isinstance(o, (tuple, list)) and all([isinstance(x, (int, float, bool)) for x in o])
-            return is_np or is_py
-
-        def is_bool_array(o):
-            if isinstance(o, np.ndarray):
-                try:
-                    return np.issubdtype(o.dtype, np.bool)
-                except AttributeError:
-                    return issubclass(o.dtype.type, np.bool_)
-            else:
-                return all([isinstance(x, bool) for x in o])
-
-        def default(self, o):
-            if isinstance(o, np.ndarray):
-                if is_bool_array(o):
-                    return o.astype(np.int_).tolist()
-                return o.tolist()
-            if issubclass(o, np.generic):
-                return o.__name__
-            msg = f'Object of type {o.__class__.__name__} is not JSON serializable'
-            raise TypeError(msg)
-
         def get_dtype(o):
             byteorder = o.dtype.byteorder
             if byteorder == '=':
@@ -2572,15 +2575,15 @@ class SNN:
             data = {var: getattr(self, var) for var in varnames}
 
             for k, v in data.items():
-                if is_numeric_array(v) and is_bool_array(v):
+                if self.is_numeric_array(v) and self.is_bool_array(v):
                     data[k] = np.asarray(v, dtype=np.int_).tolist()
         elif arep in ["base85", "base64"]:
             from base64 import b85encode, b64encode
             encode = b85encode if arep == "base85" else b64encode
             data = {var: getattr(self, var) for var in varnames}
             for k, v in data.items():
-                if is_numeric_array(v):
-                    dtype = self.dbin if is_bool_array(v) else self.dd
+                if self.is_numeric_array(v):
+                    dtype = self.dbin if self.is_bool_array(v) else self.dd
                     arr = np.asarray(v, dtype=dtype)
                     data[k] = {
                         "dtype": get_dtype(arr),
@@ -2589,8 +2592,6 @@ class SNN:
                     }
         else:
             raise ValueError("array_representation must be 'json-native' or 'base85'.")
-
-        json.JSONEncoder.default = default
 
         d = {
             "$schema": "https://ornl.github.io/superneuromat/schema/0.1/snn.json",
@@ -2654,8 +2655,9 @@ class SNN:
         >>> snn.to_json(net_name="My SNN", indent=None)
         {"$schema": "https://ornl.github.io/superneuromat/schema/0.1/snn.json", "version": "0.1", "networks": [{"meta": {"array_representation": "json-native", "from": {"module": "superneuromat", "version": "3.1.0"}, "format": "snm", "format_version": "0.1", "type": "SNN"}, "data": {"neuron_refractory_periods": [0, 0], "neuron_states": [0.0, 0.0], "num_synapses": 2, "post_synaptic_neuron_ids": [1, 0], "aneg": [], "enable_stdp": [0, 0], "pre_synaptic_neuron_ids": [0, 1], "neuron_thresholds": [3.141592653589793115997963468544185161590576171875, 0.0], "neuron_refractory_periods_state": [0.0, 0.0], "neuron_reset_states": [0.0, 0.0], "stdp_positive_update": true, "input_spikes": {"3": {"nids": [1], "values": [1.0]}}, "synaptic_delays": [1, 1], "allow_signed_leak": false, "num_neurons": 2, "_sparse": "auto", "_backend": "auto", "apos": [], "manual_setup": false, "spike_train": [[1, 0], [0, 1], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], "neuron_leaks": [Infinity, Infinity], "allow_incorrect_stdp_sign": false, "stdp": true, "synaptic_weights": [1.0, 1.0], "default_dtype": "float64", "stdp_negative_update": true}}]}
         """  # noqa: E501 (line length)
+
         d = self._to_json_dict(array_representation, skipkeys=skipkeys, net_name=net_name, extra=extra)
-        return json.dumps(d, indent=indent, **kwargs)
+        return json.dumps(d, indent=indent, default=self._json_default, **kwargs)
 
     def saveas_json(self, fp,
                     array_representation="json-native",
@@ -2691,7 +2693,7 @@ class SNN:
         >>>     snn.saveas_json(f, net_name="My SNN")
         """
         d = self._to_json_dict(array_representation, skipkeys=skipkeys, net_name=net_name, extra=extra)
-        return json.dump(d, fp, indent=indent, **kwargs)
+        return json.dump(d, fp, indent=indent, default=self._json_default, **kwargs)
 
     def from_json_network(self, net_dict: dict, skipkeys: list[str] | tuple[str] | set[str] | None = None):
         from base64 import b85decode, b64decode
