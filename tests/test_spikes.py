@@ -269,8 +269,8 @@ class SpikeTest(unittest.TestCase):
         assert snn.input_spikes == {0: {"nids": [3], "values": [2.0]}}
 
     def test_neuronlist_add_input_spikes(self):
-        """Test the clear_input_spikes function"""
-        print("begin test_neuronlist_clear_input_spikes")
+        """Test the add_input_spikes function"""
+        print("begin test_neuronlist_add_input_spikes")
         snn = SNN()
         for _i in range(4):
             snn.create_neuron()
