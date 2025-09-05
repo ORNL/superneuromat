@@ -5,3 +5,4 @@
 
 .. autoclass:: Neuron
    :members:
+   :inherited-members:

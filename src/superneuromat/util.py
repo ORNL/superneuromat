@@ -171,6 +171,7 @@ def pretty_spike_train(
         max_steps: int | None = 11,
         max_neurons: int | None = 28,
         use_unicode: bool | Any = True,
+        indices: list[int] | np.ndarray | None = None,
     ):
     """Prints the spike train.
 
@@ -187,12 +188,16 @@ def pretty_spike_train(
     use_unicode : bool, default=True
         If ``True``, use unicode characters to represent spikes.
         Otherwise fallback to ascii characters.
+    indices : list[int] | None, default=None
+        If provided, show these indices in the header of the output.
+        Otherwise, enumerate them from 0 to the number of neurons in the spike train.
     """
     lines = []
     steps = len(spike_train)
     neurons = len(spike_train[0]) if steps else 0
     t_nchar = len(str(steps - 1))
-    i_nchar = max(len(str(neurons - 1)), 2)  # should be at least 2 wide
+    highest_neuron_id = max(indices) if indices else neurons - 1
+    i_nchar = max(len(str(highest_neuron_id)), 2)  # should be at least 2 wide
     c0 = f"{'│ ':<{i_nchar}}" if use_unicode else f"{'0 ':<{i_nchar}}"
     c1 = f"{'├─':<{i_nchar}}" if use_unicode else f"{'1 ':<{i_nchar}}"
     sep = '' if use_unicode else ''
@@ -212,12 +217,13 @@ def pretty_spike_train(
             return sep.join([c1 if x else c0 for x in first] + [ellip] + [c1 if x else c0 for x in last])
 
     # print header
+    indices = indices or range(neurons)
     if horizontally_continuous:
-        ids = [f"{i:<{i_nchar}d}" for i in range(neurons)]
+        ids = [f"{i:<{i_nchar}d}" for i in indices]
     else:
         fi = max_neurons // 2  # pyright: ignore[reportOptionalOperand]
-        first = [f"{i:<{i_nchar}d}" for i in range(fi)]
-        last = [f"{i:<{i_nchar}d}" for i in range(neurons - fi, neurons)]
+        first = [f"{i:<{i_nchar}d}" for i in indices[:fi]]
+        last = [f"{i:<{i_nchar}d}" for i in indices[-fi:]]
         ids = first + [ellip] + last
     lines.append(f"{'t':>{t_nchar}s}|id{sep.join(ids)} ")
 
@@ -239,7 +245,7 @@ def pretty_spike_train(
     return lines
 
 
-def print_spike_train(spike_train, max_steps=None, max_neurons=None, use_unicode=True):
+def print_spike_train(spike_train, max_steps=None, max_neurons=None, use_unicode=True, indices=None):
     """Prints the spike train.
 
     Parameters
@@ -255,5 +261,8 @@ def print_spike_train(spike_train, max_steps=None, max_neurons=None, use_unicode
     use_unicode : bool, default=True
         If ``True``, use unicode characters to represent spikes.
         Otherwise fallback to ascii characters.
+    indices : list[int] | None, default=None
+        If provided, show these indices in the header of the output.
+        Otherwise, enumerate them from 0 to the number of neurons in the spike train.
     """
-    print('\n'.join(pretty_spike_train(spike_train, max_steps, max_neurons, use_unicode)))
+    print('\n'.join(pretty_spike_train(spike_train, max_steps, max_neurons, use_unicode, indices)))

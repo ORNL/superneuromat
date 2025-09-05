@@ -5,7 +5,7 @@ import numpy as np
 import sys
 sys.path.insert(0, "../src/")
 
-from superneuromat import SNN
+from superneuromat import SNN, mlist
 
 use = 'cpu'
 
@@ -146,6 +146,30 @@ class SpikeTest(unittest.TestCase):
 
         snn.print_spike_train()
 
+    def test_neuronlist_ispikes(self):
+        """Test the ispikes property of NeuronList"""
+        print("begin test_neuronlist_ispikes")
+        snn = SNN()
+        inputs = mlist([snn.create_neuron() for _ in range(2)])
+        outputs = mlist([snn.create_neuron() for _ in range(2)])
+        inputs[0].connect_child(outputs[0], delay=3)
+        inputs[0].add_spike(3, 9)
+        snn.simulate(8)
+        assert outputs.ispikes[6, 0]
+        t, v = np.nonzero(outputs.ispikes)
+        assert t[0], v[0] == (6, 0)
+        expected = np.array([
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 1],
+            [0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0]
+        ])
+        assert np.array_equal(snn.neurons.ispikes, expected)
+
     def test_delete_spikes(self):
         """Test the clear_input_spikes function"""
 
@@ -182,6 +206,93 @@ class SpikeTest(unittest.TestCase):
             8: {"nids": [0], "values": [1.0]},
             9: {"nids": [0], "values": [1.0]},
         }
+
+    def test_neuronlist_clear_input_spikes(self):
+        """Test the clear_input_spikes function"""
+        print("begin test_neuronlist_clear_input_spikes")
+        snn = SNN()
+        for _i in range(4):
+            snn.create_neuron()
+
+        inputs = snn.neurons[2:]
+        a, b = inputs
+        a.add_spikes([
+            (0, 1.0),
+            (1, 1.0),
+            (2, 1.0),
+            (3, 1.0),
+        ])
+        b.add_spikes([1, 1])
+        snn.neurons[0].add_spike(4, 9.0)
+        print(snn.input_spikes_info())
+        assert snn.input_spikes == {
+            0: {"nids": [2, 3], "values": [1.0, 1.0]},
+            1: {"nids": [2, 3], "values": [1.0, 1.0]},
+            2: {"nids": [2], "values": [1.0]},
+            3: {"nids": [2], "values": [1.0]},
+            4: {"nids": [0], "values": [9.0]},
+        }
+        inputs.clear_input_spikes(destination=1)
+        inputs.clear_input_spikes(t=slice(1, 3))
+        assert snn.input_spikes == {
+            0: {"nids": [2], "values": [1.0]},
+            3: {"nids": [2], "values": [1.0]},
+            4: {"nids": [0], "values": [9.0]},
+        }
+        inputs.clear_input_spikes(destination=[0])
+        assert snn.input_spikes == {
+            4: {"nids": [0], "values": [9.0]},
+        }
+        snn.input_spikes = {
+            0: {"nids": [1, 2, 3], "values": [2.0, 5.0, 1.0]},
+            1: {"nids": [2, 3], "values": [1.0, 1.0]},
+            2: {"nids": [2], "values": [1.0]},
+            3: {"nids": [2], "values": [1.0]},
+            4: {"nids": [0], "values": [9.0]},
+        }
+        inputs.clear_input_spikes(destination=slice(0, 1))
+        assert snn.input_spikes == {
+            0: {"nids": [1, 3], "values": [2.0, 1.0]},
+            1: {"nids": [3], "values": [1.0]},
+            4: {"nids": [0], "values": [9.0]},
+        }
+
+    def test_neuronlist_add_spike(self):
+        """Test the add_spike function"""
+        print("begin test_neuronlist_add_spike")
+        snn = SNN()
+        for _i in range(4):
+            snn.create_neuron()
+
+        inputs = snn.neurons[2:]
+        inputs.add_spike(0, 1, 2.0)
+        assert snn.input_spikes == {0: {"nids": [3], "values": [2.0]}}
+
+    def test_neuronlist_add_input_spikes(self):
+        """Test the add_input_spikes function"""
+        print("begin test_neuronlist_add_input_spikes")
+        snn = SNN()
+        for _i in range(4):
+            snn.create_neuron()
+
+        inputs = snn.neurons[2:]
+        inputs.add_spikes([1, 2])
+        assert snn.input_spikes == {0: {"nids": [2, 3], "values": [1.0, 2.0]}}
+        inputs.add_spikes([[0, 2], [3, 4]], exist='overwrite')
+        inputs.add_spikes([[0, 0], [0, 0]], exist='ignore')
+        assert snn.input_spikes == {
+            0: {"nids": [2, 3], "values": [0.0, 2.0]},
+            1: {"nids": [2, 3], "values": [3.0, 4.0]}
+        }
+        snn.clear_input_spikes()
+        assert snn.input_spikes == {}
+        inputs.add_spikes(2, time_offset=5)
+        assert snn.input_spikes == {5: {"nids": [2, 3], "values": [2.0, 2.0]}}
+        with self.assertRaises(ValueError):
+            inputs.add_spikes([0, 1, 2])
+        with self.assertRaises(ValueError):
+            inputs.add_spikes([[0, 1, 2], [3, 4, 5]], time_offset=5)
+
 
 if __name__ == "__main__":
     unittest.main()

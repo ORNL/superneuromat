@@ -1,6 +1,8 @@
 from __future__ import annotations
 import sys
-from .util import is_intlike, int_err, accessor_slice, slice_indices
+from collections.abc import Sequence, MutableSequence
+from .util import is_intlike, int_err, float_err, accessor_slice, slice_indices
+from . import util
 
 from typing import TYPE_CHECKING, Any
 import numpy as np
@@ -8,14 +10,77 @@ from numpy import dtype
 
 if TYPE_CHECKING:
     from .neuromorphicmodel import SNN
+    from _typeshed import SupportsRichComparison
     from typing import overload
 else:
+    SupportsRichComparison = None
     # for docgen type in signatures
     class SNN:
         def __repr__(self):
-            return "SNN"
+            return "SNN"  # pragma: no cover
 
 _nonce = object()
+
+
+class BaseListOperators:
+    v: ModelListView | ModelAccessorList
+
+    def _asarrays(self, other):
+        me = np.asarray(self, dtype=self.v.m.default_dtype)
+        other = np.asarray(other, dtype=self.v.m.default_dtype)
+        return me, other
+
+    @staticmethod
+    def binop(op, right=False):
+        def func(self, other):
+            me, other = self._asarrays(other)
+            result = op(other, me) if right else op(me, other)
+            return result
+        return func
+
+    @staticmethod
+    def bcmp(op, right=False):
+        def func(self, other):
+            me, other = self._asarrays(other)
+            result = op(other, me) if right else op(me, other)
+            return result
+        return func
+
+    # python 3.9 workaround https://stackoverflow.com/a/41921291
+    binopf = binop.__func__
+    bcmpf = bcmp.__func__
+
+    __add__ = binopf(np.add)
+    __radd__ = binopf(np.add, right=True)
+    __sub__ = binopf(np.subtract)
+    __rsub__ = binopf(np.subtract, right=True)
+    __mul__ = binopf(np.multiply)
+    __rmul__ = binopf(np.multiply, right=True)
+    __truediv__ = binopf(np.divide)
+    __rtruediv__ = binopf(np.divide, right=True)
+    __floordiv__ = binopf(np.floor_divide)
+    __rfloordiv__ = binopf(np.floor_divide, right=True)
+    __mod__ = binopf(np.mod)
+    __rmod__ = binopf(np.mod, right=True)
+    __pow__ = binopf(np.power)
+    __rpow__ = binopf(np.power, right=True)
+    __lshift__ = binopf(np.left_shift)
+    __rlshift__ = binopf(np.left_shift, right=True)
+    __rshift__ = binopf(np.right_shift)
+    __rrshift__ = binopf(np.right_shift, right=True)
+    __and__ = binopf(np.bitwise_and)
+    __rand__ = binopf(np.bitwise_and, right=True)
+    __xor__ = binopf(np.bitwise_xor)
+    __rxor__ = binopf(np.bitwise_xor, right=True)
+    __or__ = binopf(np.bitwise_or)
+    __ror__ = binopf(np.bitwise_or, right=True)
+
+    __lt__ = bcmpf(np.less)
+    __le__ = bcmpf(np.less_equal)
+    __gt__ = bcmpf(np.greater)
+    __ge__ = bcmpf(np.greater_equal)
+    __eq__ = bcmpf(np.equal)
+    __ne__ = bcmpf(np.not_equal)
 
 
 class ModelAccessor:
@@ -25,7 +90,7 @@ class ModelAccessor:
     model_cachename = ''
 
     # when unpickling, Python will call __new__ without arguments
-    def __new__(cls, snn=_nonce, idx: int = _nonce, *args, **kwargs):
+    def __new__(cls, snn=_nonce, idx: int = _nonce, *args, **kwargs):  # pyright: ignore[reportArgumentType]
         if isinstance(idx, int) and hasattr(snn, cls.model_cachename):
             cache = getattr(snn, cls.model_cachename)
             if idx in cache:
@@ -43,19 +108,22 @@ class ModelAccessor:
                 cache[self.idx] = self
 
         if check_index:
-            self.check_index()
+            self._check_index()
 
     @property
     def m(self):
+        """The :py:class:`SNN` that this object is associated with."""
         return self._m
 
     @m.setter
     def m(self, newmodel):
-        if isinstance(self._m, SNN):
+        # if the model of this object is changed, remove it from the cache
+        if hasattr(self._m, self.model_cachename):
             cache = getattr(self._m, self.model_cachename)
             if self.idx in cache:
                 del cache[self.idx]
-        if isinstance(newmodel, SNN):
+        # make it known to the new SNN
+        if hasattr(newmodel, self.model_cachename):
             cache = getattr(newmodel, self.model_cachename)
             if self.idx not in cache:
                 cache[self.idx] = self
@@ -63,18 +131,20 @@ class ModelAccessor:
 
     @property
     def num_onmodel(self):
-        pass
+        """Internal variable used to check if the index is valid."""
+        pass  # subclasses should define this  # pragma: no cover
 
     def info(self):
-        pass
+        pass  # subclasses should define this  # pragma: no cover
 
-    def check_index(self):
+    def _check_index(self):
         if not (0 <= self.idx < self.num_onmodel):
             msg = (f"{self.associated_typename} index {self.idx} is out of range for {self.m.__class__.__name__} at "
                     f"{hex(id(self.m))} with {self.num_onmodel} {self.associated_typename.lower()}s.")
             raise IndexError(msg)
 
     def __int__(self):
+        """Returns the index of the object in the :py:class:`SNN`."""
         return self.idx
 
     def __eq__(self, x):
@@ -85,7 +155,15 @@ class ModelAccessor:
             return False
 
     def __hash__(self):
-        return hash((self.idx, id(self.m)))
+        """Generate a hash for this object.
+
+        This hash is unique if the combination of the following is unique:
+
+        * the ``associated_typename`` of the object, i.e. ``"Neuron"`` or ``"Synapse"``
+        * the model instance that the object is associated with
+        * the index of the neuron or synapse that the object refers to
+        """
+        return hash((self.associated_typename, self.idx, id(self.m)))
 
     def __repr__(self):
         return f"<{self.associated_typename} {self.idx} on {self.m.__class__.__name__} at {hex(id(self.m))}>"
@@ -94,7 +172,10 @@ class ModelAccessor:
         return f"<{self.associated_typename} {self.info()}>"
 
 
-class ModelAccessorList(list):
+class ModelAccessorList(Sequence):
+    """Base class for :py:class:`NeuronList` and :py:class:`SynapseList`.
+
+    Inherits from :py:class:`collections.abc.Sequence`."""
     accessor_type: type
     listview_type: type
 
@@ -105,27 +186,40 @@ class ModelAccessorList(list):
         self.accessor_typename = self.accessor_type.__name__
 
     def __getitem__(self, idx):
-        if isinstance(idx, (int, self.accessor_type)):
-            return self.accessor_type(self.m, int(idx))
+        if isinstance(idx, (int, np.integer, self.accessor_type)):
+            return self.accessor_type(self.m, int(idx))  # return a single item
         if idx is None:
             raise TypeError("list indices cannot be NoneType.")
-        try:
-            return self.listview_type(self.m, idx)
-        except TypeError:
-            return self.accessor_type(self.m, idx)
+        try:  # idx wasn't int or accessor_type
+            return self.listview_type(self.m, idx)  # assume idx is slice or sequence
+        except TypeError:  # the __init__ of the listview_type failed, so idx isn't a slice or sequence
+            return self.accessor_type(self.m, idx)  # maybe idx is some weird int-like type?
+
+    # No __delitem__ or __setitem__ because modifying the model like that is suuper messy
+    # and I don't want users to think it's something to be taken lightly or do accidentally
+
+    def _check_modify(self):
+        if self.m is None:
+            msg = f"attempt to modify empty {type(self).__name__} not associated with a model."
+            raise RuntimeError(msg)
+
+    def _check_access(self):
+        if self.m is None:
+            msg = f"attempt to index into {type(self).__name__} not associated with a model."
+            raise IndexError(msg)
 
     @property
     def num_onmodel(self) -> int:
-        pass
+        pass  # subclasses should define this  # pragma: no cover
 
     def info(self):
-        pass
+        pass  # subclasses should define this  # pragma: no cover
 
     def __len__(self) -> int:
         return self.num_onmodel
 
     def __iter__(self):
-        pass
+        pass  # pragma: no cover
 
     def __str__(self):
         return self.info(30)
@@ -136,69 +230,138 @@ class ModelAccessorList(list):
     def __contains__(self, item):
         if isinstance(item, self.accessor_type):
             return 0 <= item.idx < self.num_onmodel and self.m is item.m
-        elif isinstance(item, int):
-            return 0 <= item < self.num_onmodel
+        elif isinstance(item, (int, np.integer)):
+            return 0 <= item < self.num_onmodel  # True if it's valid index for the model
         return False
 
     def __eq__(self, value):
         if isinstance(value, type(self)):
+            # A ModelAccessorList is unique to an SNN
             return self.m is value.m
         elif isinstance(value, self.listview_type):
-            return self.m is value.m and list(range(self.num_onmodel)) == value.indices
+            # A ModelAccessorList is basically a ModelListView where the indices are range(num_onmodel)
+            return self.m is value.m and self.indices == value.indices
         else:
-            try:
+            try:  # check elementwise equality
                 return all(a == b for a, b in zip(self, value)) and len(self) == len(value)
             except TypeError:
                 return False
 
+    def __ne__(self, value):
+        return not self.__eq__(value)
+
     @property
     def indices(self):
+        """A sorted list of all valid indices for accessors on the SNN."""
         return list(range(self.num_onmodel))
 
     def tolist(self):
-        return list(self)
+        """A list of all the accessors on the SNN."""
+        return list(self)  # I think this works because we defined __iter__
 
 
-class ModelListView(list):
+class ModelListIterator:
+    accessor_type: type
+    model_num_name: str
+
+    def __init__(self, model: SNN):
+        self.m = model
+        self.iter = iter(range(  # get number of elements on model
+            getattr(model, self.model_num_name, 0)))
+
+    def __iter__(self):
+        return type(self)(self.m)
+
+    def __next__(self):
+        next_idx = next(self.iter)
+        return self.accessor_type(self.m, next_idx)
+
+
+class ModelListViewIterator(ModelListIterator):
+    def __init__(self, model: SNN | None, indices: list[int]):
+        self.m = model
+        self.indices = indices
+        self.iter = iter(indices)
+
+    def __iter__(self):
+        return type(self)(self.m, self.indices)
+
+    def _check_modify(self):
+        if self.m is None:
+            msg = f"attempt to modify empty {type(self).__name__} not associated with a model."
+            raise RuntimeError(msg)
+
+
+class ModelListView(MutableSequence):
+    """Base class for :py:class:`NeuronListView` and :py:class:`SynapseListView`.
+
+    Inherits from :py:class:`collections.abc.MutableSequence`."""
     accessor_type: type
     list_type: type
     model_cachename = ''
 
-    def __new__(cls, *args, **kwargs):
-        if args and isinstance(args[0], ModelListView):
-            return args[0].copy()
-        return super().__new__(cls, *args, **kwargs)
-
     def __init__(self, model: SNN | None = None, indices: list[int] | slice | None = None, max_len: int | None = None):
-        self.m = model
-        self.indices: list[int]
+        if isinstance(model, ModelListView) and indices is None:  # allow us to create new ModelListView from ModelListView
+            assert max_len is None
+            indices = model.indices.copy()
+            model = model.m
+        self._model = model
+        self.indices: list[int]  # list of index values for the accessors on the SNN
         self.listview_type = type(self)
         if model is None and indices:
             msg = f"Attempt to create {type(self).__name__} with non-empty indices but no model."
+            raise ValueError(msg)
         if isinstance(indices, slice):
             max_len = self.num_onmodel if max_len is None else max_len
-            self.indices = slice_indices(indices, max_len)
-        elif isinstance(indices, (list, tuple, np.ndarray)):
-            self.indices = [int(i) for i in indices]
+            self.indices = slice_indices(indices, max_len)  # generate indices from slice
         elif indices is None:
             self.indices = []
         else:
-            try:
-                iter(indices)
-            except TypeError as err:
-                msg = (f"{type(self)}.__init__() received invalid index type: {type(indices)}."
-                       f" Expected int, slice, list, or other iterable containing ints.")
-                raise TypeError(msg) from err
-            self.indices = indices
-        if any(i for i in self.indices if not 0 <= int(i) < self.num_onmodel):
-            msg = (f"{type(self)}.__init__() received {type(indices)} containing indices out of range "
-                    f"for SNN at {hex(id(self.m))} with {self.num_onmodel} neurons.")
-            raise IndexError(msg)
+            if not isinstance(indices, (list, tuple, np.ndarray)):  # skip checks for common types
+                try:  # raise error if indices is not iterable
+                    iter(indices)
+                except TypeError as err:
+                    msg = (f"{type(self)}.__init__() received invalid index type: {type(indices)}."
+                        f" Expected int, slice, list, or other iterable containing ints.")
+                    raise TypeError(msg) from err  # THIS IS NECESSARY FOR ModelAccessorList.__getitem__
+            # normalize indices
+            self.indices = [int(i) for i in indices]  # this converts accessor instances to their index values too
         if model:
             self.accessor_typename = self.accessor_type.__name__
-            if hasattr(self.m, self.model_cachename):
-                cache = getattr(self.m, self.model_cachename)
+            # check that indices are valid
+            if any(i for i in self.indices if not 0 <= i < self.num_onmodel):
+                msg = (f"{type(self)}.__init__() received {type(indices)} containing indices out of range "
+                        f"for SNN at {hex(id(self.m))} with {self.num_onmodel} {self.accessor_typename.lower()}s.")
+                raise IndexError(msg)
+        # add to model cache if model is not None
+        if hasattr(model, self.model_cachename):
+            cache = getattr(model, self.model_cachename)
+            if self not in cache:
                 cache.append(self)
+
+    @property
+    def m(self):
+        """The :py:class:`SNN` that this object is associated with.
+
+        When setting this property, the object is moved from its current model to the new model,
+        if possible.
+        """
+        return self._model
+
+    @m.setter
+    def m(self, newmodel):
+        # if the model of this object is changed, remove it from the cache
+        if hasattr(self._model, self.model_cachename):
+            cache = getattr(self._model, self.model_cachename)
+            try:
+                cache.remove(self)
+            except (ValueError, ReferenceError):
+                pass
+        if hasattr(newmodel, self.model_cachename):
+            cache = getattr(newmodel, self.model_cachename)
+            if self not in cache:
+                cache.append(self)
+        self._model = newmodel
 
     def __del__(self):
         if hasattr(self.m, self.model_cachename):
@@ -210,7 +373,8 @@ class ModelListView(list):
 
     @property
     def num_onmodel(self) -> int:
-        pass
+        # used for knowing the max index of an object on the model
+        pass  # pragma: no cover
 
     def _check_modify(self):
         if self.m is None:
@@ -224,10 +388,11 @@ class ModelListView(list):
             raise IndexError(msg)
 
     def __getitem__(self, idx):
-        if isinstance(idx, int):
-            return Neuron(self.m, self.indices[idx])
-        elif isinstance(idx, self.accessor_type) and idx.m is self.m:
-            return idx
+        self._check_access()
+        if isinstance(idx, (int, np.integer)):
+            return self.accessor_type(self.m, self.indices[idx])
+        # elif isinstance(idx, self.accessor_type) and idx.m is self.m:
+        #     return idx  # on second thought, this behavior makes little sense
         elif isinstance(idx, slice) and self.m:
             return self.listview_type(self.m, self.indices[accessor_slice(idx)], len(self))
         else:
@@ -236,7 +401,7 @@ class ModelListView(list):
             except (TypeError, ValueError) as err:
                 msg = f"Invalid index type: {type(idx)}"
                 raise TypeError(msg) from err
-            return self.listview_type(self.m, self.indices[idx])
+            return self.listview_type(self.m, idx)
 
     def __setitem__(self, idx, value):
         self._check_modify()
@@ -252,7 +417,7 @@ class ModelListView(list):
                 raise ValueError(msg)
             return int(value)
 
-        if isinstance(idx, int):
+        if isinstance(idx, (int, np.integer)):
             check_value(value)
             self.indices[idx] = value.idx
             return
@@ -288,17 +453,15 @@ class ModelListView(list):
         for idx, x in zip(indices, new_indices):
             self.indices[idx] = x
 
-    def __delitem__(self, idx):
+    def __delitem__(self, idx_toremove):
         self._check_modify()
-        if isinstance(idx, (int, self.accessor_type)):
-            del self.indices[int(idx)]
-        elif isinstance(idx, slice):
-            idx = slice_indices(idx, len(self))
-            for i in idx:
-                if i in self.indices:
-                    del self.indices[i]
+        if isinstance(idx_toremove, (int, np.integer)):
+            del self.indices[int(idx_toremove)]
+        elif isinstance(idx_toremove, slice):
+            idx_toremove = slice_indices(idx_toremove, len(self))
+            self.indices = [idx for i, idx in enumerate(self.indices) if i not in idx_toremove]
         else:
-            del self.indices[idx]  # raise error
+            del self.indices[idx_toremove]  # raise error
 
     def __eq__(self, x):
         if isinstance(x, self.listview_type):
@@ -309,10 +472,13 @@ class ModelListView(list):
             except TypeError:
                 return False
 
+    def __ne__(self, x):
+        return not self.__eq__(x)
+
     def __contains__(self, idx):
         if isinstance(idx, self.accessor_type):
             return idx.idx in self.indices and self.m is idx.m
-        elif isinstance(idx, int):
+        elif isinstance(idx, (int, np.integer)):
             return idx in self.indices
         return False
 
@@ -320,6 +486,7 @@ class ModelListView(list):
         return len(self.indices)
 
     def tolist(self):
+        """Returns a list of the objects in this ListView."""
         return list(self)
 
     def using_model(self, model):
@@ -332,6 +499,21 @@ class ModelListView(list):
         return f"<{type(self).__name__} of model at {hex(id(self.m))} with {len(self)} {self.accessor_typename.lower()}s>"
 
     def info(self, max_entries: int | None = 30):
+        """Generate a summary of the objects in this ListView.
+
+        Similar to :py:meth:`SNN.neuron_info` or :py:meth:`SNN.synapse_info`, but only
+        including information about objects in this ListView.
+
+        Parameters
+        ----------
+        max_entries : int | None, default=30
+            Limits the number of entries which will be included.
+            If None, all entries will be included.
+
+        Returns
+        -------
+        str
+        """
         if self.m is None:
             return f"<Empty, uninitialized {type(self).__name__}>"
         if max_entries is None or len(self) <= max_entries:
@@ -350,23 +532,44 @@ class ModelListView(list):
     def __str__(self):
         return self.info(None)
 
-    def __add__(self, other, right=False):
+    def add(self, other, right=False):
+        """Concatenate this ListView with another iterable.
+
+        Parameters
+        ----------
+        other : ModelListView | Sequence[Neuron] | Sequence[Synapse]
+        right : bool, default=False
+            Used for right-handed concatenation.
+
+        Returns
+        -------
+        NeuronListView | SynapseListView | list[ModelAccessor | Any]
+            If both operands ``self + other`` are :py:class:`ModelListView`\\ s of the same type and model,
+            returns a :py:class:`ModelListView` of the same type and model with the concatenated indices.
+            Otherwise, returns a list of the concatenated objects.
+        """
         if isinstance(other, self.listview_type):
             other = other.indices
             me = self.indices
             view = True
         else:
-            all_neurons = all(isinstance(i, Neuron) for i in other)
-            same_model = all_neurons and all(i.m is self.m for i in other)
-            view = all_neurons and same_model
+            same_type = all(isinstance(i, self.accessor_type) for i in other)
+            same_model = same_type and all(i.m is self.m for i in other)  # checking same_type ensures .m attr exists
+            view = same_model  # same_model and same_type
             me = list(self)
-        indices = other + me if right else me + other
-        return self.listview_type(self.m, indices) if view else list(indices)
+        indices_or_objs = other + me if right else me + other
+        return self.listview_type(self.m, indices_or_objs) if view else list(indices_or_objs)
+
+    __add__ = add
 
     def __radd__(self, other):
         return self.__add__(other, right=True)
 
+    def __mul__(self, value):
+        return sum([self for _ in range(value)], self.listview_type(self.m, []))
+
     def clear(self):
+        """Make this ListView empty by clearing the indices of this ListView."""
         self.indices.clear()
 
     def _verb_error(self, verb, obj_typename, badtype=None, wrongmodel=False):
@@ -381,6 +584,22 @@ class ModelListView(list):
         return msg + hint
 
     def append(self, x):
+        """Append a compatible object to this ListView.
+
+        Parameters
+        ----------
+        x : Neuron | Synapse
+            The object to append to this ListView.
+
+        Raises
+        ------
+        RuntimeError
+            If this ListView is not associated with an :py:class:`SNN`.
+        ValueError
+            if ``x`` is not the same accessor type as this ListView
+            (i.e. you can't add a Neuron to a SynapseListView),
+            or if ``x`` is not from the same model.
+        """
         self._check_modify()
         if isinstance(x, self.accessor_type):
             if x.m is not self.m:
@@ -390,6 +609,24 @@ class ModelListView(list):
             raise ValueError(self._verb_error("append", self.accessor_typename, badtype=type(x).__name__))
 
     def insert(self, i, x):
+        """Insert a compatible object at the given index in this ListView.
+
+        Parameters
+        ----------
+        i : int
+            The index at which to insert ``x``.
+        x : Neuron | Synapse
+            The object to insert into this ListView.
+
+        Raises
+        ------
+        RuntimeError
+            If this ListView is not associated with an :py:class:`SNN`.
+        ValueError
+            if ``x`` is not the same accessor type as this ListView
+            (i.e. you can't add a Neuron to a SynapseListView),
+            or if ``x`` is not from the same model.
+        """
         self._check_modify()
         if isinstance(x, self.accessor_type):
             if x.m is not self.m:
@@ -399,6 +636,22 @@ class ModelListView(list):
             raise ValueError(self._verb_error("insert", self.accessor_typename, badtype=type(x).__name__))
 
     def extend(self, li):
+        """Extend this ListView with the given iterable of compatible objects.
+
+        Parameters
+        ----------
+        li : Sequence[Neuron] | Sequence[Synapse]
+            The iterable of objects to extend this ListView with.
+
+        Raises
+        ------
+        RuntimeError
+            If this ListView is not associated with an :py:class:`SNN`.
+        ValueError
+            if any of the objects are not the same accessor type as this ListView
+            (i.e. you can't add a Neuron to a SynapseListView),
+            or if any of the objects in are not from the same model.
+        """
         self._check_modify()
         if isinstance(li, (self.list_type, self.listview_type)):
             if li.m is not self.m:
@@ -414,6 +667,20 @@ class ModelListView(list):
             self.indices.append(x.idx)
 
     def remove(self, value):
+        """Remove the first occurrence of ``value`` from this ListView.
+
+        Parameters
+        ----------
+        value : Neuron | Synapse
+            The item to remove from this ListView.
+
+        Raises
+        ------
+        RuntimeError
+            If this ListView is not associated with an :py:class:`SNN`.
+        ValueError
+            If ``value`` is not present in this ListView.
+        """
         self._check_modify()
         if isinstance(value, self.accessor_type):
             if value.m is not self.m:
@@ -423,41 +690,248 @@ class ModelListView(list):
             raise ValueError(self._verb_error("remove", self.accessor_typename, badtype=type(value).__name__))
 
     def pop(self, index=-1):
-        return self.m.neurons[self.indices.pop(index)]
+        """Remove and return the last item, or the item at the given index.
+
+        Parameters
+        ----------
+        index : int, optional
+            The index (in this list) of the item to return
+            If not specified, the last item is returned.
+
+        Returns
+        -------
+        Neuron | Synapse
+            NeuronListViews will return Neurons, SynapseListViews will return Synapses.
+        """
+        return self.accessor_type(self.m, self.indices.pop(index))
 
     def index(self, value, start=0, stop=sys.maxsize):
+        """Return the index of ``value`` in this ListView.
+
+        Parameters
+        ----------
+        value : Neuron | Synapse
+        start : int, optional
+            The starting index of the search, by default 0
+        stop : _type_, optional
+            The ending index of the search (non-inclusive), by default sys.maxsize
+
+        Returns
+        -------
+        int
+            first index of ``value`` in this ListView.
+
+        Raises
+        ------
+        ValueError
+            if the value is not present.
+        """
         if isinstance(value, self.accessor_type):
             if value.m is not self.m:
                 raise ValueError(self._verb_error("index", self.accessor_typename, wrongmodel=value.m))
             return self.indices.index(value.idx, start, stop)
-        elif (x := int_err(value, 'value', fname='index()')):
+        elif not isinstance(value, ModelAccessor) and (x := int_err(value, 'value', fname='index()')):
             return self.indices.index(x, start, stop)
         else:
             raise ValueError(self._verb_error("index", self.accessor_typename, badtype=type(value).__name__))
 
     def count(self, value):
-        if isinstance(value, self.accessor_type):
-            if value.m is not self.m:
-                raise ValueError(self._verb_error("count", self.accessor_typename, wrongmodel=value.m))
+        """Return the number of occurrences of ``value`` in this ListView.
+
+        Parameters
+        ----------
+        value : int | Neuron | Synapse
+
+        Returns
+        -------
+        int
+            The number of occurrences of ``value`` in this ListView.
+
+            If ``value`` can be cast to int (excluding :py:class:`ModelAccessor`\\ s), then
+            the number of occurrences of that index in the ListView.
+        """
+        if isinstance(value, self.accessor_type) and value.m is self.m:
             return self.indices.count(value.idx)
-        elif (x := int_err(value, 'value', fname='count()')):
-            return self.indices.count(x)
+        elif not isinstance(value, ModelAccessor) and is_intlike(value):
+            return self.indices.count(value)
         else:
-            raise ValueError(self._verb_error("count", self.accessor_typename, badtype=type(value).__name__))
+            return 0
 
     def copy(self, model=None):
+        """Create a copy of this ListView with the same indices, referring to the same :py:class:`SNN`."""
         return type(self)(model or self.m, self.indices.copy())
 
     def reverse(self):
+        """Reverse the order of the items in this ListView."""
         self._check_modify()
         return self.indices.reverse()
 
     def sort(self, key=None, reverse=False):
+        """Sort the items in this ListView.
+
+        Parameters
+        ----------
+        key : callable | None, default=None
+            A function to be called on each item in the ListView.
+            The function should take a single argument, which will be the item from the ListView,
+            and return a value that will be used for sorting.
+            If ``None``, the items will be sorted by its index in the :py:class:`SNN`.
+        reverse : bool, default=False
+            If ``True``, the items will be sorted in descending order.
+        """
         self._check_modify()
         if callable(key):
-            def key(idx):
-                return key(self[idx])
-        self.indices.sort(key=key, reverse=reverse)
+            indices = self.indices.copy()
+
+            def getter(idx: int) -> SupportsRichComparison:
+                return key(self.accessor_type(self.m, indices[idx]))
+
+        self.indices.sort(key=getter if key else None, reverse=reverse)
+
+
+class ModelParameterSubset(BaseListOperators):
+    accessor_type: type
+    parameter_name: str
+    paramtype: type | None
+
+    def __init__(self, parent, parameter_name: str | None = None, paramtype: type | None = None):
+        # when the user accesses the property, this is called with the parent listview as the first argument
+        self.v = parent
+        # this allows us to create subclasses of ModelParameterSubset which have these pre-set
+        # otherwise, dynamically set them. This is probably easier to understand than metaclasses.
+        if parameter_name is not None:
+            self.parameter_name = parameter_name
+        if paramtype is not None:
+            self.paramtype = paramtype
+
+    def _check_modify(self):
+        self.v._check_modify()
+
+    def _check_access(self):
+        self.v._check_access()
+
+    def __getitem__(self, idx):
+        model_list = getattr(self.v.m, self.parameter_name, [])
+        if isinstance(idx, (int, np.integer)):
+            return model_list[self.v.indices[idx]]
+        a = np.asarray
+        if isinstance(idx, slice):
+            return a([model_list[i] for i in self.v.indices[idx]])
+        # If not int or slice, use numpy-style indexing
+        idx = np.asarray(idx)
+        if np.issubdtype(idx.dtype, np.bool_):
+            if idx.shape != (len(self.v.indices),):
+                msg = (f"boolean index of shape {idx.shape} "
+                        f"does not match the shape of indexed list {(len(self.v.indices),)}.")
+                raise IndexError(msg)
+            return a([model_list[self.v.indices[i]] for i in np.nonzero(idx)[0]])
+        else:
+            return a([model_list[self.v.indices[
+                        int_err(arr_val, 'arr_val', fname=f"{type(self).__name__}.__getitem__()")]]
+                      for arr_val in idx])
+
+    def check_value(self, value, old_value=None):
+        try:
+            if self.paramtype is int:
+                return int_err(value, 'value', fname=f"{type(self).__name__}.{self.parameter_name}.__setitem__()")
+            elif self.paramtype is float:
+                return float_err(value, 'value', fname=f"{type(self).__name__}.{self.parameter_name}.__setitem__()")
+            else:
+                return self.paramtype(value)
+        except TypeError as e:
+            msg = (f"Type {type(value).__name__} is incompatible with {type(self).__name__}, "
+                    f"which only accepts {self.paramtype.__name__}s.")
+            raise TypeError(msg) from e
+
+    def __setitem__(self, idx, value):
+        self._check_modify()
+
+        model_list = getattr(self.v.m, self.parameter_name, [])
+        if isinstance(idx, (int, np.integer)):
+            model_list[self.v.indices[idx]] = self.check_value(value)
+            return
+        if isinstance(idx, slice):
+            model_indices = self.v.indices[idx]
+        else:
+            my_indices = np.asarray(idx)
+            if np.issubdtype(my_indices.dtype, np.bool_):
+                my_indices = np.nonzero(my_indices)[0]
+            model_indices = [self.v.indices[i] for i in my_indices]
+        for idx, x in np.broadcast(model_indices, value):  # valueerror if can't be broadcasted
+            model_list[idx] = self.check_value(x, model_list[idx])
+
+    def __contains__(self, value):
+        return value in getattr(self.v.m, self.parameter_name)
+
+    def __len__(self):
+        return len(self.v)
+
+    def tolist(self):
+        return list(self)
+
+    def __repr__(self):
+        return repr(list(self))
+
+    def __str__(self):
+        return str(list(self))
+
+    def __iter__(self):
+        return ModelParameterIterator(self)
+
+    def index(self, value, start=0, stop=sys.maxsize):
+        for i, x in enumerate(self[start:stop]):
+            if x == value:
+                return i + start
+        msg = f"Value {value!r} is not in list."
+        raise ValueError(msg)
+
+    def count(self, value):
+        n = 0
+        for x in self:
+            if x == value:
+                n += 1
+        return n
+
+
+class PositiveModelProp(ModelParameterSubset):
+    def __init__(self, parent, parameter_name: str | None = None, paramtype: type | None = None,
+                 positive_definite: bool = True):
+        super().__init__(parent, parameter_name, paramtype)
+        self.positive_definite = positive_definite
+
+    def check_value(self, new_value, old_value=None):
+        new_value = super().check_value(new_value, old_value)
+        if not (new_value > 0
+                or not self.positive_definite and new_value == 0):
+            msg = f"{self.parameter_name} must be greater than {'' if self.positive_definite else 'or equal to '}0."
+            raise ValueError(msg)
+        return new_value
+
+
+def ModelProp(cls, *args, doc=None, **kwargs):
+    # create a property on the listview
+    def getter(listview):
+        # when user tries to access the property, return a new instance of the property list
+        return cls(listview, *args, **kwargs)
+
+    def setter(listview, value):
+        prop = cls(listview, *args, **kwargs)
+        prop[:] = value
+
+    return property(getter, setter, doc=cls.__doc__ if doc is None else doc)
+
+
+class ModelParameterIterator:
+    def __init__(self, parent):
+        self.parent = parent
+        self.iter = iter(parent.v.indices)
+
+    def __iter__(self):
+        return ModelParameterIterator(self.parent)
+
+    def __next__(self):
+        next_idx = next(self.iter)
+        return self.parent[next_idx]
 
 
 class Neuron(ModelAccessor):
@@ -466,9 +940,9 @@ class Neuron(ModelAccessor):
 
     .. warning::
 
-        Instances of Neurons are created at access time and are not unique.
-        Multiple instances of this class may be created for the same neuron on the SNN.
-        To test for equality, use ``==`` instead of ``is``.
+        Instances of Neurons are cached at access time as of v3.4.0.
+        i.e. ``snn.neurons[0] is snn.neurons[0]``.
+        Prior to v3.4.0, new Neuron instances were created on each access.
 
     """
 
@@ -476,6 +950,13 @@ class Neuron(ModelAccessor):
 
     @property
     def num_onmodel(self):
+        """The number of neurons in the SNN.
+
+        See Also
+        --------
+        SNN.num_neurons
+        NeuronList.__len__ : ``len(SNN.neurons)``
+        """
         return self.m.num_neurons
 
     @property
@@ -494,6 +975,8 @@ class Neuron(ModelAccessor):
 
     @leak.setter
     def leak(self, value: float):
+        if not self.m.allow_signed_leak and value < 0.0:
+            raise ValueError("leak must be greater than or equal to zero.")
         self.m.neuron_leaks[self.idx] = value
 
     @property
@@ -523,6 +1006,8 @@ class Neuron(ModelAccessor):
     def refractory_state(self, value: int):
         if not is_intlike(value):
             raise TypeError("refractory_state must be int")
+        if value < 0:
+            raise ValueError("refractory_state must be greater than or equal to 0.")
         self.m.neuron_refractory_periods_state[self.idx] = int(value)
 
     @property
@@ -534,6 +1019,8 @@ class Neuron(ModelAccessor):
     def refractory_period(self, value: int):
         if not is_intlike(value):
             raise TypeError("refractory_period must be int")
+        if value < 0:
+            raise ValueError("refractory_period must be greater than or equal to 0.")
         self.m.neuron_refractory_periods[self.idx] = int(value)
 
     @property
@@ -878,7 +1365,27 @@ class Neuron(ModelAccessor):
         return "  ...          ...         ...          ...       ...         ... [...]"
 
 
-class NeuronList(ModelAccessorList):
+class LeakProp(ModelParameterSubset):
+    parameter_name = 'neuron_leaks'
+    paramtype = float
+
+    def check_value(self, new_leak, old_value=None):
+        new_leak = super().check_value(new_leak, old_value)
+        if not self.v.m.allow_signed_leak and new_leak < 0.0:
+            raise ValueError("leak must be greater than or equal to zero.")
+        return new_leak
+
+
+class NeuronProperties:
+    thresholds = ModelProp(ModelParameterSubset, 'neuron_thresholds', float)
+    states = ModelProp(ModelParameterSubset, 'neuron_states', float)
+    leaks = ModelProp(LeakProp, 'neuron_leaks', float)
+    reset_states = ModelProp(ModelParameterSubset, 'neuron_reset_states', float)
+    refractory_periods = ModelProp(PositiveModelProp, 'neuron_refractory_periods', int, positive_definite=False)
+    refractory_periods_state = ModelProp(PositiveModelProp, 'neuron_refractory_periods_state', float, positive_definite=False)
+
+
+class NeuronList(ModelAccessorList, NeuronProperties):
     """Redirects indexing to the SNN's neurons.
 
     Returns a :py:class:`Neuron` or a list of Neurons.
@@ -899,7 +1406,7 @@ class NeuronList(ModelAccessorList):
         @overload
         def __getitem__(self, idx: int | Neuron) -> Neuron: ...
         @overload
-        def __getitem__(self, idx: slice | list[int | Neuron] | np.ndarray) -> NeuronListView: ...
+        def __getitem__(self, idx: slice | list[int] | list[Neuron] | list[int | Neuron] | np.ndarray) -> NeuronListView: ...
 
     def info(self, max_neurons=None):
         return self.m.neuron_info(max_neurons)
@@ -911,8 +1418,12 @@ class NeuronList(ModelAccessorList):
     def num_onmodel(self):
         return self.m.num_neurons
 
+    @property
+    def ispikes(self):
+        return self.m.ispikes
 
-class NeuronListView(ModelListView):
+
+class NeuronListView(ModelListView, NeuronProperties):
     """Redirects indexing to the SNN's neurons.
 
     Returns a :py:class:`Neuron` or a list of Neurons.
@@ -941,7 +1452,7 @@ class NeuronListView(ModelListView):
 
     model_cachename = '_neuronlist_cache'
 
-    def __init__(self, model: SNN, indices: list[int] | slice, max_len: int | None = None):
+    def __init__(self, model: SNN, indices: list[int] | slice | None = None, max_len: int | None = None):
         self.accessor_type = Neuron
         self.list_type = NeuronList
         super().__init__(model, indices, max_len)
@@ -959,28 +1470,170 @@ class NeuronListView(ModelListView):
     def __iter__(self):
         return NeuronViewIterator(self.m, self.indices)
 
+    @property
+    def ispikes(self):
+        return self.m.ispikes[:, self.indices]
 
-class NeuronIterator:
-    def __init__(self, model: SNN):
-        self.m = model
-        self.iter = iter(range(len(self.m.neuron_thresholds)))
+    def add_spike(self, time: int, idx: int, value=1.0, exist='error'):
+        """Adds an external spike in the SNN
 
-    def __iter__(self):
-        return NeuronIterator(self.m)
+        Parameters
+        ----------
+        time : int
+            The time step at which the external spike is added
+        idx : int
+            The neuron for which the external spike is added
+        value : float
+            The value of the external spike (default: 1.0)
+        exist : str
+            action for existing spikes on a neuron at a given time step.
+            Should be one of ['error', 'overwrite', 'add', 'dontadd']. (default: 'error')
 
-    def __next__(self):
-        next_idx = next(self.iter)
-        return Neuron(self.m, next_idx)
+            if exist='add', the existing spike value is added to the new value.
+
+        Raises
+        ------
+        TypeError
+            if:
+
+            * time cannot be precisely cast to int
+            * neuron_id is not an int
+            * value is not an int or float
+
+        ValueError
+            if spike already exists at that neuron and timestep and exist='error',
+            or if exist is an invalid setting.
+
+        See Also
+        --------
+        SNN.add_spike
+        Neuron.add_spike
+        """
+        self.m.add_spike(time, self.indices[idx], value, exist)
+
+    def add_spikes(
+        self,
+        spikes: float | Sequence[float] | Sequence[Sequence[float]] | np.ndarray[(int,), dtype] | np.ndarray[(int, int), dtype],
+        time_offset: int = 0,
+        exist: str = 'error',
+    ):
+        """Add a time-series of spikes to this neuron.
+
+        Parameters
+        ----------
+        spikes : numpy.typing.ArrayLike
+        time_offset : int, default=0
+            The number of time steps to offset the spikes by.
+        exist : str, default='error'
+            Action if a queued spike already exists at the given time step.
+            Should be one of ['error', 'overwrite', 'add', 'dontadd'].
+
+            Note: ``0.0``-valued spikes are not added unless ``exist='overwrite'``.
 
 
-class NeuronViewIterator(NeuronIterator):
-    def __init__(self, model: SNN, indices: list[int]):
-        self.m = model
-        self.iter = iter(indices)
-        self.indices = indices
+        If the input is a scalar, a single spike is sent to each neuron in this NeuronListView
+        at time ``time_offset``.
 
-    def __iter__(self):
-        return NeuronViewIterator(self.m, self.indices)
+        If the input is a 1-dimensional array, it is assumed to be the values of spikes to send to each neuron
+        in this NeuronListView at time ``time_offset``.
+
+        If the input is a 2-dimensional array, it is assumed to be, for each time step, a list of values to send
+        to each neuron in this NeuronListView, starting at time ``time_offset``. That is, the first row of the array
+        corresponds to the first time step, the second row to the second time step, and so on.
+        """
+        arr = np.asarray(spikes, dtype=self.m.default_dtype)
+        if arr.ndim == 0:
+            arr = np.broadcast_to(arr, (1, len(self.indices)))
+        elif arr.ndim == 1:
+            if arr.shape != (len(self.indices),):
+                msg = ("add_spikes() received a 1-dimensional array, which is assumed to be "
+                       "the values of spikes to send to each neuron in this NeuronListView. "
+                       f"Expected {len(self.indices)} values, but received {arr.shape[0]}.")
+                raise ValueError(msg)
+            arr = arr.reshape((1, -1))
+        elif arr.ndim == 2:
+            if arr.shape[1] != len(self.indices):
+                msg = ("add_spikes() received a 2-dimensional array, which is assumed to be, "
+                       "for each time step, a list of values to send to each neuron in this NeuronListView. "
+                       f"Expected arr.shape[1] == {len(self.indices)}, but received values "
+                       f"for {arr.shape[1]} neurons.")
+                raise ValueError(msg)
+        for time, vec in enumerate(arr):
+            for idx, value in zip(self.indices, vec):
+                if value == 0.0 and exist != 'overwrite':
+                    continue
+                self.m.add_spike(time + time_offset, idx, value, exist)
+
+    def pretty_spike_train(self, max_steps=None, max_neurons=None, use_unicode=True, indices=None):
+        """Returns a list[str] showing the spike train for each neuron in this NeuronListView.
+
+        See Also
+        --------
+        SNN.pretty_spike_train
+        """
+        if indices is None:
+            indices = self.indices
+        return util.pretty_spike_train(self.ispikes, max_steps, max_neurons, use_unicode, indices)
+
+    def print_spike_train(self, max_steps=None, max_neurons=None, use_unicode=True, indices=None):
+        """Prints the spike train for each neuron in this NeuronListView.
+
+        See Also
+        --------
+        SNN.print_spike_train
+        """
+        if indices is None:
+            indices = self.indices
+        util.print_spike_train(self.ispikes, max_steps, max_neurons, use_unicode, indices)
+
+    def clear_input_spikes(self, t: int | slice | list | np.ndarray | None = None,
+                           destination: int | slice | list | np.ndarray | None = None,
+                           remove_empty: bool = True):
+        """Delete input spikes from the SNN.
+
+        Parameters
+        ----------
+        t : int | slice | list | np.ndarray | None, default=None
+            The time step(s) from which to delete input spikes.
+            If ``None``, delete input spikes across all time steps.
+        destination : int | Neuron | slice | list | np.ndarray | None, default=None
+            The neuron(s) from which to delete input spikes.
+            If ``None``, delete all input spikes from only neurons in this NeuronListView.
+        remove_empty : bool, default=True
+            If ``True``, remove empty time steps from the input spike train.
+
+        See Also
+        --------
+        SNN.clear_input_spikes
+        """
+        if destination is None:
+            destination = set(self.indices)
+        else:
+            if isinstance(destination, (int, np.integer)):
+                destination = [destination]
+            elif isinstance(destination, slice):
+                destination = slice_indices(destination, len(self))
+            elif isinstance(destination, np.ndarray):
+                destination = list(set(destination.tolist()))
+            else:
+                try:
+                    destination = [int(idx) for idx in destination]
+                except (TypeError, ValueError) as err:
+                    msg = f"clear_input_spikes() expected int, slice, list, or None, but received {type(destination)}"
+                    raise TypeError(msg) from err
+                destination = list(set(destination))
+            destination = [self.indices[idx] for idx in destination]
+
+        self.m.clear_input_spikes(t, destination, remove_empty)
+
+
+class NeuronIterator(ModelListIterator):
+    accessor_type = Neuron
+    model_num_name = 'num_neurons'
+
+
+class NeuronViewIterator(ModelListViewIterator, NeuronIterator):
+    pass
 
 
 class Synapse(ModelAccessor):
@@ -989,9 +1642,9 @@ class Synapse(ModelAccessor):
 
     .. warning::
 
-        Instances of Synapse are created at access time and are not unique.
-        Multiple instances of this class may be created for the same synapse on the SNN.
-        To test for equality, use ``==`` instead of ``is``.
+        Instances of Synapse are cached at access time as of v3.4.0.
+        i.e. ``snn.synapses[0] is snn.synapses[0]``.
+        Prior to v3.4.0, new Synapse instances were created on each access.
 
     """
 
@@ -999,6 +1652,13 @@ class Synapse(ModelAccessor):
 
     @property
     def num_onmodel(self):
+        """The number of synapses in the SNN.
+
+        See Also
+        --------
+        SNN.num_synapses
+        SynapseList.__len__
+        """
         return self.m.num_synapses
 
     @property
@@ -1025,7 +1685,10 @@ class Synapse(ModelAccessor):
 
     @property
     def delay(self) -> int:
-        """The delay of before a spike is sent to the post-synaptic neuron."""
+        """The delay of before a spike is sent to the post-synaptic neuron.
+
+        Currently, the delay cannot be modified once set.
+        """
         return self.m.synaptic_delays[self.idx]
 
     @delay.setter
@@ -1047,6 +1710,11 @@ class Synapse(ModelAccessor):
 
     @property
     def weight(self) -> float:
+        """The weight of the synapse connecting the pre- and post-synaptic neurons.
+
+        If a synapse connects neurons A and B with a weight of 2.0, then when neuron A fires,
+        neuron B will receive a spike with an amplitude of 2.0.
+        """
         return self.m.synaptic_weights[self.idx]
 
     @weight.setter
@@ -1119,7 +1787,29 @@ class Synapse(ModelAccessor):
         return "    ...    ...       ...         ...      ... ..."
 
 
-class SynapseList(ModelAccessorList):
+class DelayProp(ModelParameterSubset):
+    parameter_name = 'synaptic_delays'
+    paramtype = int
+
+    def check_value(self, new_delay, old_delay):
+        if old_delay < 0:
+            raise ValueError("delay cannot be changed on chained synapse.")
+        new_delay = int_err(new_delay, 'new_delay', fname=self.parameter_name)
+        if new_delay < 0:
+            raise ValueError("delay must be greater than or equal to 1. Consider using np.clip(delay, 1, None).")
+        return new_delay
+
+    def last_chained_synapses(self):
+        return np.asarray(self.v.m.synaptic_delays) < 0
+
+
+class SynapseProperties:
+    weights = ModelProp(ModelParameterSubset, 'synaptic_weights', float)
+    delays = ModelProp(DelayProp)
+    stdp_enabled = ModelProp(ModelParameterSubset, 'enable_stdp', bool)
+
+
+class SynapseList(ModelAccessorList, SynapseProperties):
     """Redirects indexing to the SNN's synapses.
 
     Returns a :py:class:`Synapse` or a list of Synapses.
@@ -1159,7 +1849,7 @@ class SynapseList(ModelAccessorList):
         return SynapseIterator(self.m)
 
 
-class SynapseListView(ModelListView):
+class SynapseListView(ModelListView, SynapseProperties):
     """Redirects indexing to the SNN's synapses.
 
     Returns a :py:class:`Synapse` or a list of Synapses.
@@ -1188,7 +1878,7 @@ class SynapseListView(ModelListView):
 
     model_cachename = '_synapselist_cache'
 
-    def __init__(self, model: SNN, indices: list[int] | slice, max_len: int | None = None):
+    def __init__(self, model: SNN, indices: list[int] | slice | None = None, max_len: int | None = None):
         self.accessor_type = Synapse
         self.list_type = SynapseList
         super().__init__(model, indices, max_len)
@@ -1197,7 +1887,7 @@ class SynapseListView(ModelListView):
         @overload
         def __getitem__(self, idx: int | Synapse) -> Synapse: ...
         @overload
-        def __getitem__(self, idx: slice | list[int | Synapse]) -> SynapseListView: ...
+        def __getitem__(self, idx: slice | list[int] | list[Synapse] | list[int | Synapse] | np.ndarray) -> SynapseListView: ...
 
     @property
     def num_onmodel(self):
@@ -1207,27 +1897,13 @@ class SynapseListView(ModelListView):
         return SynapseViewIterator(self.m, self.indices)
 
 
-class SynapseIterator:
-    def __init__(self, model: SNN):
-        self.m = model
-        self.iter = iter(range(len(self.m.synaptic_weights)))
-
-    def __iter__(self):
-        return SynapseIterator(self.m)
-
-    def __next__(self):
-        next_idx = next(self.iter)
-        return Synapse(self.m, next_idx)
+class SynapseIterator(ModelListIterator):
+    accessor_type = Synapse
+    model_num_name = 'num_synapses'
 
 
-class SynapseViewIterator(SynapseIterator):
-    def __init__(self, model: SNN, indices: list[int]):
-        self.m = model
-        self.iter = iter(indices)
-        self.indices = indices
-
-    def __iter__(self):
-        return SynapseViewIterator(self.m, self.indices)
+class SynapseViewIterator(ModelListViewIterator, SynapseIterator):
+    pass
 
 
 map_accessor_to_listview = {
@@ -1235,8 +1911,19 @@ map_accessor_to_listview = {
     Synapse: SynapseListView,
 }
 
+if TYPE_CHECKING:
+    @overload
+    def mlist(a: list[Neuron] | NeuronListView) -> NeuronListView: ...
+    @overload
+    def mlist(a: list[Synapse] | SynapseListView) -> SynapseListView: ...
+    @overload
+    def asmlist(a: list[Neuron] | NeuronListView) -> NeuronListView: ...
+    @overload
+    def asmlist(a: list[Synapse] | SynapseListView) -> SynapseListView: ...
 
-def mlist(a: list[Neuron | Synapse] | ModelAccessorList | ModelListView):
+
+def mlist(a: list[Neuron] | list[Synapse] | ModelAccessorList | ModelListView
+          | ModelListViewIterator | ModelListIterator):
     """Convert a list of Neuron or Synapse objects to a ModelAccessorList or ModelListView"""
     if not a:
         return ModelListView()
@@ -1257,7 +1944,7 @@ def mlist(a: list[Neuron | Synapse] | ModelAccessorList | ModelListView):
     return map_accessor_to_listview[objtype](m, a)
 
 
-def asmlist(a: list[Neuron | Synapse] | ModelAccessorList | ModelListView):
+def asmlist(a: list[Neuron] | list[Synapse] | ModelAccessorList | ModelListView):
     """Convert a list of Neuron or Synapse objects to a ModelAccessorList or ModelListView"""
     if isinstance(a, ModelListView):
         return a
