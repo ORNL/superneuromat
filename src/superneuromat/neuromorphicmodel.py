@@ -1496,7 +1496,7 @@ class SNN:
     def zero_refractory_periods(self):
         """Set the refractory period countdowns to zero.
 
-        Sets the :py:attr:`~Neuron.refractory_state` of all neurons in the SNN to ``0.0``
+        Sets the :py:attr:`~Neuron.refractory_state` of all neurons in the SNN to ``0``
         by replacing the :py:attr:`neuron_refractory_periods_state` vector
         with ``np.zeros(self.num_neurons, self.dd).tolist()``.
         """
@@ -1523,9 +1523,9 @@ class SNN:
         self.neuron_refractory_periods_state = copy.copy(self.neuron_refractory_periods)
 
     def reset_refractory_periods(self):
-        warnings.warn("reset_refractory_periods() is deprecated."
-                      " Use the more clearly named activate_all_refractory_periods(),",
-                      " or zero_refractory_periods() to set all refractory periods to zero.",
+        warnings.warn("reset_refractory_periods() is deprecated. "
+                      "Use the more clearly named activate_all_refractory_periods(), "
+                      "or zero_refractory_periods() to set all refractory periods to zero.",
                       FutureWarning, stacklevel=2)
         self.activate_all_refractory_periods()
 

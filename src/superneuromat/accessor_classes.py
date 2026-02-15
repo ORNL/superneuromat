@@ -1410,7 +1410,7 @@ class NeuronProperties:
     def zero_refractory_periods(self):
         """Set the refractory period countdowns to zero.
 
-        Sets the :py:attr:`~Neuron.refractory_state` of neurons in the list to ``0.0``.
+        Sets the :py:attr:`~Neuron.refractory_state` of neurons in the list to ``0``.
         """
         self.refractory_periods_state = 0.0
 
