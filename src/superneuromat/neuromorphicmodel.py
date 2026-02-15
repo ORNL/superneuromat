@@ -1630,7 +1630,7 @@ class SNN:
         if 'neuron_states' not in self.memoized:
             self.reset_neuron_states()
         if 'neuron_refractory_periods_state' not in self.memoized:
-            self.reset_refractory_periods()
+            self.activate_all_refractory_periods()
         if 'spike_train' not in self.memoized:
             self.clear_spike_train()
         if 'input_spikes' not in self.memoized:
