@@ -1489,8 +1489,11 @@ class SNN:
     def reset_neuron_states(self):
         self.neuron_states = copy.copy(self.neuron_reset_states)
 
-    def reset_refractory_periods(self):
+    def activate_all_refractory_periods(self):
         self.neuron_refractory_periods_state = copy.copy(self.neuron_refractory_periods)
+
+    def reset_refractory_periods(self):
+        self.activate_all_refractory_periods()
 
     def clear_spike_train(self):
         self.spike_train = []
