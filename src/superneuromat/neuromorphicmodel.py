@@ -530,6 +530,33 @@ class SNN:
                 df.loc[time, neuron] = value
         return df.fillna(0.0)
 
+    def to_networkx(self, include_attributes=True):
+        """Convert the SNN to a :py:class:`networkx.DiGraph`.
+
+        Parameters
+        ----------
+        include_attributes : bool, default=True
+            If True, include the attributes of the neurons and synapses in the graph.
+            The included attributes are generated in :py:attr:`Neuron.attributes_dict`
+            and :py:attr:`Synapse.attributes_dict`.
+            If False, only the graph structure is included.
+
+        Returns
+        -------
+        networkx.DiGraph
+            The :py:class:`networkx.DiGraph` representation of the SNN.
+        """
+        import networkx as nx
+
+        G = nx.DiGraph()
+        if include_attributes:
+            G.add_nodes_from([(n.idx, n.attributes_dict) for n in self.neurons])
+            G.add_edges_from([(s.pre.idx, s.post.idx, s.attributes_dict) for s in self.synapses])
+        else:
+            G.add_nodes_from(range(self.num_neurons))
+            G.add_edges_from(zip(self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids))
+        return G
+
     @property
     def ispikes(self) -> np.ndarray[(int, int), _arr_boollike_T]:
         """Convert the output spike train to a dense binary :py:class:`numpy.ndarray`.
