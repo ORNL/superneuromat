@@ -1523,6 +1523,10 @@ class SNN:
         self.neuron_refractory_periods_state = copy.copy(self.neuron_refractory_periods)
 
     def reset_refractory_periods(self):
+        warnings.warn("reset_refractory_periods() is deprecated."
+                      " Use the more clearly named activate_all_refractory_periods(),",
+                      " or zero_refractory_periods() to set all refractory periods to zero.",
+                      FutureWarning, stacklevel=2)
         self.activate_all_refractory_periods()
 
     def clear_spike_train(self):
