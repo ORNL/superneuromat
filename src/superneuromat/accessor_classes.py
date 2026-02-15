@@ -997,6 +997,14 @@ class Neuron(ModelAccessor):
     def state(self, value):
         self.m.neuron_states[self.idx] = float(value)
 
+    def zero_state(self):
+        """Sets the charge state of this neuron to zero."""
+        self.m.neuron_states[self.idx] = 0.0
+
+    def activate_state(self):
+        """Sets the charge state of this neuron to the reset (post-fire) state."""
+        self.m.neuron_states[self.idx] = self.reset_state
+
     @property
     def refractory_state(self) -> float:
         """The remaining number of time steps for which this neuron is in its refractory period."""
@@ -1022,6 +1030,14 @@ class Neuron(ModelAccessor):
         if value < 0:
             raise ValueError("refractory_period must be greater than or equal to 0.")
         self.m.neuron_refractory_periods[self.idx] = int(value)
+
+    def zero_refractory_period(self):
+        """Sets the refractory period countdown for this neuron to zero."""
+        self.m.neuron_refractory_periods_state[self.idx] = 0
+
+    def activate_refractory_period(self):
+        """Sets the refractory period countdown for this neuron to the post-fire state."""
+        self.m.neuron_refractory_periods_state[self.idx] = self.refractory_period
 
     @property
     def spikes(self) -> np.ndarray[(int,), np.dtype[np.bool_]] | list:
@@ -1383,6 +1399,36 @@ class NeuronProperties:
     reset_states = ModelProp(ModelParameterSubset, 'neuron_reset_states', float)
     refractory_periods = ModelProp(PositiveModelProp, 'neuron_refractory_periods', int, positive_definite=False)
     refractory_periods_state = ModelProp(PositiveModelProp, 'neuron_refractory_periods_state', float, positive_definite=False)
+
+    def zero_neuron_states(self):
+        """Set the internal charge states to zero.
+
+        Sets the :py:attr:`neuron_states` of neurons in the list to ``0.0``.
+        """
+        self.states = 0.0
+
+    def zero_refractory_periods(self):
+        """Set the refractory period countdowns to zero.
+
+        Sets the :py:attr:`~Neuron.refractory_state` of neurons in the list to ``0.0``.
+        """
+        self.refractory_periods_state = 0.0
+
+    def reset_neuron_states(self):
+        """Set the internal charge states to the reset values.
+
+        Sets the :py:attr:`~Neuron.state` of neurons in the list
+        to their respective :py:attr:`~Neuron.reset_state`.
+        """
+        self.states = self.reset_states
+
+    def activate_all_refractory_periods(self):
+        """Set the refractory period countdowns to the post-fire state.
+
+        Sets the :py:attr:`~Neuron.refractory_state` of neurons in the list
+        to their respective :py:attr:`~Neuron.refractory_period`.
+        """
+        self.refractory_periods_state = self.refractory_periods
 
 
 class NeuronList(ModelAccessorList, NeuronProperties):

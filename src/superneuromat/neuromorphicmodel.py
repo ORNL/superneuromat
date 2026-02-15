@@ -1486,21 +1486,47 @@ class SNN:
                 self.set_weights_from_mat(self._weights)
 
     def zero_neuron_states(self):
+        """Set the internal charge states to zero.
+
+        Sets the :py:attr:`neuron_states` of all neurons in the SNN to ``0.0``
+        by replacing the vector with ``np.zeros(self.num_neurons, self.dd).tolist()``.
+        """
         self.neuron_states = np.zeros(self.num_neurons, self.dd).tolist()
 
     def zero_refractory_periods(self):
+        """Set the refractory period countdowns to zero.
+
+        Sets the :py:attr:`~Neuron.refractory_state` of all neurons in the SNN to ``0.0``
+        by replacing the :py:attr:`neuron_refractory_periods_state` vector
+        with ``np.zeros(self.num_neurons, self.dd).tolist()``.
+        """
         self.neuron_refractory_periods_state = np.zeros(self.num_neurons, self.dd).tolist()
 
     def reset_neuron_states(self):
+        """Set the internal charge states to the reset values.
+
+        Sets the :py:attr:`~Neuron.state` of all neurons in the SNN
+        to their respective :py:attr:`~Neuron.reset_state`.
+        This is done by replacing the :py:attr:`neuron_states` vector
+        with a copy of :py:attr:`neuron_reset_states`.
+        """
         self.neuron_states = copy.copy(self.neuron_reset_states)
 
     def activate_all_refractory_periods(self):
+        """Set the refractory period countdowns to the post-fire state.
+
+        Sets the :py:attr:`~Neuron.refractory_state` of all neurons in the SNN
+        to their respective :py:attr:`~Neuron.refractory_period`.
+        This is done by replacing the :py:attr:`neuron_refractory_periods_state` vector
+        with a copy of :py:attr:`neuron_refractory_periods`.
+        """
         self.neuron_refractory_periods_state = copy.copy(self.neuron_refractory_periods)
 
     def reset_refractory_periods(self):
         self.activate_all_refractory_periods()
 
     def clear_spike_train(self):
+        """Deletes recorded history of spikes output by neurons in the SNN."""
         self.spike_train = []
 
     def clear_input_spikes(self, t: int | slice | list | np.ndarray | None = None,
