@@ -906,7 +906,12 @@ class SNN:
             of the neuron after spiking
         refractory_period : int, default=0
             Refractory period of the neuron; the number of time steps for which
-            the neuron remains in a dormant state after spiking
+            the neuron remains in a dormant state after the neuron spikes
+        refractory_state : int, default=0
+            The initial refractory countdown state; the number of time steps until the
+            neuron is allowed to spike again
+        initial_state : float | None, default=0.0
+            The initial charge state of the neuron; the value assigned to the internal state
 
         Returns
         -------
