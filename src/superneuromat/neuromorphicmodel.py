@@ -1976,7 +1976,7 @@ class SNN:
         return 'cpu'
 
     def recommend_sparsity(self):
-        return self.weight_sparsity() < self.sparsity_threshold and self.num_neurons > 100
+        return self.num_neurons > 100 and self.weight_sparsity() < self.sparsity_threshold
 
     def simulate(self, time_steps: int = 1, callback=None, use=None, sparse=None, **kwargs) -> None:
         """Simulate the neuromorphic spiking neural network
