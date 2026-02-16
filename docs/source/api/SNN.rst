@@ -205,7 +205,9 @@ Methods
    ~SNN.release_mem
    ~SNN.reset
    ~SNN.reset_neuron_states
-   ~SNN.reset_refractory_periods
+   ~SNN.activate_all_refractory_periods
+   ~SNN.zero_neuron_states
+   ~SNN.zero_refractory_periods
    ~SNN.restore
    ~SNN.setup
    ~SNN.setup_input_spikes
@@ -214,8 +216,6 @@ Methods
    ~SNN.simulate_cpu_jit
    ~SNN.simulate_gpu
    ~SNN.unmemoize
-   ~SNN.zero_neuron_states
-   ~SNN.zero_refractory_periods
    ~SNN.rebuild_connection_ids
    ~SNN.to_json
    ~SNN.saveas_json
