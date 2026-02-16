@@ -548,6 +548,10 @@ class SNN:
         networkx.DiGraph
             The :py:class:`networkx.DiGraph` representation of the SNN.
 
+        See Also
+        --------
+        to_networkx_accessors : Create a NetworkX graph with Neuron objects as nodes.
+
         Notes
         -----
         By default, the graph will not contain spike information.
@@ -568,6 +572,25 @@ class SNN:
         else:
             G.add_nodes_from(range(self.num_neurons))
             G.add_edges_from(zip(self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids))
+        return G
+
+    def to_networkx_accessors(self):
+        """Convert the SNN to a :py:class:`networkx.DiGraph` with accessor Neurons.
+
+        Returns
+        -------
+        networkx.DiGraph
+            The :py:class:`networkx.DiGraph` representation of the SNN.
+
+        See Also
+        --------
+        to_networkx : Create a NetworkX graph suitable for exporting to a file.
+        """
+        import networkx as nx
+
+        G = nx.DiGraph()
+        G.add_nodes_from([n for n in self.neurons])
+        G.add_edges_from([(s.pre, s.post) for s in self.synapses])
         return G
 
     @property
