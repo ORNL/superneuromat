@@ -2035,10 +2035,14 @@ class SNN:
 
             self._setup(sparse=sparse)
             self.setup_input_spikes(time_steps)
-        elif sparse is not None:
-            msg = "simulate() received sparsity argument in manual_setup mode."
-            msg += " Pass sparse to setup() instead."
-            raise ValueError(msg)
+        else:
+            if sparse is not None:
+                msg = "simulate() received sparsity argument in manual_setup mode."
+                msg += " Pass sparse to setup(sparse= ) instead."
+                raise ValueError(msg)
+            if use == 'auto':
+                use = 'cpu' if self._is_sparse else self.recommend(time_steps)
+                use = 'cpu' if use == 'gpu' else use
 
         if not use:
             use = 'cpu'
