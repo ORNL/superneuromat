@@ -531,7 +531,9 @@ class SNN:
         return df.fillna(0.0)
 
     def to_networkx(self, include_attributes=True):
-        """Convert the SNN to a :py:class:`networkx.DiGraph`.
+        """Convert the SNN to a :py:class:`networkx.DiGraph` with neurons represented by int ids.
+
+        The returned graph can be saved to a file using functions such as :py:meth:`networkx.write_graphml`.
 
         Parameters
         ----------
@@ -545,6 +547,17 @@ class SNN:
         -------
         networkx.DiGraph
             The :py:class:`networkx.DiGraph` representation of the SNN.
+
+        Notes
+        -----
+        By default, the graph will not contain spike information.
+
+        Examples
+        --------
+        >>> import networkx as nx
+        >>> snn = superneuromat.SNN()
+        >>> G = snn.to_networkx()
+        >>> nx.write_graphml(G, "snn.graphml")
         """
         import networkx as nx
 
