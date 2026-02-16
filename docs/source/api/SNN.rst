@@ -240,6 +240,7 @@ Attributes
    ~SNN.is_sparse
    ~SNN.sparse
    ~SNN.stdp_time_steps
+   ~SNN.manual_setup
 
    .. ~SNN.dbin
    .. ~SNN.dd
