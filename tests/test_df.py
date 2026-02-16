@@ -101,5 +101,15 @@ class ToNetworkxTest(unittest.TestCase):
         nx.write_graphml(G, tempfile.TemporaryFile())
         # nx.write_graphml(G, 'example_no_attributes.graphml')
 
+    def test_networkx_empty(self):
+        """Ensure to_networkx works correctly on an empty SNN."""
+        snn = SNN()
+        G = snn.to_networkx()
+        import networkx as nx
+        # Should return an empty DiGraph
+        self.assertIsInstance(G, nx.DiGraph)
+        self.assertEqual(len(G.nodes), 0)
+        self.assertEqual(len(G.edges), 0)
+
 if __name__ == "__main__":
     unittest.main()
