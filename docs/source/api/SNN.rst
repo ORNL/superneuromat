@@ -220,6 +220,7 @@ Methods
    ~SNN.to_json
    ~SNN.saveas_json
    ~SNN.from_jsons
+   ~SNN.to_networkx
 
 
 Attributes
