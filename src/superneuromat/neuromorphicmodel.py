@@ -544,6 +544,69 @@ class SNN:
                 df.loc[time, neuron] = value
         return df.fillna(0.0)
 
+    def to_networkx(self, include_attributes=True):
+        """Convert the SNN to a :py:class:`networkx.DiGraph` with neurons represented by int ids.
+
+        The returned graph can be saved to a file using functions such as :py:meth:`networkx.write_graphml`.
+
+        Parameters
+        ----------
+        include_attributes : bool, default=True
+            If True, include the attributes of the neurons and synapses in the graph.
+            The included attributes are generated in :py:attr:`Neuron.attributes_dict`
+            and :py:attr:`Synapse.attributes_dict`.
+            If False, only the graph structure is included.
+
+        Returns
+        -------
+        networkx.DiGraph
+            The :py:class:`networkx.DiGraph` representation of the SNN.
+
+        See Also
+        --------
+        to_networkx_accessors : Create a NetworkX graph with Neuron objects as nodes.
+
+        Notes
+        -----
+        By default, the graph will not contain spike information.
+
+        Examples
+        --------
+        >>> import networkx as nx
+        >>> snn = superneuromat.SNN()
+        >>> G = snn.to_networkx()
+        >>> nx.write_graphml(G, "snn.graphml")
+        """
+        import networkx as nx
+
+        G = nx.DiGraph()
+        if include_attributes:
+            G.add_nodes_from([(n.idx, n.attributes_dict) for n in self.neurons])
+            G.add_edges_from([(s.pre.idx, s.post.idx, s.attributes_dict) for s in self.synapses])
+        else:
+            G.add_nodes_from(range(self.num_neurons))
+            G.add_edges_from(zip(self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids))
+        return G
+
+    def to_networkx_accessors(self):
+        """Convert the SNN to a :py:class:`networkx.DiGraph` with accessor Neurons.
+
+        Returns
+        -------
+        networkx.DiGraph
+            The :py:class:`networkx.DiGraph` representation of the SNN.
+
+        See Also
+        --------
+        to_networkx : Create a NetworkX graph suitable for exporting to a file.
+        """
+        import networkx as nx
+
+        G = nx.DiGraph()
+        G.add_nodes_from([n for n in self.neurons])
+        G.add_edges_from([(s.pre, s.post) for s in self.synapses])
+        return G
+
     @property
     def ispikes(self) -> np.ndarray[(int, int), _arr_boollike_T]:
         """Convert the output spike train to a dense binary :py:class:`numpy.ndarray`.

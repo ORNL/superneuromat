@@ -64,6 +64,7 @@ intersphinx_mapping = {
     'numba': ('https://numba.readthedocs.io/en/stable', None),
     'pypa': ('https://packaging.python.org/en/latest/', None),
     'cuquantum': ('https://docs.nvidia.com/cuda/cuquantum/latest', None),
+    'networkx': ('https://networkx.org/documentation/stable/', None),
     # blocked by data-apis/array-api#428
     # 'array-api': ('https://data-apis.org/array-api/2021.12/', None),
 }
