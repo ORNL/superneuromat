@@ -129,12 +129,20 @@ class NeuronTest(unittest.TestCase):
         assert snn.neuron_leaks[0] == -1.0
         a.reset_state = -0.4
         assert snn.neuron_reset_states[0] == -0.4
+        a.zero_state()
+        assert snn.neuron_states[0] == 0.0
+        a.activate_state()
+        assert snn.neuron_states[0] == a.reset_state == -0.4
         a.refractory_state = 100
         assert snn.neuron_refractory_periods_state[0] == 100
         with self.assertRaises(ValueError):
             a.refractory_state = -1
         with self.assertRaises(TypeError):
             a.refractory_state = 1.1  # pyright: ignore[reportAttributeAccessIssue]
+        a.zero_refractory_period()
+        assert snn.neuron_refractory_periods_state[0] == 0
+        a.activate_refractory_period()
+        assert snn.neuron_refractory_periods_state[0] == 3
         a.refractory_period = 10
         assert snn.neuron_refractory_periods[0] == 10
         with self.assertRaises(ValueError):
@@ -547,6 +555,29 @@ class NeuronTest(unittest.TestCase):
         assert snn.neuron_leaks[0] == -1
         with self.assertRaises(TypeError):
             neurons.thresholds[0] = None
+
+    def test_neuronlist_resets(self):
+        """ Test if neuron resets work as expected """
+        print("begin test_neuronlist_resets")
+        snn = SNN()
+        neurons = mlist([snn.create_neuron(
+                initial_state=i * 2,
+                reset_state=i + 1,
+                refractory_state=i,
+                refractory_period=i + 4,
+            ) for i in range(3)])
+
+        assert all(neurons.states == [0.0, 2.0, 4.0])
+        neurons.reset_neuron_states()
+        assert all(neurons.states == [1.0, 2.0, 3.0])
+        neurons.zero_neuron_states()
+        assert all(neurons.states == [0.0, 0.0, 0.0])
+
+        assert all(neurons.refractory_periods_state == [0, 1, 2])
+        neurons.activate_all_refractory_periods()
+        assert all(neurons.refractory_periods_state == [4, 5, 6])
+        neurons.zero_refractory_periods()
+        assert all(neurons.refractory_periods_state == [0, 0, 0])
 
     def test_neuron_output_spikes(self):
         """ Test if neuron output spikes work as expected """

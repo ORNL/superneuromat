@@ -983,7 +983,12 @@ class SNN:
             of the neuron after spiking
         refractory_period : int, default=0
             Refractory period of the neuron; the number of time steps for which
-            the neuron remains in a dormant state after spiking
+            the neuron remains in a dormant state after the neuron spikes
+        refractory_state : int, default=0
+            The initial refractory countdown state; the number of time steps until the
+            neuron is allowed to spike again
+        initial_state : float | None, default=0.0
+            The initial charge state of the neuron; the value assigned to the internal state
 
         Returns
         -------
@@ -1592,18 +1597,51 @@ class SNN:
                 self.set_weights_from_mat(self._weights)
 
     def zero_neuron_states(self):
+        """Set the internal charge states to zero.
+
+        Sets the :py:attr:`neuron_states` of all neurons in the SNN to ``0.0``
+        by replacing the vector with ``np.zeros(self.num_neurons, self.dd).tolist()``.
+        """
         self.neuron_states = np.zeros(self.num_neurons, self.dd).tolist()
 
     def zero_refractory_periods(self):
+        """Set the refractory period countdowns to zero.
+
+        Sets the :py:attr:`~Neuron.refractory_state` of all neurons in the SNN to ``0``
+        by replacing the :py:attr:`neuron_refractory_periods_state` vector
+        with ``np.zeros(self.num_neurons, self.dd).tolist()``.
+        """
         self.neuron_refractory_periods_state = np.zeros(self.num_neurons, self.dd).tolist()
 
     def reset_neuron_states(self):
+        """Set the internal charge states to the reset values.
+
+        Sets the :py:attr:`~Neuron.state` of all neurons in the SNN
+        to their respective :py:attr:`~Neuron.reset_state`.
+        This is done by replacing the :py:attr:`neuron_states` vector
+        with a copy of :py:attr:`neuron_reset_states`.
+        """
         self.neuron_states = copy.copy(self.neuron_reset_states)
 
-    def reset_refractory_periods(self):
+    def activate_all_refractory_periods(self):
+        """Set the refractory period countdowns to the post-fire state.
+
+        Sets the :py:attr:`~Neuron.refractory_state` of all neurons in the SNN
+        to their respective :py:attr:`~Neuron.refractory_period`.
+        This is done by replacing the :py:attr:`neuron_refractory_periods_state` vector
+        with a copy of :py:attr:`neuron_refractory_periods`.
+        """
         self.neuron_refractory_periods_state = copy.copy(self.neuron_refractory_periods)
 
+    def reset_refractory_periods(self):
+        warnings.warn("reset_refractory_periods() is deprecated. "
+                      "Use the more clearly named activate_all_refractory_periods(), "
+                      "or zero_refractory_periods() to set all refractory periods to zero.",
+                      FutureWarning, stacklevel=2)
+        self.activate_all_refractory_periods()
+
     def clear_spike_train(self):
+        """Deletes recorded history of spikes output by neurons in the SNN."""
         self.spike_train = []
 
     def clear_input_spikes(self, t: int | slice | list | np.ndarray | None = None,
@@ -1703,7 +1741,7 @@ class SNN:
         if 'neuron_states' not in self.memoized:
             self.reset_neuron_states()
         if 'neuron_refractory_periods_state' not in self.memoized:
-            self.reset_refractory_periods()
+            self.activate_all_refractory_periods()
         if 'spike_train' not in self.memoized:
             self.clear_spike_train()
         if 'input_spikes' not in self.memoized:
