@@ -147,6 +147,7 @@ class SNN:
         self._sparse = 'auto'  # default sparsity setting.
         # self._return_sparse = False  # whether to return spikes sparsely
         self._is_sparse = False  # whether internal SNN representation is currently sparse
+        #: Whether :py:meth:`setup()` and :py:meth:`devec()` need to be called manually. See :doc:`/guide/speed`
         self.manual_setup = False
 
         self.allow_incorrect_stdp_sign = getenvbool('SNMAT_ALLOW_INCORRECT_STDP_SIGN', default=False)
@@ -163,19 +164,18 @@ class SNN:
             Returns 'cpu' | 'jit' | 'gpu' for the backend that was used during
             :py:meth:`simulate`, or ``None`` if no simulation has been run yet.
 
-
-        .. seealso::
-
-            :py:meth:`backend`
-
-            :py:meth:`is_sparse`
-
+        See Also
+        --------
+        backend
+        is_sparse
         """
         return self._last_used_backend
 
     @property
     def backend(self):
         """Set the backend to be used for simulation.
+
+        See :py:meth:`setup` and :doc:`/guide/speed` for guidance on choosing a backend and sparsity setting manually.
 
         Parameters
         ----------
@@ -191,6 +191,12 @@ class SNN:
         ``'auto'`` is the default value. This will choose a backend at :py:meth:`simulate()` time
         based on the network size and time steps, as chosen by :py:meth:`recommend()`.
 
+        See Also
+        --------
+        recommend
+        recommend_sparsity
+        sparse
+        setup
         """
         return self._backend
 
@@ -222,6 +228,8 @@ class SNN:
 
         When creating an :py:class:`SNN`\\ , the ``sparse`` parameter is ``'auto'`` by default.
 
+        See :py:meth:`setup` for guidance on choosing a backend and sparsity setting manually.
+
         Parameters
         ----------
         sparse : bool | str | Any
@@ -238,6 +246,12 @@ class SNN:
         bool | str
             Returns ``True``, ``False``, or ``'auto'``.
 
+        See Also
+        --------
+        :doc:`/guide/speed`
+        recommend_sparsity
+        backend
+        setup
         """
         return self._sparse
 
@@ -1312,6 +1326,8 @@ class SNN:
     def setup(self, **kwargs):
         """Setup the SNN for simulation.
 
+        In :py:attr:`manual_setup` mode, this function must be called before :py:meth:`simulate()`.
+
         Parameters
         ----------
         dtype : bool | numpy.dtype, default=None
@@ -1319,6 +1335,33 @@ class SNN:
         sparse : bool | str | Any, default=None
             Whether to use a sparse representation for the SNN.
             See :py:attr:`sparse` for more information.
+
+        Notes
+        -----
+        Normally, in automatic setup (:py:attr:`manual_setup` = False), the :py:meth:`recommend()` function will be
+        called to determine the best backend to use. The choice of backend determines the sparsity in this case.
+
+        However, there's a chicken-and-egg problem for automatic backend selection in :py:attr:`manual_setup` mode.
+        SuperNeuroMAT can't know which backend to use until :py:meth:`simulate(time_steps= )` is called.
+        Since :py:meth:`setup()` locks in the sparsity setting, and since that influences which backends can be used,
+        the recommendation may be wrong in :py:attr:`manual_setup` mode.
+
+        We recommend you explicitly set the :py:attr:`backend` and :py:attr:`sparse` parameters to avoid this problem.
+
+        Use a sparse representation when the network size is large, but there are relatively few synapses.
+        Note that ``backend='cpu'`` is the only backend that supports sparse representations.
+        Use the GPU backend when the network size is large and you are simulating for many consecutive time steps.
+
+        See :doc:`/guide/speed` for additional guidance on choosing a backend and sparsity setting manually.
+
+        See Also
+        --------
+        simulate
+        backend
+        sparse
+        manual_setup
+        recommend_sparsity
+        devec
         """
         if not self.manual_setup:
             warnings.warn("setup() called without snn.manual_setup = True. setup() will be called again in simulate().",
@@ -1468,7 +1511,12 @@ class SNN:
             self._spikes = np.zeros(self.num_neurons, self.dbin)
 
     def devec(self):
-        """Copy the internal state variables back to the public-facing canonical representations."""
+        """Copy the internal state variables back to the public-facing canonical representations.
+
+        This is automatically called at the end of :py:meth:`simulate` unless in :py:attr:`manual_setup` mode.
+
+        See :doc:`/guide/speed`.
+        """
         # De-vectorize from numpy arrays to lists
         self.neuron_states: list[float] = self._internal_states.tolist()
         self.neuron_refractory_periods_state: list[float] = self._neuron_refractory_periods.tolist()
@@ -1651,7 +1699,12 @@ class SNN:
                 self._input_spikes[t][neuron_id] = amplitude
 
     def consume_input_spikes(self, time_steps: int):
-        """Consumes/deletes input spikes for the given number of time steps."""
+        """Consumes/deletes input spikes for the given number of time steps.
+
+        This is automatically called at the end of :py:meth:`simulate` unless in :py:attr:`manual_setup` mode.
+
+        See :doc:`/guide/speed`.
+        """
         self.input_spikes = {t - time_steps: v for t, v in self.input_spikes.items()
                              if t >= time_steps}
 
@@ -1966,7 +2019,16 @@ class SNN:
         self._is_sparse = False
 
     def recommend(self, time_steps: int):
-        """Recommend a backend to use based on network size and continuous sim time steps."""
+        """Recommend a backend to use based on network size and continuous sim time steps.
+
+        See :py:meth:`setup` and :doc:`/guide/speed` for guidance on choosing a backend and sparsity setting manually.
+
+        See Also
+        --------
+        recommend_sparsity
+        setup
+        simulate
+        """
         score = self.num_neurons ** 2 * time_steps / 1e6
 
         if self.gpu and score > self.gpu_threshold and self.weight_sparsity() > 0.0005:
@@ -1976,10 +2038,22 @@ class SNN:
         return 'cpu'
 
     def recommend_sparsity(self):
-        return self.weight_sparsity() < self.sparsity_threshold and self.num_neurons > 100
+        """Recommend whether to use sparse representation to use based on network size.
+
+        See :py:meth:`setup` and :doc:`/guide/speed` for guidance on choosing a backend and sparsity setting manually.
+
+        See Also
+        --------
+        recommend
+        setup
+        sparse
+        """
+        return self.num_neurons > 100 and self.weight_sparsity() < self.sparsity_threshold
 
     def simulate(self, time_steps: int = 1, callback=None, use=None, sparse=None, **kwargs) -> None:
         """Simulate the neuromorphic spiking neural network
+
+        See :py:meth:`setup` and :doc:`/guide/speed` for guidance on choosing a backend and sparsity setting manually.
 
         Parameters
         ----------
@@ -1991,6 +2065,12 @@ class SNN:
             Which backend to use. Can be 'auto', 'cpu', 'jit', or 'gpu'.
             If None, SNN.backend will be used, which is 'auto' by default.
             'auto' will choose a backend based on the network size and time steps.
+        sparse : bool | str | Any, default=None
+            Whether to use a sparse representation for the SNN.
+            See :py:attr:`sparse` for more information.
+            This must be set to ``None`` if in :py:attr:`manual_setup` mode.
+        **kwargs : Any
+            Additional keyword arguments to pass to the underlying setup functions.
 
         Raises
         ------
@@ -1998,6 +2078,23 @@ class SNN:
             If ``time_steps`` is not an int.
         ValueError
             If ``time_steps`` is less than or equal to zero.
+
+        See Also
+        --------
+        setup
+        recommend
+        recommend_sparsity
+        simulate_cpu
+        simulate_cpu_jit
+        simulate_gpu
+        devec
+        consume_input_spikes
+
+        Notes
+        -----
+        The backend recommendation in :py:attr:`manual_setup` mode may be different
+        because the backend depends on whether the SNN is :py:attr:`sparse` or not,
+        and the sparsity setting must be set in :py:meth:`setup` BEFORE calling ``simulate()``.
         """
 
         # Type errors
@@ -2035,10 +2132,14 @@ class SNN:
 
             self._setup(sparse=sparse)
             self.setup_input_spikes(time_steps)
-        elif sparse is not None:
-            msg = "simulate() received sparsity argument in manual_setup mode."
-            msg += " Pass sparse to setup() instead."
-            raise ValueError(msg)
+        else:
+            if sparse is not None:
+                msg = "simulate() received sparsity argument in manual_setup mode."
+                msg += " Pass sparse to setup(sparse= ) instead."
+                raise ValueError(msg)
+            if use == 'auto':
+                use = 'cpu' if self._is_sparse else self.recommend(time_steps)
+                use = 'cpu' if use == 'gpu' else use
 
         if not use:
             use = 'cpu'
