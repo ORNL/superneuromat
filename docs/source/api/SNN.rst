@@ -220,6 +220,8 @@ Methods
    ~SNN.to_json
    ~SNN.saveas_json
    ~SNN.from_jsons
+   ~SNN.to_networkx
+   ~SNN.to_networkx_accessors
 
 
 Attributes
@@ -240,6 +242,7 @@ Attributes
    ~SNN.is_sparse
    ~SNN.sparse
    ~SNN.stdp_time_steps
+   ~SNN.manual_setup
 
    .. ~SNN.dbin
    .. ~SNN.dd

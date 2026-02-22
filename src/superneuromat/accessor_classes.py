@@ -1380,6 +1380,17 @@ class Neuron(ModelAccessor):
     def row_cont(cls):
         return "  ...          ...         ...          ...       ...         ... [...]"
 
+    #: A list of attributes to include in :py:meth:`Neuron.attributes_dict`.
+    attribute_names = ['state', 'threshold', 'leak', 'reset_state',
+                       'refractory_state', 'refractory_period']
+
+    @property
+    def attributes_dict(self):
+        """Return a dictionary of the attributes of this neuron.
+        The included attributes are controlled by :py:attr:`Neuron.attribute_names`.
+        """
+        return {attr: getattr(self, attr) for attr in self.attribute_names}
+
 
 class LeakProp(ModelParameterSubset):
     parameter_name = 'neuron_leaks'
@@ -1831,6 +1842,16 @@ class Synapse(ModelAccessor):
     @staticmethod
     def row_cont():
         return "    ...    ...       ...         ...      ... ..."
+
+    #: A list of attributes to include in :py:meth:`Synapse.attributes_dict`.
+    attribute_names = ['weight', 'delay', 'stdp_enabled']
+
+    @property
+    def attributes_dict(self):
+        """Return a dictionary of the attributes of this synapse.
+        The included attributes are controlled by :py:attr:`Synapse.attribute_names`.
+        """
+        return {attr: getattr(self, attr) for attr in self.attribute_names}
 
 
 class DelayProp(ModelParameterSubset):
