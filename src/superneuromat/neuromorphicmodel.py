@@ -1726,22 +1726,39 @@ class SNN:
         .. code-block:: python
 
             snn.reset_neuron_states()
-            snn.reset_refractory_periods()
+            snn.zero_refractory_periods()
             snn.clear_spike_train()
             snn.clear_input_spikes()
+            snn.restore()
 
         .. warning::
 
             This method does not reset the synaptic weights or STDP parameters.
-            Instead, consider copying the parameters you care about so you can assign them later.
+            SuperNeuroMAT also does not automatically store the initial neuron state values, such as
+            the ``initial_state`` and ``refractory_state`` parameters of :py:meth:`create_neuron`.
+            When ``reset()`` is called, if those states are not memoized, each neuron's charge
+            state will be set to its reset state in :py:attr:`neuron_reset_states`,
+            and the refractory countdown in :py:attr:`neuron_refractory_periods` will be set to zero.
+
+            If this is not desirable, consider manually copying the parameters you care
+            about so you can assign them later, or using :py:meth:`memoize` to store a snapshot
+            to return to when :py:meth:`restore()` or :py:meth:`reset()` is called, or manually
+            calling only the individual functions that you need (shown above).
 
             See :ref:`reset-snn` for more information.
 
+        See Also
+        --------
+        reset_neuron_states : Reset the charge states of all neurons to their reset values.
+        zero_refractory_periods : Reset the refractory period countdowns to zero.
+        clear_spike_train : Delete all recorded spike trains.
+        clear_input_spikes : Delete all queued input spikes.
+        restore : Restore the model variables to their memoized states.
         """
         if 'neuron_states' not in self.memoized:
             self.reset_neuron_states()
         if 'neuron_refractory_periods_state' not in self.memoized:
-            self.activate_all_refractory_periods()
+            self.zero_refractory_periods()
         if 'spike_train' not in self.memoized:
             self.clear_spike_train()
         if 'input_spikes' not in self.memoized:
@@ -1749,7 +1766,7 @@ class SNN:
         self.restore()
 
     def restore(self, *args):
-        """Restore model variables to their memoized states.
+        """Restore all or some model variables to their memoized states.
 
         Parameters
         ----------
