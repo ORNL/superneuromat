@@ -104,7 +104,7 @@
    :type enable_stdp: list[bool]
    :param enable_stdp:
       List of Boolean values denoting whether STDP learning is enabled on each synapse
-   :type input_spikes: dict[int, dict[list[int], list[float]]]
+   :type input_spikes: dict[int, dict[str, list]]
    :param input_spikes:
       Dictionary of input spikes for each time step.
       Indexed by ``time`` first, then a DoK-like sparse array of ``'nids'`` and ``'values'``.
