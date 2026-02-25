@@ -8,7 +8,7 @@ Resetting the SNN
 -----------------
 
 Resetting the SNN is as simple as calling :py:meth:`~superneuromat.SNN.reset()`.
-By default, this will reset the neuron states, refractory periods, spike train, and input spikes.
+By default, this will reset the neuron states, zero refractory periods, spike train, and input spikes.
 
 .. code-block:: python
 
@@ -19,10 +19,24 @@ This is roughly equivalent to:
 .. code-block:: python
 
     snn.reset_neuron_states()
-    snn.reset_refractory_periods()
+    snn.zero_refractory_periods()
     snn.clear_spike_train()
     snn.clear_input_spikes()
     snn.restore()
+
+.. warning::
+
+    This method does not reset the synaptic weights or STDP parameters.
+    SuperNeuroMAT also does not automatically store the initial neuron state values, such as
+    the ``initial_state`` and ``refractory_state`` parameters of :py:meth:`create_neuron`.
+    When ``reset()`` is called, if those states are not memoized, each neuron's charge
+    state will be set to its reset state in :py:attr:`neuron_reset_states`,
+    and the refractory countdown in :py:attr:`neuron_refractory_periods_state` will be set to zero.
+
+    If this is not desirable, consider manually copying the parameters you care
+    about so you can assign them later, or using :py:meth:`memoize` to store a snapshot
+    to return to when :py:meth:`restore()` or :py:meth:`reset()` is called, or manually
+    calling only the individual functions that you need (shown above).
 
 If you want more granular control, you can call the individual methods:
 
@@ -32,18 +46,23 @@ If you want more granular control, you can call the individual methods:
     :nosignatures:
 
     ~superneuromat.SNN.reset_neuron_states
-    ~superneuromat.SNN.reset_refractory_periods
+    ~superneuromat.SNN.zero_refractory_periods
     ~superneuromat.SNN.clear_spike_train
     ~superneuromat.SNN.clear_input_spikes
     ~superneuromat.SNN.restore
 
+.. rubric:: Related Functions
+
+.. autosummary::
+    :nosignatures:
+
     ~superneuromat.SNN.reset
     ~superneuromat.SNN.zero_neuron_states
-    ~superneuromat.SNN.zero_refractory_periods
+    ~superneuromat.SNN.activate_all_refractory_periods
 
 .. note::
 
-    Without any other action, the :py:attr:`~superneuromat.SNN.synaptic_weights` cannot be reset
+    By default, the :py:attr:`~superneuromat.SNN.synaptic_weights` are not reset
     by the :py:meth:`~superneuromat.SNN.reset()` function. If you want to reset the weights, you
     must first save them by memoizing them.
 
