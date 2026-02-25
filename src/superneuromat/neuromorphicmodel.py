@@ -1587,7 +1587,7 @@ class SNN:
         """
         # De-vectorize from numpy arrays to lists
         self.neuron_states: list[float] = self._internal_states.tolist()
-        self.neuron_refractory_periods_state: list[float] = self._neuron_refractory_periods.tolist()
+        self.neuron_refractory_periods_state: list[int] = self._neuron_refractory_periods.tolist()
 
         # Update weights if STDP was enabled
         if self._do_stdp:
@@ -1738,7 +1738,7 @@ class SNN:
             the ``initial_state`` and ``refractory_state`` parameters of :py:meth:`create_neuron`.
             When ``reset()`` is called, if those states are not memoized, each neuron's charge
             state will be set to its reset state in :py:attr:`neuron_reset_states`,
-            and the refractory countdown in :py:attr:`neuron_refractory_periods` will be set to zero.
+            and the refractory countdown in :py:attr:`neuron_refractory_periods_state` will be set to zero.
 
             If this is not desirable, consider manually copying the parameters you care
             about so you can assign them later, or using :py:meth:`memoize` to store a snapshot
