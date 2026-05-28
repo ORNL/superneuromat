@@ -544,7 +544,51 @@ class SNN:
                 df.loc[time, neuron] = value
         return df.fillna(0.0)
 
-    def to_networkx(self, include_attributes=True):
+    if TYPE_CHECKING:
+        import networkx as nx
+
+        def from_networkx(self, graph: nx.DiGraph): ...
+
+    @classmethod
+    def from_networkx(cls, graph, snn=None):
+        """Load an SNN from a networkx Graph object.
+
+        Parameters
+        ----------
+        graph : networkx.DiGraph
+            The networkx graph to load.
+        snn : SNN | None, default=None
+            If None, a new SNN is created.
+            If an existing SNN is passed, it must contain no neurons.
+
+        Returns
+        -------
+        SNN
+        """
+        # sort nodes by idx
+        snn = cls() if snn is None else snn
+        nodes = sorted(graph.nodes.items(), key=lambda x: x[0])
+        # translate neuron attributes
+        nap = {k: k for k in Neuron.attribute_names}
+        nap['state'] = 'initial_state'  # Neuron.state corresponds to create_neuron(initial_state)
+        for nx_id, nx_neuron in nodes:
+            attributes = {nap[k]: nx_neuron.get(k) for k in Neuron.attribute_names if k in nx_neuron}
+            snn.create_neuron(**attributes)
+            assert nx_id == snn.num_neurons - 1
+        # sort edges by idx if present
+        if graph.edges and 'idx' in next(iter(graph.edges.values())):
+            edges = sorted(graph.edges.items(), key=lambda x: x[1]['idx'])
+        else:
+            edges = graph.edges.items()
+        for (a, b), attrs in edges:
+            delay = attrs.pop('delay', None)
+            attrs.pop('idx', None)
+            syn = snn.create_synapse(a, b, **attrs)
+            if delay is not None:
+                snn.synaptic_delays[syn.idx] = delay
+        return snn
+
+    def to_networkx(self, include_attributes=True, include_synapse_order=False):
         """Convert the SNN to a :py:class:`networkx.DiGraph` with neurons represented by int ids.
 
         The returned graph can be saved to a file using functions such as :py:meth:`networkx.write_graphml`.
@@ -556,6 +600,9 @@ class SNN:
             The included attributes are generated in :py:attr:`Neuron.attributes_dict`
             and :py:attr:`Synapse.attributes_dict`.
             If False, only the graph structure is included.
+        include_synapse_order : bool, default=False
+            If True, include the synapse order in the graph on the ``'idx'`` attribute.
+            If ``include_attributes`` is False, this parameter is ignored.
 
         Returns
         -------
@@ -579,10 +626,16 @@ class SNN:
         """
         import networkx as nx
 
+        def get_attributes_dict(s):
+            attribute_names = s.attribute_names
+            if include_synapse_order and 'idx' not in attribute_names:
+                attribute_names += ['idx']
+            return s.get_attributes_dict(attribute_names=attribute_names)
+
         G = nx.DiGraph()
         if include_attributes:
             G.add_nodes_from([(n.idx, n.attributes_dict) for n in self.neurons])
-            G.add_edges_from([(s.pre.idx, s.post.idx, s.attributes_dict) for s in self.synapses])
+            G.add_edges_from([(s.pre.idx, s.post.idx, get_attributes_dict(s)) for s in self.synapses])
         else:
             G.add_nodes_from(range(self.num_neurons))
             G.add_edges_from(zip(self.pre_synaptic_neuron_ids, self.post_synaptic_neuron_ids))

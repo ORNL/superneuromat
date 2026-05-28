@@ -1853,6 +1853,12 @@ class Synapse(ModelAccessor):
         """
         return {attr: getattr(self, attr) for attr in self.attribute_names}
 
+    def get_attributes_dict(self, attribute_names=attribute_names):
+        """Return a dictionary of the attributes of this synapse.
+        The included attributes :py:attr:`Synapse.attribute_names` by default.
+        """
+        return {attr: getattr(self, attr) for attr in attribute_names}
+
 
 class DelayProp(ModelParameterSubset):
     parameter_name = 'synaptic_delays'
