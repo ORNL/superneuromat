@@ -1,0 +1,22 @@
+# Install everything needed to use superneuromat + the SpikeEngine FPGA
+# runtime, GUI, and example notebooks, straight from a fresh clone:
+#
+#   pip install -r requirements.txt
+#
+# This installs the package itself (editable) with its optional extras,
+# rather than duplicating a package list here -- pyproject.toml is the single
+# source of truth for versions, so this file can't drift out of sync with it.
+#
+#   core simulator + FPGA runtime (numpy, scipy, pyserial): always installed
+#   gui                 desktop network editor/driver (PyQt5, matplotlib, pyvista)
+#   datasets            citation-graph SGNN dataset dependencies (see
+#                       src/superneuromat/spikeengine/docs/USER_MANUAL.md
+#                       section 3 for the external sgnn-superneuro checkout
+#                       this also requires -- not on PyPI, not installed here)
+#   spikeengine-examples  scikit-learn + jupyter + matplotlib, for the bundled
+#                       example notebooks
+#   test                pytest + the core suite's own optional dependencies
+#
+# For just the core simulator with no FPGA/GUI/dataset extras:
+#   pip install -e .
+-e .[gui,datasets,spikeengine-examples,test]

@@ -1,0 +1,15 @@
+# FPGA bitstreams are binary build artifacts (~2-18 MB each). Marking them
+# binary prevents any line-ending or diff processing, which would corrupt a
+# .bit file on a Windows checkout.
+*.bit binary
+
+# RTL and build inputs stay LF in the working tree on every platform. Git
+# otherwise checks these out as CRLF on Windows, which changes their SHA-256
+# and made the provenance RTL digest report a false "RTL changed" on every
+# Windows clone (verified 2026-07-31). provenance.py normalises line endings
+# when hashing as well, so the check is correct either way; this keeps the
+# files themselves consistent.
+*.v    text eol=lf
+*.vh   text eol=lf
+*.xdc  text eol=lf
+*.tcl  text eol=lf

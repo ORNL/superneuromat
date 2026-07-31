@@ -239,3 +239,21 @@ dkms.conf
 ##
 ## END: C GITIGNORE
 ##
+
+##
+## superneuromat.spikeengine
+##
+# Packaged FPGA bitstreams are binary build artifacts everywhere else in this
+# file's rules would normally catch (*.bin-like, under a "bitstreams" dir),
+# but they are real, versioned deliverables here, not build scratch -- track
+# them explicitly. Negation must come after any earlier blanket exclude that
+# could otherwise match, or it is a silent no-op.
+!src/superneuromat/spikeengine/bitstreams/
+!src/superneuromat/spikeengine/bitstreams/**
+!src/superneuromat/spikeengine/bitstreams/**/*.bit
+
+# Local Vivado/hardware-build scratch, not source.
+vivado_build/
+sweep_artifacts/
+*.jou
+vivado*.log

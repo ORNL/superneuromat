@@ -1,0 +1,164 @@
+{
+  "manifest_version": 1,
+  "purpose": "Ties each packaged .bit to the RTL in this package and to its recorded build results, so a reviewer can verify the binaries correspond to the shipped sources and a user can verify their copy is intact.",
+  "rtl": {
+    "files": {
+      "fpga/snm_infer_fpga_top_stdp.v": "8495b387ea6c6715ee4a26f7b182005634fb876d0e1f12a135458b8a48d17bf6",
+      "fpga/snm_infer_sp701_top_stdp.v": "e134c24be40415086b352cf94527a1374cf0dc57ffedbfc20870d44f198c3e2d",
+      "fpga/snm_infer_zcu104_top_stdp.v": "544b487be5b743d7c012048fd9824a9e5f2ea2c450031b8cc69d3406bee9fef7",
+      "fpga/uart_rx.v": "98f036d0a6c60b1a6356ce5fd465b5dbfbee8c0fa9ef14452c8f4a183a2444d0",
+      "fpga/uart_to_spi_master.v": "f7ed97c54d5cfbfc1d182d05513cef8724ad3ac50f640709a9aec13dfbb2b16e",
+      "fpga/uart_tx.v": "d87f7dea36b66866bb2e78be6d39f682332ab5e1a452700d3867e21c574d7ecf",
+      "snm_bram_fifo.v": "e6392c945191e10678afa3f792499bf5b3feaa10a7d615b533ceaae391a76158",
+      "snm_config.vh": "792d9fef7c3967e9c6f5c639fe55de50238e51520eaee6cefb27d8e0f87b0dc5",
+      "snm_gather_lane_stdp.v": "392e0b9269422f25608739a649331a464c39e2f6268be7f9c391183fed4ed2dd",
+      "snm_infer_cmd_ctrl_stdp.v": "a3407dba6f41e51dfbc2a4b37f4853a3af58bcded89ccddbc4d8ba7da73d3c30",
+      "snm_infer_engine_stdp.v": "92f3da98dc1906e63c49291f4855436729a5c0703a5d984d814e6649a747d20b",
+      "snm_infer_lane_stdp.v": "e9c7db49d152f4b35fa3a313c9c64a4d1d042e5c591b7e817da47c6f220bc2f0",
+      "snm_infer_multilane_stdp.v": "72195cd9beef18f7e41efb6a09c3587ec04c9d63408c974e420744998940fc5f",
+      "snm_infer_top_stdp.v": "f197cc43256708ea7cc0e618de96f74b620767ab4de6e80509ced1ab3647774e",
+      "snm_neuron_update_lane.v": "b5c6045e2199cfb0cbad3cbb0e155d3e8d278cdf9d3093d40f0a6edb1035c564",
+      "snm_spi_slave.v": "7145dd708722f3ab8b0bdc3baf9d0c3e9beda5bbf85c73842ead7508b5579f74"
+    },
+    "combined_sha256": "63c16a320aaa4dd4e7f091eec8baa5859fd5b0679689792728907b9540df586b"
+  },
+  "bitstreams": [
+    {
+      "path": "basys3/snm_infer_basys3_stdp_cap256x8.bit",
+      "sha256": "8cdcfebc92e0615565c50b38e32f516830010bfa6194befc6b20ac4ba2e7d681",
+      "size_bytes": 2192147,
+      "board": "basys3",
+      "role": "board packaged default",
+      "params": {
+        "N_MAX": 256,
+        "NUM_LANES": 8,
+        "WEIGHT_W": 16,
+        "DATA_W": 24,
+        "SPIKE_MON_BASE": 64
+      },
+      "hardware_validated": true,
+      "hardware_validated_date": "2026-07-27",
+      "notes": null
+    },
+    {
+      "path": "sp701/snm_infer_sp701_microseer_N90_K8_cap200_w16.bit",
+      "sha256": "2b8942ca0aff57082f0d244f0aa9339b2643b39466ee16d0c25018cb130b6714",
+      "size_bytes": 3686949,
+      "board": "sp701",
+      "role": "dataset build (microseer)",
+      "dataset": "microseer",
+      "params": {
+        "N_MAX": 90,
+        "NUM_LANES": 8,
+        "SYN_CAP_PER_LANE": 200,
+        "WEIGHT_W": 16,
+        "DATA_W": 24
+      },
+      "build": {
+        "wns_ns": null
+      },
+      "hardware_validated": true,
+      "notes": [
+        "timing margin not recorded for this build"
+      ]
+    },
+    {
+      "path": "sp701/snm_infer_sp701_stdp_maxcap352x8.bit",
+      "sha256": "a2c1a3380e0c92a6f95934a4275011a1d9ae2805cfed947ee73a3c5117b2442e",
+      "size_bytes": 3686949,
+      "board": "sp701",
+      "role": "board packaged default",
+      "params": {
+        "N_MAX": 352,
+        "NUM_LANES": 8,
+        "WEIGHT_W": 16,
+        "DATA_W": 24,
+        "SPIKE_MON_BASE": 64
+      },
+      "hardware_validated": true,
+      "hardware_validated_date": "2026-07-31",
+      "notes": null
+    },
+    {
+      "path": "zcu104/snm_infer_zcu104_citeseer_N3318_K8_bramA.bit",
+      "sha256": "d92d719f74bf063cf5d2f18e30936474983312fa5846f42bf2961e1df769a6c1",
+      "size_bytes": 19311238,
+      "board": "zcu104",
+      "role": "dataset build (citeseer)",
+      "dataset": "citeseer",
+      "params": {
+        "N_MAX": 3318,
+        "NUM_LANES": 8,
+        "SYN_CAP_PER_LANE": 7500,
+        "WEIGHT_W": 16,
+        "DATA_W": 24
+      },
+      "build": {
+        "wns_ns": 0.889
+      },
+      "hardware_validated": true,
+      "notes": null
+    },
+    {
+      "path": "zcu104/snm_infer_zcu104_cora_N2715_K8_bramA.bit",
+      "sha256": "c441ec25c49be6346eb5b6e716278a7737c990746f34149306046e887e9e619f",
+      "size_bytes": 19311238,
+      "board": "zcu104",
+      "role": "dataset build (cora)",
+      "dataset": "cora",
+      "params": {
+        "N_MAX": 2715,
+        "NUM_LANES": 8,
+        "SYN_CAP_PER_LANE": 7200,
+        "WEIGHT_W": 16,
+        "DATA_W": 24
+      },
+      "build": {
+        "wns_ns": 0.498
+      },
+      "hardware_validated": true,
+      "notes": null
+    },
+    {
+      "path": "zcu104/snm_infer_zcu104_miniseer_N2116_K8_bramA.bit",
+      "sha256": "c8e45f9b55eef72ea8119a5f321f83efc4f46f00b7611b2996a8ec047aaa3185",
+      "size_bytes": 19311238,
+      "board": "zcu104",
+      "role": "dataset build (miniseer)",
+      "dataset": "miniseer",
+      "params": {
+        "N_MAX": 2116,
+        "NUM_LANES": 8,
+        "SYN_CAP_PER_LANE": 5200,
+        "WEIGHT_W": 16,
+        "DATA_W": 24
+      },
+      "build": {
+        "wns_ns": 0.382
+      },
+      "hardware_validated": true,
+      "notes": null
+    },
+    {
+      "path": "zcu104/snm_infer_zcu104_stdp_maxcap1024x16.bit",
+      "sha256": "79bd89a27b1b643f83d54ea4b141dd1856daf1af682062e9fd444785987e5da7",
+      "size_bytes": 19311238,
+      "board": "zcu104",
+      "role": "board packaged default",
+      "params": {
+        "N_MAX": 1024,
+        "NUM_LANES": 16,
+        "WEIGHT_W": 8,
+        "DATA_W": 16,
+        "SPIKE_MON_BASE": 0
+      },
+      "hardware_validated": true,
+      "hardware_validated_date": "2026-07-31",
+      "notes": null
+    }
+  ],
+  "limitations": [
+    "Vivado version and the exact Tcl invocation are not recorded per bitstream: the builds predate this manifest and their scratch directories are not part of the repository. Rebuilding with scripts/build_*.tcl regenerates both, and a future manifest written by that flow can record them.",
+    "The RTL digest proves the shipped RTL is unchanged since the manifest was written. It does NOT by itself prove a given .bit was produced from exactly that RTL -- only a reproducible rebuild does that. Use build.build_bitstream() to reproduce a packaged board build and compare results."
+  ]
+}

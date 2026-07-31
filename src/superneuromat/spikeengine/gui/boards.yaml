@@ -1,0 +1,124 @@
+# =====================================================================
+# SuperNeuroMAT3 FPGA board registry.
+#
+# The SuperNeuroMAT3 CORE (engine/cmd_ctrl/core/SRAM adapters) is device-agnostic
+# -- it infers block RAM and runs on any Xilinx 7-series / Zynq UltraScale+ part.
+# Only the "board layer" (clock, pinout/.xdc, programming) is device-specific. This
+# file describes each board so the capacity planner uses the right BRAM/DSP budget,
+# and so a new FPGA is just a new entry here plus its wrapper + constraints
+# (see PORTABILITY.md).
+#
+# Resource counts below are pulled straight from Vivado 2025.2 `get_property` on the
+# exact parts (BLOCK_RAMS = RAMB36 tiles of 36 Kb each; DSP/LUT/FF are the part
+# totals). bram_kb = bram_tiles * 36. The capacity planner rounds each memory UP to
+# whole 36 Kb tiles (Codex Decision 4), so bram_tiles is the real budget.
+#
+# 'default' is the board we can actually build/measure here (Artix-7 Basys-3).
+# status: supported = wrapper + .xdc present and hardware-validated; built_unverified =
+#   packaged bitstream built but not yet hardware-validated (authority: fpga_bitstreams/
+#   manifest.json); stub = needs board wrapper/.xdc.
+# =====================================================================
+
+default: basys3
+
+boards:
+  basys3:
+    label: "Basys3"
+    part: xc7a35tcpg236-1
+    family: artix7
+    speed_grade: -1
+    bram_tiles: 50           # RAMB36E1, 36 Kb each  (Vivado BLOCK_RAMS)
+    bram_kb: 1800            # 50 * 36
+    dsp: 90                  # DSP48E1 (NOT used -- ADR-001 keeps RTL ASIC-portable)
+    lut: 20800
+    ff: 41600
+    core_clk_hz: 100000000   # as-built board clock = full 100 MHz oscillator (no divider; core closes at 100 MHz)
+    default_clock_targets_mhz: [50, 75, 100]
+    xdc: constraints/basys3.xdc
+    program: { tool: openfpgaloader, board: basys3 }
+    # tick-latency model coefficients (cycles ~= base + per_neuron*N + per_synapse*S),
+    # from the cycle-accurate core sim; clock differs per board, coefficients do not.
+    perf: { base: 132, per_neuron: 15, per_synapse: 24 }
+    status: supported                 # Phase-E max image hardware-validated 2026-07-20 (volatile JTAG load, 9/9 incl. exact N=1400/S=32768 capacity -- see manifest); prior image remains in board flash until reflashed
+    infer_neuron_pipe_stages: 5       # parallel-lane inference engine only (snm_neuron_update_lane.v):
+                                       # Basys3's Artix-7-1 fabric is the slowest of the three boards.
+                                       # 3-stage (combined state-read+leak): WNS -0.891ns. 4-stage (split
+                                       # raw-read from leak+input compute): WNS +0.149ns at N=128, but the
+                                       # N/K capacity sweep (2026-07-14) showed the REMAINING worst path
+                                       # sits entirely inside leak_and_input() itself (leak_toward_reset()
+                                       # feeding directly into saturating_add(), 14-17 logic levels combined,
+                                       # measured IDENTICAL at N=16 and N=128 -- fixed per-neuron arithmetic
+                                       # depth, doesn't scale with N/K), close enough to the 10ns/100MHz
+                                       # period that margin was a near coin-flip across the whole sweep.
+                                       # 5-stage further splits leak_toward_reset from saturating_add.
+                                       # ZCU104/SP701 omit this field (default 3) since both already
+                                       # hardware-validate at 3 stages with comfortable margin.
+    infer_n_max: 256                  # parallel-lane inference engine top-level generics (N_MAX/NUM_LANES),
+    infer_num_lanes: 8                 # resource-sized for this board's real BRAM budget; used by both
+                                       # build_infer_basys3.tcl and tools/test_infer_sim_regression.py so
+                                       # the sim-regression matrix and the hardware build always agree.
+                                       # Raised from 128->256, 2026-07-14: per-lane synapse-memory sizing
+                                       # (SYN_CAP/lane = LOCAL_D*N_MAX = 32*256 = 8192 entries -> 4 RAMB36
+                                       # tiles/lane x 8 lanes = 32 tiles + ~2 fixed overhead = ~34/50 tiles)
+                                       # fits comfortably; confirmed by a real Vivado build (see manifest/NOTES).
+    infer_gather_pipe_deep: true      # snm_gather_lane.v: with the neuron-update chain fixed (5-stage
+                                       # above), N=256's new worst path moved to spike_frozen[rd_src] (a
+                                       # dynamic (1<<SRC_W)-wide mux) gating the accum[] write in the same
+                                       # cycle -- registers that mux's result one cycle earlier. Measured:
+                                       # N=256/K=8 WNS +0.003->+0.072ns (5-stage alone, before this fix).
+
+  sp701:
+    label: "Spartan-7 (SP701)"
+    part: xc7s100fgga676-2
+    family: spartan7
+    speed_grade: -2
+    bram_tiles: 120          # 120 * 36 = 4320 Kb
+    bram_kb: 4320
+    syn_mem_style: bram_banked  # no URAM on this part -- 4-bank all-BRAM greedy pow2 fill
+                                 # (bank0 also BRAM, selected by SNM_SYN_BANK0_URAM=0)
+    dsp: 160
+    lut: 64000
+    ff: 128000
+    core_clk_hz: 100000000
+    default_clock_targets_mhz: [50, 75, 100]
+    xdc: constraints/sp701.xdc          # real pins from official SP701 rev2p0 Master XDC
+    top: spikeengine_sp701_top        # board wrapper: IBUFDS + MMCM 200->100 MHz, reset invert
+    program: { tool: openfpgaloader, board: sp701 }   # matches fpga_bitstreams/manifest.json
+    perf: { base: 132, per_neuron: 15, per_synapse: 24 }
+    status: supported                    # max-capacity bitstream (N=2048/S=65536) hardware-validated 2026-07-09 (see manifest.json)
+    infer_n_max: 352                     # 2026-07-20: raised 256->352 -- the PACKAGED SP701 lane-engine
+    infer_num_lanes: 16                  # bitstream is now the N=352 dense all-to-all max (S=123,904,
+    infer_neuron_pipe_stages: 5          # ~1.9x the prior N=256/S=65,536), see manifest.json. Above N=256
+                                          # the worst path becomes the neuron-update leak_toward_reset->
+                                          # saturating_add chain (18 logic levels), so the 5-stage neuron
+                                          # pipeline (the same split validated on Basys3) is required to
+                                          # close timing: 3-stage barely made it (+0.009ns), 5-stage gives
+                                          # +0.282ns. The N=352 bitstream is build-verified (not yet silicon-
+                                          # validated); the prior N=256/3-stage image WAS hardware-validated
+                                          # (2026-07-13, +0.253ns) -- see manifest.json's hardware_validated_note.
+                                          # NOTE the pipe depth is N-dependent: at N<=256 3-stage is slightly
+                                          # better (route-dominated broadcast net; 5-stage measured +0.177ns
+                                          # there). Sweep builds pass pipe_stages via build_infer_sweep_sp701.tcl's
+                                          # 4th tclarg (see run_infer_lane_sweep.py BOARD_CFG).
+
+  zcu104:
+    label: "Zynq UltraScale+ (ZCU104, ZU7EV)"
+    part: xczu7ev-ffvc1156-2-e
+    family: zynquplus
+    speed_grade: -2
+    bram_tiles: 312          # 312 * 36 = 11232 Kb (RAMB36)
+    uram_blocks: 96          # URAM288 (4096x72b, 288 Kb each) -- used for the synapse memories
+    syn_mem_style: uram      # weight/dst SRAMs -> UltraRAM via snm_uram_rmw_wrapper (no byte-write enables on URAM)
+    bram_kb: 11232
+    dsp: 1728
+    lut: 230400
+    ff: 460800
+    core_clk_hz: 100000000
+    default_clock_targets_mhz: [50, 75, 100]
+    xdc: constraints/zcu104.xdc         # real PL pins from official ZCU104 Rev1.0 Master XDC
+    top: spikeengine_zcu104_top       # board wrapper: IBUFDS + MMCME4 125->100 MHz (PL-only, Option A)
+    program: { tool: openfpgaloader, board: zcu104 }  # matches fpga_bitstreams/manifest.json
+    perf: { base: 132, per_neuron: 15, per_synapse: 24 }
+    status: supported                    # hybrid URAM+BRAM max-capacity image (N=4096/S=1,179,648) hardware-validated 2026-07-10 (see manifest.json)
+    infer_n_max: 1024                    # parallel-lane inference engine top-level generics (see basys3's
+    infer_num_lanes: 16                  # infer_n_max comment above); infer_neuron_pipe_stages omitted (default 3).

@@ -6,9 +6,17 @@ build-backend = "hatchling.build"
 name = "superneuromat"
 version = "3.5.0"
 requires-python = ">=3.9"
+# Core stays light. This is a matrix SNN simulator; upstream it installed
+# numpy + scipy. Making PyQt5/pyvista/pyvistaqt/matplotlib/ipykernel mandatory
+# would mean `pip install superneuromat` pulls a full Qt/VTK desktop stack --
+# hundreds of MB, and outright uninstallable on headless/HPC nodes and any
+# platform without a PyQt5 wheel. pyserial stays: it is the FPGA runtime's
+# only hard requirement and is small and pure-Python. Everything else moved to
+# the `gui` extra and is imported lazily by the GUI modules.
 dependencies = [
     "numpy>=1.24.0",
-    "scipy"
+    "scipy",
+    "pyserial>=3.5",   # superneuromat.spikeengine board runtime
 ]
 authors = [
     {name="Prasanna Date", email="datepa@ornl.gov"},
@@ -40,7 +48,9 @@ classifiers = [
 [project.urls]
     url = "https://github.com/ORNL/superneuromat"
     Repository = "https://github.com/ORNL/superneuromat"
-    Download = "https://pypi.org/project/ini2toml/#files"
+    # was https://pypi.org/project/ini2toml/#files -- an unrelated project,
+    # almost certainly a copy-paste from a template.
+    Download = "https://pypi.org/project/superneuromat/#files"
 
 [project.optional-dependencies]
 jit = [
@@ -60,6 +70,193 @@ docs = [
     "sphinx-design",
     "numpydoc",
     "myst-parser",
+]
+test = [
+    # networkx>=3.0 required with NumPy>=2: networkx 2.8.7's graphml writer
+    # uses np.float_, removed in NumPy 2.0, so tests/test_df.py fails with
+    # "`np.float_` was removed". Verified: networkx 3.6.1 + numpy 2.4.6 -> 4
+    # passed. NOTE the external sgnn-superneuro checkout pins networkx<=2.8.7
+    # for its own use; that is a SEPARATE environment (see
+    # spikeengine/docs/USER_MANUAL.md section 3) and the two cannot share one
+    # venv unless numpy is held below 2.0.
+    "networkx>=3.0",
+    "numba",          # required by tests/test_jit.py and tests/test_gpu.py
+    "pandas",
+    "pytest>=7",
+    # needed by spikeengine's digits example and its software-reference test
+    "scikit-learn",
+]
+# Third-party requirements of the EXTERNAL sgnn-superneuro checkout, needed to
+# run the citation-graph datasets (validate_hardware --datasets, and
+# examples/citation_gnn_fpga.py). The graph sources themselves are not
+# redistributed here -- point SGNN_REPO at a checkout; see
+# spikeengine/docs/USER_MANUAL.md section 3. The full closure was determined
+# empirically: installed into a clean venv and re-ran until nothing was
+# missing, since the checkout ships no usable requirements file of its own.
+datasets = [
+    "networkx>=3.0",
+    "pandas",
+    "PyYAML>=5.1",
+    "wrapt",          # xyaml/ decorators
+    "tqdm",
+    "scikit-learn",
+    "tabulate",
+    "matplotlib>=3.5",
+]
+# spikeengine's bundled example notebooks (src/superneuromat/spikeengine/examples/).
+# Not required for the core simulator or the FPGA runtime itself.
+spikeengine-examples = [
+    "scikit-learn",
+    "jupyter",
+    "matplotlib>=3.5",
+]
+# The PyQt5 desktop GUI (`spikeengine-gui`). pyvista/pyvistaqt provide the
+# optional 3D network view; without them the GUI falls back to the matplotlib
+# 2D view automatically (see gui/pyvista_network_view.pyvista_available()).
+gui = [
+    "PyQt5>=5.15",
+    "matplotlib>=3.5",
+    "PyYAML>=5.1",
+    "pyvista>=0.48",
+    "pyvistaqt>=0.11",
+]
+
+[project.scripts]
+spikeengine-gui = "superneuromat.spikeengine.gui:main"
+
+
+#
+# Test discovery
+#
+# Without this, a bare `pytest` from the repo root walks board_variants/ and
+# tries to import files there that are named test_*.py but are HARDWARE
+# UTILITY SCRIPTS, not automated tests: they raise SystemExit at import time
+# when no board or no installed package is present, which aborts collection
+# for the whole repo (INTERNALERROR, zero tests run). Restricting discovery to
+# the two real suites makes `pytest` work from the root. Harmless if
+# board_variants/ is absent from this checkout -- the pattern simply matches
+# nothing.
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",                                # core SuperNeuroMAT suite
+    "src/superneuromat/spikeengine/tests",  # SpikeEngine package suite
+]
+norecursedirs = [
+    "board_variants", "legacy", "Datasets", "docs", "dist", "build",
+    ".venv", ".testenv", "*.egg-info", "reports", "sweep_artifacts",
+    "application", "snn_exports",
+]
+
+#
+# Build configuration
+#
+# superneuromat.spikeengine ships binary/data assets (FPGA bitstreams, the board
+# manifest, GUI board config, udev rules, example notebooks, and docs). Make sure
+# hatchling always bundles them into the wheel regardless of VCS-ignore state.
+[tool.hatch.build.targets.wheel]
+packages = ["src/superneuromat"]
+artifacts = [
+    "*.bit",
+    "*.ipynb",
+    "*.rules",
+    "*.yaml",
+    "*.json",
+    "*.png",
+    "*.md",
+    # FPGA sources bundled under superneuromat/spikeengine/fpga_src/ so installed
+    # users can regenerate configs and rebuild bitstreams with Vivado.
+    "*.v",
+    "*.vh",
+    "*.xdc",
+    "*.tcl",
+    "*.f",
+    "*.ps1",
+]
+# Found via a real wheel build + `unzip -l`, not assumed -- the wheel target
+# had NO exclude list (unlike targets.sdist below), so local build
+# scratch/cache directories that happened to be sitting in fpga_src/ at build
+# time were silently bundled into every wheel: a pile of compiled Icarus
+# Verilog .vvp sim binaries under fpga_src/tools/_sim_out/, a Vivado internal
+# .Xil/ cache directory, and a stray Java hs_err_pid*.dmp crash dump -- none of
+# which are source, none of which any installed user needs. Mirrors
+# targets.sdist's exclude list below plus the sim-scratch/crash-dump patterns
+# that list didn't cover either.
+exclude = [
+    "**/.Xil",
+    "**/.pytest_cache",
+    "**/__pycache__",
+    "*.pyc",
+    "**/dfx_runtime.txt",
+    "*.jou",
+    "vivado*.log",
+    "**/_sim_out",
+    "*.vvp",
+    "hs_err_pid*.dmp",
+]
+
+[tool.hatch.build.targets.sdist]
+# These artifact patterns are ANCHORED to src/. Bare globs ("*.json", "*.png",
+# "*.md", ...) are dangerous here: `artifacts` force-includes a match even
+# when VCS-ignored, so a bare pattern reaches into whatever happens to be
+# sitting next to the checkout (a local venv, scratch notebooks) and pulls it
+# into the sdist. Measured on a real build: 129.65 MB of a .testenv
+# virtualenv and 5.4 MB of stray tmp_pyvista_*.png got bundled this way before
+# the patterns were anchored. The wheel target above escapes this only
+# because its `packages` key confines it to src/superneuromat; the sdist has
+# no such confinement, so the anchor is required here specifically.
+artifacts = [
+    "src/superneuromat/**/*.bit",
+    "src/superneuromat/**/*.ipynb",
+    "src/superneuromat/**/*.rules",
+    "src/superneuromat/**/*.yaml",
+    "src/superneuromat/**/*.json",
+    "src/superneuromat/**/*.png",
+    "src/superneuromat/**/*.md",
+    "src/superneuromat/**/*.v",
+    "src/superneuromat/**/*.vh",
+    "src/superneuromat/**/*.xdc",
+    "src/superneuromat/**/*.tcl",
+]
+exclude = [
+    # 2026-07-16: bare ".Xil" only matches a TOP-LEVEL path, not a nested one
+    # like sourcecode/.Xil/ -- confirmed by a real sdist/wheel build still
+    # including sourcecode/.Xil/*.xdc with this pattern; needs "**/" to match
+    # at any depth. Same fix applied to targets.wheel's exclude list above.
+    "**/.Xil",
+    "**/.pytest_cache",
+    "**/__pycache__",
+    "*.pyc",
+    "**/dfx_runtime.txt",
+    "*.jou",
+    "vivado*.log",
+    "**/_sim_out",
+    "*.vvp",
+    "hs_err_pid*.dmp",
+    # Development trees that are NOT package source, in case any are present
+    # in this checkout. Excluded explicitly rather than relying on VCS ignore:
+    # hatchling does not implement git's "cannot re-include through an
+    # excluded parent directory" rule, so a negated .gitignore pattern under
+    # one of these can still force-include files (measured: 48.05 MB of
+    # superseded bitstreams leaked this way from a legacy/ copy before this
+    # exclude was added).
+    "legacy",
+    "legacy/**",
+    "board_variants",
+    "Datasets",
+    "sweep_artifacts",
+    "snn_exports",
+    "reports",
+    "application",
+    "vivado_build",
+    "PUSH_READY",
+    "**/fpga_bitstreams",
+    "**/.testenv",
+    "**/.venv",
+    "tmp_*.png",
+    "dist",
+    # Local release-candidate archives must never be recursively embedded in
+    # the next sdist (e.g. dist_validated_20260731/*.whl and *.tar.gz).
+    "dist*",
 ]
 
 #
@@ -177,3 +374,9 @@ commands = [
     ["python", "test_spikes.py",],
     ["python", "test_json.py",],
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Notebooks import their sibling example modules to keep executable logic in a
+# tested `.py` file; Ruff otherwise treats that notebook pattern as self-import.
+"src/superneuromat/spikeengine/examples/citation_gnn_fpga.ipynb" = ["PLW0406"]
+"src/superneuromat/spikeengine/examples/digits_stdp_e2e.ipynb" = ["PLW0406"]
