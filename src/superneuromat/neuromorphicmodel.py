@@ -1187,14 +1187,14 @@ class SNN:
         if pre_id < 0:
             raise ValueError("pre_id must be greater than or equal to zero")
         elif not pre_id < self.num_neurons:
-            msg = f"Added synapse to non-existent pre-synaptic Neuron {pre_id}."
-            raise warnings.warn(msg, stacklevel=2)
+            msg = f"Cannot add synapse to non-existent pre-synaptic Neuron {pre_id}."
+            raise ValueError(msg)
 
         if post_id < 0:
             raise ValueError("post_id must be greater than or equal to zero")
         if not post_id < self.num_neurons:
-            msg = f"Added synapse to non-existent post-synaptic Neuron {post_id}."
-            raise warnings.warn(msg, stacklevel=2)
+            msg = f"Cannot add synapse to non-existent post-synaptic Neuron {post_id}."
+            raise ValueError(msg)
 
         if (enable_stdp := kwargs.pop('enable_stdp', None)) is not None:
             warnings.warn("create_synapse kwarg 'enable_stdp' is deprecated. Use 'stdp_enabled' instead.",
@@ -1319,8 +1319,8 @@ class SNN:
         if neuron_id < 0:
             raise ValueError("neuron_id must be greater than or equal to zero")
         elif neuron_id >= self.num_neurons:
-            msg = f"Added spike to non-existent Neuron {neuron_id} at time {time}."
-            raise warnings.warn(msg, stacklevel=2)
+            msg = f"Cannot add spike to non-existent Neuron {neuron_id} at time {time}."
+            raise ValueError(msg)
 
         # Ensure data structure exists for the requested time
         if time not in self.input_spikes:
