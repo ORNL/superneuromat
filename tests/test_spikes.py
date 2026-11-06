@@ -64,6 +64,9 @@ class SpikeTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             snn.add_spike(1, -1)
 
+        with self.assertRaises(ValueError):
+            snn.add_spike(0, snn.num_neurons)
+
     def test_send_spikes_vec(self):
         """Test the add_spikes function with a time-series of spikes"""
 
