@@ -1,0 +1,93 @@
+name: GPU Simulator
+
+# Optional, non-required check. The hosted runners have no GPU, so the `cuda`
+# tox environment (test_gpu.py) is not run in test.yaml. This runs it with
+# real PTX on a simulated NVIDIA H100 (https://github.com/pantheongpu/pantheonsim).
+# A simulator cannot reproduce hardware-specific behavior, races or timing, so
+# it complements real-GPU testing and does not replace it.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/superneuromat/gpu/**"
+      - "src/superneuromat/neuromorphicmodel.py"
+      - "tests/**"
+      - "pyproject.toml"
+      - ".github/workflows/gpu-sim.yml"
+
+concurrency:
+  group: gpu-sim-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  cuda:
+    name: tox cuda env on a simulated H100
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      # Numba compiles the kernels to PTX with the toolkit's libNVVM, which it
+      # finds through CUDA_PATH (already in the cuda env's pass_env).
+      - name: Set up the simulated H100 and CUDA toolkit
+        uses: pantheongpu/setup-pantheonsim@656f502ef4782d94d34d8ddd368e333960609639 # v0.1.8
+        with:
+          gpu: nvidia/h100
+          cuda-toolkit: "13.0"
+
+      # Same tox setup as test.yaml.
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v5
+      - name: Install tox
+        run: uv tool install --python-preference only-managed --python 3.13 tox --with tox-uv
+
+      - name: Set up the cuda env
+        run: tox run -e cuda --notest
+
+      - name: Check that the simulated GPU is visible
+        env:
+          CUDA_PATH: /usr/local/cuda-13.0
+        run: |
+          vgpu run .tox/cuda/bin/python -c "from numba import cuda; assert cuda.is_available(); print(cuda.get_current_device().name)"
+
+      # test_cpu.py, test_jit.py and test_gpu.py, as the cuda env defines them.
+      - name: Run the cuda env
+        env:
+          CUDA_PATH: /usr/local/cuda-13.0
+        run: |
+          set -o pipefail
+          vgpu run tox run -e cuda --skip-pkg-install 2>&1 | tee "$RUNNER_TEMP/tox.log"
+
+      # tearDown in tests/base.py already checks that the GPU backend was used.
+      # test_stdp_1 skips itself on the GPU by design; any other skip, or a GPU
+      # suite that did not run, fails the job.
+      - name: Fail on unexpected skips
+        run: |
+          python3 - "$RUNNER_TEMP/tox.log" <<'PY'
+          import re
+          import sys
+
+          results, current = {}, None
+          for line in open(sys.argv[1], encoding="utf-8", errors="replace"):
+              m = re.search(r"cuda: commands\[\d+\] .*> python (\S+)", line)
+              if m:
+                  current = m.group(1)
+              elif current and (m := re.match(r"Ran (\d+) tests?", line)):
+                  results[current] = [int(m.group(1)), 0]
+              elif current in results and (m := re.match(r"OK \(skipped=(\d+)\)", line)):
+                  results[current][1] = int(m.group(1))
+          for name, (ran, skipped) in results.items():
+              print(f"{name}: {ran} tests, {skipped} skipped")
+          gpu = results.get("test_gpu.py", [0, 0])
+          others = sum(s for n, (_, s) in results.items() if n != "test_gpu.py")
+          if gpu[0] == 0 or gpu[1] != 1 or others:
+              sys.exit("unexpected skips, or the GPU tests did not run")
+          PY
